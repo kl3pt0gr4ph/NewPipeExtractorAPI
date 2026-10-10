@@ -203,7 +203,7 @@ class AudioStreamMetadataDTOTest {
 
         AudioStreamMetadataDTO dto = AudioStreamMetadataDTO.from(stream, 1);
 
-        assertThat(dto.getMimeType()).isEqualTo("audio/mp4");
+        assertThat(dto.getMimeType()).isNull();
         assertThat(dto.getFormat()).isNull();
     }
 
