@@ -134,10 +134,12 @@ public class VideoStreamMetadataDTO {
         dto.setId("video-%d".formatted(index));
         dto.setUrl(stream.getContent());
         dto.setCodec(stream.getCodec());
-        dto.setMimeType(stream.getFormat() != null ? stream.getFormat().getMimeType() : "video/mp4");
+        dto.setMimeType(stream.getFormat() != null ? stream.getFormat().getMimeType() : null);
         dto.setWidth(stream.getWidth());
         dto.setHeight(stream.getHeight());
-        dto.setFrameRate(String.valueOf(stream.getFps()));
+        if (stream.getFps() > 0) {
+            dto.setFrameRate(String.valueOf(stream.getFps()));
+        }
         dto.setBandwidth(stream.getBitrate());
 
         // Extract init and index ranges if available

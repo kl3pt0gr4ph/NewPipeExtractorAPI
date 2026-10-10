@@ -111,12 +111,8 @@ public class SubtitleMetadataDTO {
         dto.setUrl(stream.getContent());
 
         // Handle language information
-        String lang = stream.getLocale() != null ?
-                stream.getLocale().getLanguage() : "en";
-        dto.setLanguage(lang);
-        dto.setLanguageName(stream.getDisplayLanguageName() != null ?
-                stream.getDisplayLanguageName() :
-                getLanguageDisplayName(lang));
+        dto.setLanguageName(stream.getLanguageTag());
+        dto.setLanguageName(stream.getDisplayLanguageName());
 
         // Determine MIME type from format
         String mimeType = inferMimeTypeFromFormat(stream.getFormat());
