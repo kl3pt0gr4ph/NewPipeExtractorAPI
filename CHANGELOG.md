@@ -6,6 +6,32 @@ The format is based on [keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+- `DashPlayabilityFilter`: the single gate for streams that can go into an on-demand DASH manifest (#17)
+
+### Changed
+- `/dash` describes every playable stream and leaves quality, codec, audio language and subtitle choice to the player (#17)
+- Audio AdaptationSets are split by track and codec, with a `Role` and `<Label>` per track
+- Manifest is served as `application/dash+xml` (was `application/xml`)
+- Muxed fallback is served as `text/uri-list` (was `text/plain`) and is used whenever no playable video or audio remains after filtering
+- `mediaPresentationDuration` has millisecond precision
+- Audio and subtitle languages use full tags (`pt-BR`, `en-GB`)
+
+### Deprecated
+- `X-Stream-Type` header on the muxed fallback; check `Content-Type` instead. Removed in the next release.
+
+### Removed
+- `StreamSelectionService`
+
+### Fixed
+- Audio AdaptationSets mixing WebM/Opus with MP4/AAC
+- Dubbed, descriptive and original tracks in one language merged into a single set
+- Manifests emitted without `SegmentBase` when no stream had byte ranges
+- Invalid subtitle role (`subtitles` instead of `subtitle`) and srv formats labelled as TTML
+- Unescaped manifest attributes
+- Subtitle `language` always null
+- NPE when a subtitle had an unknown format
+
 ## [0.2.0] - 2026-08-16
 
 ### Added
