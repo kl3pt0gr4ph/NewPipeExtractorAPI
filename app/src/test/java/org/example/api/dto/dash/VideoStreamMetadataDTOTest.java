@@ -155,7 +155,7 @@ class VideoStreamMetadataDTOTest {
     }
 
     @Test
-    @DisplayName("Defaults mimeType to video/mp4 and format to null when the stream's format is null")
+    @DisplayName("Defaults mimeType to null when the stream's format is null")
     void handlesNullFormat() {
         VideoStream stream = mock(VideoStream.class);
         when(stream.getContent()).thenReturn("https://example.com/video.mp4");
@@ -170,7 +170,7 @@ class VideoStreamMetadataDTOTest {
 
         VideoStreamMetadataDTO dto = VideoStreamMetadataDTO.from(stream, 2);
 
-        assertThat(dto.getMimeType()).isEqualTo("video/mp4");
+        assertThat(dto.getMimeType()).isNull();
         assertThat(dto.getFormat()).isNull();
     }
 

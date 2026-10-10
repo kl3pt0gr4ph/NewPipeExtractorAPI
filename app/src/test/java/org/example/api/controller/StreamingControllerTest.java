@@ -1,9 +1,11 @@
 package org.example.api.controller;
 
+import org.example.api.component.DashPlayabilityFilter;
+import org.example.api.component.DashPlayabilityFilter.PlayableStreams;
 import org.example.api.config.GlobalExceptionHandler;
+import org.example.api.dto.dash.DashManifestConfigDTO;
 import org.example.api.exception.ExtractionException;
 import org.example.api.service.DashManifestGeneratorService;
-import org.example.api.service.StreamSelectionService;
 import org.example.api.service.VideoStreamingService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -12,7 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.mockito.InjectMocks;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.schabi.newpipe.extractor.Image;
@@ -29,15 +31,17 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-import java.util.Collections;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Stream;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -56,6 +60,11 @@ class StreamingControllerTest {
     private static final String TEST_VIDEO_ID = "dQw4w9WgXcQ";
     private static final String VIDEO_URL = "https://www.youtube.com/watch?v=" + TEST_VIDEO_ID;
 
+    private static final MediaType DASH_MPD =
+            new MediaType("application", "dash+xml", StandardCharsets.UTF_8);
+    private static final MediaType URI_LIST =
+            new MediaType("text", "uri-list", StandardCharsets.UTF_8);
+
     private MockMvc mockMvc;
 
     @Mock
@@ -65,14 +74,13 @@ class StreamingControllerTest {
     private DashManifestGeneratorService dashManifestGeneratorService;
 
     @Mock
-    private StreamSelectionService streamSelectionService;
-
-    @InjectMocks
-    private StreamingController streamingController;
+    private DashPlayabilityFilter dashPlayabilityFilter;
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
+        StreamingController streamingController = new StreamingController(
+                videoStreamingService, dashManifestGeneratorService, dashPlayabilityFilter);
         mockMvc = MockMvcBuilders.standaloneSetup(streamingController)
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
@@ -132,7 +140,6 @@ class StreamingControllerTest {
                         (ServiceInteraction) s -> verify(s).getStreamDescription(VIDEO_URL)),
                 Arguments.of("/details", (ServiceInteraction)
                                 s -> {
-                                    // StreamDetailsDTO.from needs a minimally viable info
                                     when(detailsInfo.getName()).thenReturn("Test Video");
                                     when(detailsInfo.getUrl()).thenReturn(VIDEO_URL);
                                     when(s.getStreamInfo(VIDEO_URL)).thenReturn(detailsInfo);
@@ -189,9 +196,23 @@ class StreamingControllerTest {
 
     // ── GET /api/v1/streams/dash ─────────────────────────────────────────
 
+    /** Filter results that leave no valid on-demand manifest possible. */
+    static Stream<Arguments> unplayableResults() {
+        return Stream.of(
+                Arguments.of("no playable video",
+                        new PlayableStreams(List.of(), List.of(mock(AudioStream.class)), List.of())),
+                Arguments.of("no playable audio",
+                        new PlayableStreams(List.of(mock(VideoStream.class)), List.of(), List.of())),
+                Arguments.of("nothing playable",
+                        new PlayableStreams(List.of(), List.of(), List.of())));
+    }
+
     @Nested
     @DisplayName("GET /api/v1/streams/dash")
     class DashManifestTests {
+
+        private static final String DIRECT_URL =
+                "https://rr3---sn-example.googlevideo.com/videoplayback?muxed";
 
         private StreamInfo streamInfo;
 
@@ -203,69 +224,60 @@ class StreamingControllerTest {
         }
 
         @Test
-        @DisplayName("Returns the generated manifest as application/xml, selecting from the extracted streams")
+        @DisplayName("Builds the manifest from the filter's playable streams and serves it as application/dash+xml")
         void returnsGeneratedManifest() throws Exception {
-            VideoStream videoStream = mock(VideoStream.class);
-            List<VideoStream> videoOnly = List.of(videoStream);
-            when(streamInfo.getVideoOnlyStreams()).thenReturn(videoOnly);
-            when(streamInfo.getAudioStreams()).thenReturn(Collections.emptyList());
-            when(streamInfo.getSubtitles()).thenReturn(Collections.emptyList());
-
-            when(streamSelectionService.selectVideoStreams(videoOnly)).thenReturn(videoOnly);
-            when(streamSelectionService.selectAudioStreams(Collections.emptyList()))
-                    .thenReturn(Collections.emptyList());
-            when(streamSelectionService.selectSubtitles(Collections.emptyList()))
-                    .thenReturn(Collections.emptyList());
-            when(dashManifestGeneratorService.generateManifestXml(any()))
-                    .thenReturn("<MPD/>");
+            PlayableStreams playable = new PlayableStreams(
+                    List.of(mock(VideoStream.class)), List.of(mock(AudioStream.class)), List.of());
+            when(dashPlayabilityFilter.filter(streamInfo)).thenReturn(playable);
+            when(dashManifestGeneratorService.generateManifestXml(any())).thenReturn("<MPD/>");
 
             mockMvc.perform(get("/api/v1/streams/dash").param("id", TEST_VIDEO_ID))
                     .andExpect(status().isOk())
-                    .andExpect(content().contentType(MediaType.APPLICATION_XML))
+                    .andExpect(content().contentType(DASH_MPD))
                     .andExpect(content().string("<MPD/>"));
 
-            verify(streamSelectionService).selectVideoStreams(eq(videoOnly));
-            verify(streamSelectionService).selectAudioStreams(eq(Collections.emptyList()));
-            verify(streamSelectionService).selectSubtitles(eq(Collections.emptyList()));
-            verify(dashManifestGeneratorService).generateManifestXml(any());
+            // The config is built from exactly what the filter returned
+            ArgumentCaptor<DashManifestConfigDTO> config = ArgumentCaptor.forClass(DashManifestConfigDTO.class);
+            verify(dashManifestGeneratorService).generateManifestXml(config.capture());
+            assertThat(config.getValue().getVideoStreams()).hasSize(1);
+            assertThat(config.getValue().getAudioStreams()).hasSize(1);
+            assertThat(config.getValue().getSubtitleStreams()).isEmpty();
+
+            verify(dashPlayabilityFilter, never()).muxedFallback(any());
         }
 
-        @Test
-        @DisplayName("Falls back to the muxed stream URL as text/plain when adaptive streams are unavailable")
-        void fallsBackToMuxedStream_whenNoAdaptiveStreams() throws Exception {
-
-            String directUrl = "https://rr3---sn-example.googlevideo.com/videoplayback?muxed";
+        @ParameterizedTest(name = "Falls back when the filter leaves {0}")
+        @MethodSource("org.example.api.controller.StreamingControllerTest#unplayableResults")
+        @DisplayName("Serves the muxed stream URL as text/uri-list when no DASH manifest is possible")
+        void fallsBackToMuxedStream(String name, PlayableStreams playable) throws Exception {
             VideoStream muxed = mock(VideoStream.class);
-            when(muxed.getContent()).thenReturn(directUrl);
-
-            when(streamInfo.getVideoOnlyStreams()).thenReturn(Collections.emptyList());
-            when(streamInfo.getAudioStreams()).thenReturn(Collections.emptyList());
-            when(streamInfo.getSubtitles()).thenReturn(Collections.emptyList());
-            when(streamInfo.getVideoStreams()).thenReturn(List.of(muxed));
+            when(muxed.getContent()).thenReturn(DIRECT_URL);
+            when(dashPlayabilityFilter.filter(streamInfo)).thenReturn(playable);
+            when(dashPlayabilityFilter.muxedFallback(streamInfo)).thenReturn(Optional.of(muxed));
 
             mockMvc.perform(get("/api/v1/streams/dash").param("id", TEST_VIDEO_ID))
                     .andExpect(status().isOk())
-                    .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_PLAIN))
+                    .andExpect(content().contentType(URI_LIST))
+                    // Kept for one release while the frontend switches to Content-Type
                     .andExpect(header().string("X-Stream-Type", "muxed-progressive"))
-                    .andExpect(content().string(directUrl));
+                    .andExpect(content().string(DIRECT_URL + "\r\n"));
 
-            // The fallback path must not touch selection or generation.
-            verifyNoInteractions(streamSelectionService);
+            // The fallback path must not build a manifest
             verifyNoInteractions(dashManifestGeneratorService);
         }
 
         @Test
-        @DisplayName("Returns 503 when neither adaptive nor muxed streams exist")
+        @DisplayName("Returns 503 when nothing is playable and there is no muxed stream either")
         void returns503_whenNoStreamsAtAll() throws Exception {
-            // Previously untested branch: full SABR blocking.
-            when(streamInfo.getVideoOnlyStreams()).thenReturn(Collections.emptyList());
-            when(streamInfo.getAudioStreams()).thenReturn(Collections.emptyList());
-            when(streamInfo.getSubtitles()).thenReturn(Collections.emptyList());
-            when(streamInfo.getVideoStreams()).thenReturn(Collections.emptyList());
+            when(dashPlayabilityFilter.filter(streamInfo))
+                    .thenReturn(new PlayableStreams(List.of(), List.of(), List.of()));
+            when(dashPlayabilityFilter.muxedFallback(streamInfo)).thenReturn(Optional.empty());
 
             mockMvc.perform(get("/api/v1/streams/dash").param("id", TEST_VIDEO_ID))
                     .andExpect(status().isServiceUnavailable())
                     .andExpect(content().string(containsString("No streams available")));
+
+            verifyNoInteractions(dashManifestGeneratorService);
         }
     }
 

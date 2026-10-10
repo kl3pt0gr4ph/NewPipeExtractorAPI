@@ -10,11 +10,16 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import org.schabi.newpipe.extractor.stream.SubtitlesStream;
 import org.schabi.newpipe.extractor.stream.VideoStream;
+import org.schabi.newpipe.extractor.services.youtube.ItagItem;
+import org.schabi.newpipe.extractor.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Data Transfer Object representing the complete DASH manifest configuration.
@@ -26,67 +31,49 @@ public class DashManifestConfigDTO {
 
     private static final Logger logger = LoggerFactory.getLogger(DashManifestConfigDTO.class);
 
-    /**
-     * Type of DASH manifest (typically "static" for VOD content).
-     */
+    /** Type of DASH manifest (typically "static" for VOD content) */
     @NotBlank(message = "Manifest type cannot be blank")
     @JsonProperty("type")
     private String type;
 
-    /**
-     * Total duration of the media presentation in ISO 8601 format (e.g., "PT1M59.702S").
-     */
+    /** Total duration of the media presentation in ISO 8601 format (e.g., "PT1M59.702S"). */
     @NotBlank(message = "Media presentation duration cannot be blank")
     @JsonProperty("mediaPresentationDuration")
     private String mediaPresentationDuration;
 
-    /**
-     * Minimum buffer time required for playback in ISO 8601 format (e.g., "PT2S").
-     */
+    /** Minimum buffer time required for playback in ISO 8601 format (e.g., "PT2S"). */
     @NotBlank(message = "Min buffer time cannot be blank")
     @JsonProperty("minBufferTime")
     private String minBufferTime;
 
-    /**
-     * DASH profile identifier specifying which DASH features are used.
-     */
+    /** DASH profile identifier specifying which DASH features are used. */
     @NotBlank(message = "Profiles cannot be blank")
     @JsonProperty("profiles")
     private String profiles;
 
-    /**
-     * List of all available video streams with different qualities/resolutions.
-     */
+    /** List of all available video streams with different qualities/resolutions. */
     @NotNull(message = "Video streams list cannot be null")
     @JsonProperty("videoStreams")
     private List<VideoStreamMetadataDTO> videoStreams;
 
-    /**
-     * List of all available audio streams with different qualities/languages.
-     */
+    /** List of all available audio streams with different qualities/languages. */
     @NotNull(message = "Audio streams list cannot be null")
     @JsonProperty("audioStreams")
     private List<AudioStreamMetadataDTO> audioStreams;
 
-    /**
-     * List of all available subtitle tracks.
-     */
+    /** List of all available subtitle tracks. */
     @NotNull(message = "Subtitle streams list cannot be null")
     @JsonProperty("subtitleStreams")
     private List<SubtitleMetadataDTO> subtitleStreams;
 
-    /**
-     * Duration in seconds (for convenience, not part of XML manifest).
-     */
+    /** Duration in seconds (for convenience, not part of XML manifest). */
     @Min(value = 1, message = "Duration must be at least 1 second")
     @JsonProperty("durationSeconds")
     private long durationSeconds;
 
     // Constructors
 
-    /**
-     * Default constructor for Jackson deserialization.
-     */
+    /** Default constructor for Jackson deserialization. */
     public DashManifestConfigDTO() {
         this.type = "static";
         this.minBufferTime = "PT2S";
@@ -96,9 +83,7 @@ public class DashManifestConfigDTO {
         this.subtitleStreams = new ArrayList<>();
     }
 
-    /**
-     * Full constructor for creating a DashManifestConfigDTO with all fields.
-     */
+    /** Full constructor for creating a DashManifestConfigDTO with all fields. */
     public DashManifestConfigDTO(String type, String mediaPresentationDuration, String minBufferTime,
                                  String profiles, List<VideoStreamMetadataDTO> videoStreams,
                                  List<AudioStreamMetadataDTO> audioStreams,
@@ -116,158 +101,80 @@ public class DashManifestConfigDTO {
     // Static Factory Method
 
     /**
-     * Creates a DashManifestConfigDTO from a NewPipe StreamInfo object.
-     * Extracts all available video, audio, and subtitle streams.
+     * Builds the manifest config from streams that already passed DashPlayabilityFilter.
      *
-     * @param streamInfo The StreamInfo from NewPipe extractor
-     * @return A new DashManifestConfigDTO instance with all streams
+     * <p>Every stream passed in is converted and ends up in the manifest</p>
      */
-    public static DashManifestConfigDTO from(StreamInfo streamInfo) {
-        if (streamInfo == null) {
-            throw new IllegalArgumentException("StreamInfo cannot be null");
-        }
+    public static DashManifestConfigDTO from(StreamInfo streamInfo,
+                                             List<VideoStream> videoStreams,
+                                             List<AudioStream> audioStreams,
+                                             List<SubtitlesStream> subtitleStreams) {
+        Objects.requireNonNull(streamInfo, "streamInfo");
+        Objects.requireNonNull(videoStreams, "videoStreams");
+        Objects.requireNonNull(audioStreams, "audioStreams");
+        Objects.requireNonNull(subtitleStreams, "subtitleStreams");
 
         DashManifestConfigDTO dto = new DashManifestConfigDTO();
+        dto.setDurationSeconds(streamInfo.getDuration());
+        dto.setMediaPresentationDuration(formatDuration(
+                presentationDurationMs(streamInfo, videoStreams, audioStreams)));
 
-        // Set duration
-        long durationSeconds = streamInfo.getDuration();
-        dto.setDurationSeconds(durationSeconds);
-        dto.setMediaPresentationDuration(formatDuration(durationSeconds));
-
-        // Extract all video streams
-        List<VideoStreamMetadataDTO> videoStreams = new ArrayList<>();
-        if (streamInfo.getVideoOnlyStreams() != null) {
-            int videoIndex = 1;
-            for (var videoStream : streamInfo.getVideoOnlyStreams()) {
-                try {
-                    videoStreams.add(VideoStreamMetadataDTO.from(videoStream, videoIndex++));
-                } catch (Exception e) {
-                    // Log and skip invalid streams
-                    logger.error("Skipping invalid video stream: {}", e.getMessage());
-                }
-            }
-        }
-        dto.setVideoStreams(videoStreams);
-
-        // Extract all audio streams
-        List<AudioStreamMetadataDTO> audioStreams = new ArrayList<>();
-        if (streamInfo.getAudioStreams() != null) {
-            int audioIndex = 1;
-            for (var audioStream : streamInfo.getAudioStreams()) {
-                try {
-                    audioStreams.add(AudioStreamMetadataDTO.from(audioStream, audioIndex++));
-                } catch (Exception e) {
-                    // Log and skip invalid streams
-                    logger.error("Skipping invalid audio stream {}", e.getMessage());
-                }
-            }
-        }
-        dto.setAudioStreams(audioStreams);
-
-        // Extract all subtitle streams
-        List<SubtitleMetadataDTO> subtitleStreams = new ArrayList<>();
-        if (streamInfo.getSubtitles() != null) {
-            int subtitleIndex = 1;
-            for (var subtitleStream : streamInfo.getSubtitles()) {
-                try {
-                    subtitleStreams.add(SubtitleMetadataDTO.from(subtitleStream, subtitleIndex++));
-                } catch (Exception e) {
-                    // Log and skip invalid streams
-                    logger.error("Skipping invalid subtitle stream {}", e.getMessage());
-                }
-            }
-        }
-        dto.setSubtitleStreams(subtitleStreams);
+        dto.setVideoStreams(convertAll(videoStreams, "video", VideoStreamMetadataDTO::from));
+        dto.setAudioStreams(convertAll(audioStreams, "audio", AudioStreamMetadataDTO::from));
+        dto.setSubtitleStreams(convertAll(subtitleStreams, "subtitle", SubtitleMetadataDTO::from));
 
         return dto;
     }
 
-    /**
-     * Formats duration in seconds to ISO 8601 duration format (PT#H#M#.###S).
-     *
-     * @param durationSeconds Duration in seconds
-     * @return ISO 8601 formatted duration string
-     */
-    private static String formatDuration(long durationSeconds) {
-        if (durationSeconds <= 0) {
-            return "PT0S";
-        }
-
-        long hours = durationSeconds / 3600;
-        long minutes = (durationSeconds % 3600) / 60;
-        double seconds = durationSeconds % 60;
-
-        StringBuilder duration = new StringBuilder("PT");
-        if (hours > 0) {
-            duration.append(hours).append("H");
-        }
-        if (minutes > 0) {
-            duration.append(minutes).append("M");
-        }
-        if (seconds > 0 || (hours == 0 && minutes == 0)) {
-            // Format with milliseconds if needed
-            if (seconds == (long) seconds) {
-                duration.append((long) seconds).append("S");
-            } else {
-                duration.append(String.format("%.3f", seconds)).append("S");
-            }
-        }
-
-        return duration.toString();
+    @FunctionalInterface
+    private interface IndexedConverter<S, D> {
+        D convert(S stream, int index) throws Exception;
     }
 
-    public static DashManifestConfigDTO fromWithSelectedStreams(
-            StreamInfo streamInfo,
-            List<VideoStream> selectedVideoStreams,
-            List<AudioStream> selectedAudioStreams,
-            List<SubtitlesStream> selectedSubtitles) {
-
-        DashManifestConfigDTO config = new DashManifestConfigDTO();
-
-        // Set metadata
-        config.setDurationSeconds(streamInfo.getDuration());
-        config.setType("static");
-        config.setMediaPresentationDuration(formatDuration(streamInfo.getDuration()));
-        config.setMinBufferTime("PT2S");
-        config.setProfiles("urn:mpeg:dash:profile:isoff-on-demand:2011");
-
-        // Convert SELECTED video streams to DTOs with index
-        List<VideoStreamMetadataDTO> videoStreamDTOs = new ArrayList<>();
-        int videoIndex = 1;
-        for (VideoStream stream : selectedVideoStreams) {
+    /**
+     * Converts each stream to its DTO. Indexes start at 1 and advance even when a
+     * conversion fails.
+     */
+    private static <S extends Stream, D> List<D> convertAll(List<S> streams, String kind,
+                                                            IndexedConverter<S, D> converter) {
+        List<D> converted = new ArrayList<>(streams.size());
+        int index = 1;
+        for (S stream : streams) {
             try {
-                videoStreamDTOs.add(VideoStreamMetadataDTO.from(stream, videoIndex++));
+                converted.add(converter.convert(stream, index++));
             } catch (Exception e) {
-                logger.error("Skipping invalid video stream: {}", e.getMessage());
+                logger.warn("Skipping {} stream {}: passed the playability filter but failed conversion: {}",
+                        kind, stream.getId(), e.getMessage());
             }
         }
-        config.setVideoStreams(videoStreamDTOs);
+        return converted;
+    }
 
-        // Convert SELECTED audio streams to DTOs with index
-        List<AudioStreamMetadataDTO> audioStreamDTOs = new ArrayList<>();
-        int audioIndex = 1;
-        for (AudioStream stream : selectedAudioStreams) {
-            try {
-                audioStreamDTOs.add(AudioStreamMetadataDTO.from(stream, audioIndex++));
-            } catch (Exception e) {
-                 logger.error("Skipping invalid audio stream {}", e.getMessage());
-            }
+    /**
+     * Real media length in ms. YouTube reports approxDurationMs per itag; take the longest
+     * so the presentation covers every track. Falls back to whole seconds from StreamInfo.
+     */
+    private static long presentationDurationMs(StreamInfo streamInfo,
+                                               List<VideoStream> videoStreams,
+                                               List<AudioStream> audioStreams) {
+        long longest = ItagItem.APPROX_DURATION_MS_UNKNOWN;
+        for (VideoStream stream : videoStreams) {
+            longest = Math.max(longest, approxDurationMs(stream));
         }
-        config.setAudioStreams(audioStreamDTOs);
-
-        // Convert SELECTED subtitle streams to DTOs with index
-        List<SubtitleMetadataDTO> subtitleStreamDTOs = new ArrayList<>();
-        int subtitleIndex = 1;
-        for (SubtitlesStream stream : selectedSubtitles) {
-            try {
-                subtitleStreamDTOs.add(SubtitleMetadataDTO.from(stream, subtitleIndex++));
-            } catch (Exception e) {
-                logger.error("Skipping invalid subtitle stream {}", e.getMessage());
-            }
+        for (AudioStream stream : audioStreams) {
+            longest = Math.max(longest, approxDurationMs(stream));
         }
-        config.setSubtitleStreams(subtitleStreamDTOs);
+        return longest > 0 ? longest : TimeUnit.SECONDS.toMillis(streamInfo.getDuration());
+    }
 
-        return config;
+    private static long approxDurationMs(Stream stream) {
+        ItagItem itag = stream.getItagItem();
+        return itag != null ? itag.getApproxDurationMs() : ItagItem.APPROX_DURATION_MS_UNKNOWN;
+    }
+
+    /** ISO 8601 duration, e.g. 119702 ms to "PT1M59.702S". */
+    private static String formatDuration(long durationMs) {
+        return durationMs > 0 ? Duration.ofMillis(durationMs).toString() : "PT0S";
     }
 
     // Builder Pattern
@@ -281,9 +188,7 @@ public class DashManifestConfigDTO {
         return new Builder();
     }
 
-    /**
-     * Builder class for fluent construction of DashManifestConfigDTO instances.
-     */
+    /** Builder class for fluent construction of DashManifestConfigDTO instances. */
     public static class Builder {
         private String type = "static";
         private String mediaPresentationDuration;

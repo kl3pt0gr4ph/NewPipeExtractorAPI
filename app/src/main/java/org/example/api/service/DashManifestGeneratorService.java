@@ -6,16 +6,30 @@ import org.example.api.dto.dash.SubtitleMetadataDTO;
 import org.example.api.dto.dash.VideoStreamMetadataDTO;
 import org.example.api.exception.ValidationException;
 import org.example.api.utils.ManifestXmlBuilder;
+import org.schabi.newpipe.extractor.stream.AudioTrackType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import java.util.*;
+import javax.xml.stream.XMLOutputFactory;
+import javax.xml.stream.XMLStreamException;
+import javax.xml.stream.XMLStreamWriter;
+import java.io.StringWriter;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.TreeMap;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * Service for generating DASH (Dynamic Adaptive Streaming over HTTP) manifests.
- * Converts StreamInfo into complete DASH XML manifests with all available streams.
+ * Writes an on-demand DASH manifest describing every representation in the config.
+ *
+ * <p>Input contract: the config was built from streams that passed
+ * {@link DashPlayabilityFilter}. This class never selects, drops or ranks streams. It
+ * groups them into AdaptationSets and labels them (lang, Role, Label) so the player
+ * can make those choices.</p>
  */
 @Service
 public class DashManifestGeneratorService {
@@ -23,531 +37,341 @@ public class DashManifestGeneratorService {
     private static final Logger logger = LoggerFactory.getLogger(DashManifestGeneratorService.class);
 
     private static final String DASH_NAMESPACE = "urn:mpeg:dash:schema:mpd:2011";
-    private static final String DEFAULT_VIDEO_MIME_TYPE = "video/mp4";
+    private static final String ROLE_SCHEME = "urn:mpeg:dash:role:2011";
+    private static final String AUDIO_CHANNEL_SCHEME =
+            "urn:mpeg:dash:23003:3:audio_channel_configuration:2011";
+    private static final String UNDETERMINED_LANGUAGE = "und";
 
-    private static final int VIDEO_ADAPTATION_SET_ID_BASE = 0;
-    private static final int AUDIO_ADAPTATION_SET_ID_BASE = 50;
-    private static final int SUBTITLE_ADAPTATION_SET_ID_BASE = 100;
+    /** Configured once and never changed, so it is safe to share between requests. */
+    private static final XMLOutputFactory XML_OUTPUT = XMLOutputFactory.newInstance();
 
     /**
      * Generates a complete DASH manifest XML from a pre-built configuration DTO.
      *
-     * @param config The DASH manifest configuration
-     * @return Complete DASH manifest XML string
+     * @param config the configuration used to generate the manifest
+     * @return the generated DASH manifest as an XML string
      */
     public String generateManifestXml(DashManifestConfigDTO config) {
         validateConfig(config);
 
-        // XML declaration
-
-        return "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
-
-                // MPD root element
-                generateMpdHeader(config) +
-
-                // Period element
-                generatePeriodElement(config) +
-
-                // Close MPD
-                "</MPD>\n";
+        StringWriter out = new StringWriter();
+        try {
+            XMLStreamWriter xml = XML_OUTPUT.createXMLStreamWriter(out);
+            xml.writeStartDocument("UTF-8", "1.0");
+            writeMpd(xml, config);
+            xml.writeEndDocument();
+            xml.close();
+        } catch (XMLStreamException e) {
+            throw new IllegalStateException("Failed to write DASH manifest", e);
+        }
+        return out.toString();
     }
 
-    /**
-     * Validates the manifest configuration.
-     *
-     * @param config Configuration to validate
-     * @throws ValidationException if configuration is invalid
-     */
+    // --- Validation ------------------------------------------------------------
+
     private void validateConfig(DashManifestConfigDTO config) {
         if (config == null) {
             throw new ValidationException("Manifest configuration cannot be null");
         }
-
         if (config.getDurationSeconds() <= 0) {
             throw new ValidationException("Duration must be greater than 0");
         }
-
-        if (config.getVideoStreams() == null || config.getAudioStreams() == null || config.getSubtitleStreams() == null) {
+        if (config.getVideoStreams() == null || config.getAudioStreams() == null
+                || config.getSubtitleStreams() == null) {
             throw new ValidationException("Stream lists cannot be null");
         }
+
+        // Past this point a failure is a bug in the filter or the DTO conversion,
+        if (config.getVideoStreams().isEmpty() || config.getAudioStreams().isEmpty()) {
+            throw new IllegalStateException("A manifest needs at least one video and one audio "
+                    + "representation; the caller should have used the muxed fallback");
+        }
+        for (VideoStreamMetadataDTO v : config.getVideoStreams()) {
+            requireNonBlank("video", v.getId(), v.getUrl(), v.getMimeType(), v.getCodec(),
+                    v.getInitRange(), v.getIndexRange());
+        }
+        for (AudioStreamMetadataDTO a : config.getAudioStreams()) {
+            requireNonBlank("audio", a.getId(), a.getUrl(), a.getMimeType(), a.getCodec(),
+                    a.getInitRange(), a.getIndexRange());
+        }
+        for (SubtitleMetadataDTO s : config.getSubtitleStreams()) {
+            requireNonBlank("subtitle", s.getId(), s.getUrl(), s.getMimeType());
+        }
     }
+
+    private static void requireNonBlank(String kind, String id, String... fields) {
+        boolean missing = isBlank(id);
+        for (String field : fields) {
+            missing |= isBlank(field);
+        }
+        if (missing) {
+            throw new IllegalStateException("%s representation %s is missing a required field; "
+                    .formatted(kind, id) + "DashPlayabilityFilter should have dropped it");
+        }
+    }
+
+    // --- MPD and Period --------------------------------------------------------
+
+    private void writeMpd(XMLStreamWriter xml, DashManifestConfigDTO config) throws XMLStreamException {
+        xml.writeStartElement("MPD");
+        xml.writeDefaultNamespace(DASH_NAMESPACE);
+        xml.writeAttribute("type", config.getType());
+        xml.writeAttribute("mediaPresentationDuration", config.getMediaPresentationDuration());
+        xml.writeAttribute("minBufferTime", config.getMinBufferTime());
+        xml.writeAttribute("profiles", config.getProfiles());
+
+        xml.writeStartElement("Period");
+        xml.writeAttribute("duration", config.getMediaPresentationDuration());
+
+        // One counter across all AdaptationSets
+        int nextId = 0;
+        nextId = writeVideoAdaptationSets(xml, config.getVideoStreams(), nextId);
+        nextId = writeAudioAdaptationSets(xml, config.getAudioStreams(), nextId);
+        nextId = writeSubtitleAdaptationSets(xml, config.getSubtitleStreams(), nextId);
+
+        xml.writeEndElement(); // Period
+        xml.writeEndElement(); // MPD
+
+        logger.debug("Wrote {} AdaptationSet(s) for {} video, {} audio, {} subtitle representation(s)",
+                nextId, config.getVideoStreams().size(), config.getAudioStreams().size(),
+                config.getSubtitleStreams().size());
+    }
+
+    // --- Video -----------------------------------------------------------------
+
+    /** One AdaptationSet per container and codec family; players can't switch codecs mid-set. */
+    private int writeVideoAdaptationSets(XMLStreamWriter xml, List<VideoStreamMetadataDTO> videos,
+                                         int nextId) throws XMLStreamException {
+        Map<String, List<VideoStreamMetadataDTO>> byCodec =
+                groupBy(videos, v -> v.getMimeType() + "|" + codecFamily(v.getCodec()));
+
+        for (List<VideoStreamMetadataDTO> group : byCodec.values()) {
+            xml.writeStartElement("AdaptationSet");
+            xml.writeAttribute("id", String.valueOf(nextId++));
+            xml.writeAttribute("contentType", "video");
+            xml.writeAttribute("mimeType", group.getFirst().getMimeType());
+            xml.writeAttribute("subsegmentAlignment", "true");
+            xml.writeAttribute("startWithSAP", "1");
+
+            List<VideoStreamMetadataDTO> sorted = group.stream()
+                    .sorted(Comparator.comparingInt(VideoStreamMetadataDTO::getHeight).reversed())
+                    .toList();
+            for (VideoStreamMetadataDTO video : sorted) {
+                writeVideoRepresentation(xml, video);
+            }
+
+            xml.writeEndElement(); // AdaptationSet
+        }
+        return nextId;
+    }
+
+    private void writeVideoRepresentation(XMLStreamWriter xml, VideoStreamMetadataDTO video)
+            throws XMLStreamException {
+        xml.writeStartElement("Representation");
+        xml.writeAttribute("id", video.getId());
+        xml.writeAttribute("bandwidth", String.valueOf(video.getBandwidth()));
+        xml.writeAttribute("codecs", video.getCodec());
+        xml.writeAttribute("width", String.valueOf(video.getWidth()));
+        xml.writeAttribute("height", String.valueOf(video.getHeight()));
+        if (!isBlank(video.getFrameRate())) {
+            xml.writeAttribute("frameRate", video.getFrameRate());
+        }
+        writeBaseUrl(xml, video.getUrl());
+        writeSegmentBase(xml, video.getInitRange(), video.getIndexRange());
+        xml.writeEndElement(); // Representation
+    }
+
+    // --- Audio -----------------------------------------------------------------
 
     /**
-     * Generates the MPD header element with attributes.
-     *
-     * @param config Manifest configuration
-     * @return MPD header XML string
+     * Groups by track first (original, each dub, descriptive), then by container and codec
+     * family inside each track. Every AdaptationSet of one track carries the same lang,
+     * Role and Label, so the player sees one track offered in two codecs.
      */
-    private String generateMpdHeader(DashManifestConfigDTO config) {
+    private int writeAudioAdaptationSets(XMLStreamWriter xml, List<AudioStreamMetadataDTO> audios,
+                                         int nextId) throws XMLStreamException {
+        Map<String, List<AudioStreamMetadataDTO>> byTrack =
+                groupBy(audios, DashManifestGeneratorService::audioTrackKey);
+        boolean singleTrack = byTrack.size() == 1;
 
-        return "<MPD xmlns=\"" + DASH_NAMESPACE + "\"\n" +
-                "     type=\"" + config.getType() + "\"\n" +
-                "     mediaPresentationDuration=\"" + config.getMediaPresentationDuration() + "\"\n" +
-                "     minBufferTime=\"" + config.getMinBufferTime() + "\"\n" +
-                "     profiles=\"" + config.getProfiles() + "\">\n";
-    }
+        for (List<AudioStreamMetadataDTO> track : byTrack.values()) {
+            AudioStreamMetadataDTO first = track.getFirst();
+            String language = languageOrUnd(first.getLanguage());
+            String label = audioLabel(first, language);
+            String role = audioRole(first.getAudioTrackType(), singleTrack);
 
-    /**
-     * Generates the Period element containing all AdaptationSets.
-     *
-     * @param config Manifest configuration
-     * @return Period XML string
-     */
-    private String generatePeriodElement(DashManifestConfigDTO config) {
-        StringBuilder period = new StringBuilder();
+            Map<String, List<AudioStreamMetadataDTO>> byCodec =
+                    groupBy(track, a -> a.getMimeType() + "|" + codecFamily(a.getCodec()));
 
-        period.append(ManifestXmlBuilder.indent(1))
-                .append("<Period duration=\"")
-                .append(config.getMediaPresentationDuration())
-                .append("\">\n");
+            for (List<AudioStreamMetadataDTO> group : byCodec.values()) {
+                xml.writeStartElement("AdaptationSet");
+                xml.writeAttribute("id", String.valueOf(nextId++));
+                xml.writeAttribute("contentType", "audio");
+                xml.writeAttribute("mimeType", group.getFirst().getMimeType());
+                xml.writeAttribute("lang", language);
+                xml.writeAttribute("subsegmentAlignment", "true");
+                xml.writeAttribute("startWithSAP", "1");
+                writeRole(xml, role);
+                writeLabel(xml, label);
 
-        // Video AdaptationSet (if video streams exist)
-        if (!config.getVideoStreams().isEmpty()) {
-            period.append(generateVideoAdaptationSets(config.getVideoStreams()));
-        }
+                List<AudioStreamMetadataDTO> sorted = group.stream()
+                        .sorted(Comparator.comparingInt(AudioStreamMetadataDTO::getBandwidth).reversed())
+                        .toList();
+                for (AudioStreamMetadataDTO audio : sorted) {
+                    writeAudioRepresentation(xml, audio);
+                }
 
-        // Audio AdaptationSets (grouped by language)
-        if (!config.getAudioStreams().isEmpty()) {
-            period.append(generateAudioAdaptationSets(config.getAudioStreams()));
-        }
-
-        // Subtitle AdaptationSets (one per language)
-        if (!config.getSubtitleStreams().isEmpty()) {
-            period.append(generateSubtitleAdaptationSets(config.getSubtitleStreams()));
-        }
-
-        period.append(ManifestXmlBuilder.indent(1))
-                .append("</Period>\n");
-
-        return period.toString();
-    }
-
-    /**
-     * Generates the video AdaptationSets, one per codec family.
-     *
-     * @param videoStreams List of all video streams
-     * @return Video AdaptationSets XML string
-     */
-    private String generateVideoAdaptationSets(List<VideoStreamMetadataDTO> videoStreams) {
-        StringBuilder xml = new StringBuilder();
-
-        List<VideoStreamMetadataDTO> rangeBacked = videoStreams.stream()
-                .filter(video -> hasByteRanges(video.getInitRange(), video.getIndexRange()))
-                .toList();
-
-        int dropped = videoStreams.size() - rangeBacked.size();
-        if (dropped > 0) {
-            logger.debug("Dropped {} video stream(s) without byte ranges", dropped);
-        }
-
-        List<VideoStreamMetadataDTO> usable = rangeBacked;
-        if (rangeBacked.isEmpty()) {
-            logger.warn("No video streams carry byte ranges; emitting all {} without SegmentBase",
-                    videoStreams.size());
-            usable = videoStreams;
-        }
-
-        Map<String, List<VideoStreamMetadataDTO>> streamsByCodec = usable.stream()
-                .collect(Collectors.groupingBy(
-                        this::videoAdaptationSetKey,
-                        LinkedHashMap::new,
-                        Collectors.toList()
-                ));
-
-        // Highest-resolution group first; key as a stable tie-break
-        List<String> sortedKeys = streamsByCodec.keySet().stream()
-                .sorted(Comparator
-                        .comparingInt((String key) -> maxHeight(streamsByCodec.get(key)))
-                        .reversed()
-                        .thenComparing(Comparator.naturalOrder()))
-                .toList();
-
-        int adaptationSetId = VIDEO_ADAPTATION_SET_ID_BASE;
-        for (String key : sortedKeys) {
-            xml.append(generateVideoAdaptationSet(streamsByCodec.get(key), adaptationSetId));
-            adaptationSetId++;
-        }
-
-        logger.debug("Generated {} video AdaptationSet(s) from {} stream(s)",
-                sortedKeys.size(), videoStreams.size());
-
-        return xml.toString();
-    }
-
-    private String videoAdaptationSetKey(VideoStreamMetadataDTO video) {
-        String codec = video.getCodec();
-        String codecFamily = (codec == null || codec.isBlank())
-                ? "unknown"
-                : codec.trim().split("\\.")[0].toLowerCase();
-
-        return resolveVideoMimeType(video) + "|" + codecFamily;
-    }
-
-    private String resolveVideoMimeType(VideoStreamMetadataDTO video) {
-        return (video.getMimeType() != null && !video.getMimeType().isBlank())
-                ? video.getMimeType()
-                : DEFAULT_VIDEO_MIME_TYPE;
-    }
-
-    private int maxHeight(List<VideoStreamMetadataDTO> streams) {
-        return streams.stream()
-                .mapToInt(VideoStreamMetadataDTO::getHeight)
-                .max()
-                .orElse(0);
-    }
-
-    private boolean hasByteRanges(String initRange, String indexRange) {
-        return initRange != null && !initRange.isBlank()
-                && indexRange != null && !indexRange.isBlank();
-    }
-
-    /**
-     * Generates a single video AdaptationSet for one codec family.
-     *
-     * @param videoStreams Video streams sharing a mimeType and codec family
-     * @param adaptationSetId ID for this AdaptationSet
-     * @return Video AdaptationSet XML string
-     */
-    private String generateVideoAdaptationSet(List<VideoStreamMetadataDTO> videoStreams,
-                                              int adaptationSetId) {
-        StringBuilder xml = new StringBuilder();
-
-        // Sort by quality (highest first)
-        List<VideoStreamMetadataDTO> sorted = videoStreams.stream()
-                .sorted(Comparator.comparingInt(VideoStreamMetadataDTO::getHeight).reversed())
-                .toList();
-
-        // Every stream in this group shares the key, so any member gives the mimeType
-        String mimeType = resolveVideoMimeType(sorted.getFirst());
-
-        xml.append(ManifestXmlBuilder.indent(2))
-                .append("<AdaptationSet\n");
-        xml.append(ManifestXmlBuilder.indent(3))
-                .append("id=\"").append(adaptationSetId).append("\"\n");
-        xml.append(ManifestXmlBuilder.indent(3))
-                .append("contentType=\"video\"\n");
-        xml.append(ManifestXmlBuilder.indent(3))
-                .append("mimeType=\"").append(mimeType).append("\"\n");
-        xml.append(ManifestXmlBuilder.indent(3))
-                .append("subsegmentAlignment=\"true\"\n");
-        xml.append(ManifestXmlBuilder.indent(3))
-                .append("startWithSAP=\"1\">\n");
-
-        for (VideoStreamMetadataDTO video : sorted) {
-            xml.append(generateVideoRepresentation(video));
-        }
-
-        xml.append(ManifestXmlBuilder.indent(2))
-                .append("</AdaptationSet>\n");
-
-        return xml.toString();
-    }
-
-    /**
-     * Generates a single video Representation element.
-     *
-     * @param video Video stream metadata
-     * @return Representation XML string
-     */
-    private String generateVideoRepresentation(VideoStreamMetadataDTO video) {
-        StringBuilder xml = new StringBuilder();
-
-        xml.append(ManifestXmlBuilder.indent(3))
-                .append("<Representation\n");
-        xml.append(ManifestXmlBuilder.indent(4))
-                .append("id=\"").append(ManifestXmlBuilder.escapeXml(video.getId())).append("\"\n");
-        xml.append(ManifestXmlBuilder.indent(4))
-                .append("bandwidth=\"").append(video.getBandwidth()).append("\"\n");
-        xml.append(ManifestXmlBuilder.indent(4))
-                .append("codecs=\"").append(ManifestXmlBuilder.escapeXml(video.getCodec())).append("\"\n");
-        xml.append(ManifestXmlBuilder.indent(4))
-                .append("width=\"").append(video.getWidth()).append("\"\n");
-        xml.append(ManifestXmlBuilder.indent(4))
-                .append("height=\"").append(video.getHeight()).append("\"\n");
-        xml.append(ManifestXmlBuilder.indent(4))
-                .append("frameRate=\"").append(video.getFrameRate()).append("\">\n");
-
-        // BaseURL
-        xml.append(ManifestXmlBuilder.indent(4))
-                .append("<BaseURL>")
-                .append(ManifestXmlBuilder.escapeXml(video.getUrl()))
-                .append("</BaseURL>\n");
-
-        // SegmentBase (if ranges available)
-        if (video.getInitRange() != null && video.getIndexRange() != null) {
-            xml.append(generateSegmentBase(video.getInitRange(), video.getIndexRange()));
-        }
-
-        xml.append(ManifestXmlBuilder.indent(3))
-                .append("</Representation>\n");
-
-        return xml.toString();
-    }
-
-    /**
-     * Generates audio AdaptationSets, one per language.
-     * Each AdaptationSet contains all bitrate variants for that language.
-     *
-     * @param audioStreams List of all audio streams
-     * @return Audio AdaptationSets XML string
-     */
-    private String generateAudioAdaptationSets(List<AudioStreamMetadataDTO> audioStreams) {
-        StringBuilder xml = new StringBuilder();
-
-        List<AudioStreamMetadataDTO> rangeBacked = audioStreams.stream()
-                .filter(audio -> hasByteRanges(audio.getInitRange(), audio.getIndexRange()))
-                .toList();
-
-        int dropped = audioStreams.size() - rangeBacked.size();
-        if (dropped > 0) {
-            logger.debug("Dropped {} audio stream(s) without byte ranges", dropped);
-        }
-
-        List<AudioStreamMetadataDTO> usable = rangeBacked;
-        if (rangeBacked.isEmpty()) {
-            logger.warn("No audio streams carry byte ranges; emitting all {} without SegmentBase",
-                    audioStreams.size());
-            usable = audioStreams;
-        }
-
-        // Group by language
-        Map<String, List<AudioStreamMetadataDTO>> streamsByLanguage = usable.stream()
-                .collect(Collectors.groupingBy(
-                        audio -> audio.getLanguage() != null ? audio.getLanguage() : "und"
-                ));
-
-        // Sort languages: "und" first, then "en", then alphabetical
-        List<String> sortedLanguages = streamsByLanguage.keySet().stream()
-                .sorted((a, b) -> {
-                    if (a.equals("und")) return -1;
-                    if (b.equals("und")) return 1;
-                    if (a.equals("en")) return -1;
-                    if (b.equals("en")) return 1;
-                    return a.compareTo(b);
-                })
-                .toList();
-
-        int adaptationSetId = AUDIO_ADAPTATION_SET_ID_BASE;
-        for (String language : sortedLanguages) {
-            List<AudioStreamMetadataDTO> languageStreams = streamsByLanguage.get(language);
-            xml.append(generateAudioAdaptationSet(languageStreams, adaptationSetId, language));
-            adaptationSetId++;
-        }
-
-        return xml.toString();
-    }
-
-    /**
-     * Generates a single audio AdaptationSet for a specific language.
-     *
-     * @param audioStreams Audio streams for this language
-     * @param adaptationSetId ID for this AdaptationSet
-     * @param language Language code
-     * @return Audio AdaptationSet XML string
-     */
-    private String generateAudioAdaptationSet(List<AudioStreamMetadataDTO> audioStreams,
-                                              int adaptationSetId,
-                                              String language) {
-        StringBuilder xml = new StringBuilder();
-
-        // Sort by bandwidth (highest first)
-        List<AudioStreamMetadataDTO> sorted = audioStreams.stream()
-                .sorted(Comparator.comparingInt(AudioStreamMetadataDTO::getBandwidth).reversed())
-                .toList();
-
-        // Get language name and mimeType
-        String languageName = sorted.getFirst().getLanguageName();
-        if (languageName == null) {
-            languageName = ManifestXmlBuilder.getLanguageName(language);
-        }
-
-        String mimeType = sorted.stream()
-                .map(AudioStreamMetadataDTO::getMimeType)
-                .filter(Objects::nonNull)
-                .findFirst()
-                .orElse("audio/mp4");
-
-        xml.append(ManifestXmlBuilder.indent(2))
-                .append("<AdaptationSet\n");
-        xml.append(ManifestXmlBuilder.indent(3))
-                .append("id=\"").append(adaptationSetId).append("\"\n");
-        xml.append(ManifestXmlBuilder.indent(3))
-                .append("contentType=\"audio\"\n");
-        xml.append(ManifestXmlBuilder.indent(3))
-                .append("mimeType=\"").append(mimeType).append("\"\n");
-        xml.append(ManifestXmlBuilder.indent(3))
-                .append("lang=\"").append(language).append("\"\n");
-        xml.append(ManifestXmlBuilder.indent(3))
-                .append("label=\"").append(ManifestXmlBuilder.escapeXml(languageName)).append("\"\n");
-        xml.append(ManifestXmlBuilder.indent(3))
-                .append("subsegmentAlignment=\"true\"\n");
-        xml.append(ManifestXmlBuilder.indent(3))
-                .append("startWithSAP=\"1\">\n");
-
-        // Generate representations for each bitrate
-        for (AudioStreamMetadataDTO audio : sorted) {
-            xml.append(generateAudioRepresentation(audio));
-        }
-
-        xml.append(ManifestXmlBuilder.indent(2))
-                .append("</AdaptationSet>\n");
-
-        return xml.toString();
-    }
-
-    /**
-     * Generates a single audio Representation element.
-     *
-     * @param audio Audio stream metadata
-     * @return Representation XML string
-     */
-    private String generateAudioRepresentation(AudioStreamMetadataDTO audio) {
-        StringBuilder xml = new StringBuilder();
-
-        xml.append(ManifestXmlBuilder.indent(3))
-                .append("<Representation\n");
-        xml.append(ManifestXmlBuilder.indent(4))
-                .append("id=\"").append(ManifestXmlBuilder.escapeXml(audio.getId())).append("\"\n");
-        xml.append(ManifestXmlBuilder.indent(4))
-                .append("bandwidth=\"").append(audio.getBandwidth()).append("\"\n");
-        xml.append(ManifestXmlBuilder.indent(4))
-                .append("codecs=\"").append(ManifestXmlBuilder.escapeXml(audio.getCodec())).append("\"\n");
-        xml.append(ManifestXmlBuilder.indent(4))
-                .append("audioSamplingRate=\"").append(audio.getAudioSamplingRate()).append("\">\n");
-
-        // AudioChannelConfiguration
-        xml.append(ManifestXmlBuilder.indent(4))
-                .append("<AudioChannelConfiguration\n");
-        xml.append(ManifestXmlBuilder.indent(5))
-                .append("schemeIdUri=\"urn:mpeg:dash:23003:3:audio_channel_configuration:2011\"\n");
-        xml.append(ManifestXmlBuilder.indent(5))
-                .append("value=\"").append(audio.getAudioChannels()).append("\"/>\n");
-
-        // BaseURL
-        xml.append(ManifestXmlBuilder.indent(4))
-                .append("<BaseURL>")
-                .append(ManifestXmlBuilder.escapeXml(audio.getUrl()))
-                .append("</BaseURL>\n");
-
-        // SegmentBase (if ranges available)
-        if (audio.getInitRange() != null && audio.getIndexRange() != null) {
-            xml.append(generateSegmentBase(audio.getInitRange(), audio.getIndexRange()));
-        }
-
-        xml.append(ManifestXmlBuilder.indent(3))
-                .append("</Representation>\n");
-
-        return xml.toString();
-    }
-
-    /**
-     * Generates subtitle AdaptationSets, one per language.
-     *
-     * @param subtitleStreams List of all subtitle streams
-     * @return Subtitle AdaptationSets XML string
-     */
-    private String generateSubtitleAdaptationSets(List<SubtitleMetadataDTO> subtitleStreams) {
-        StringBuilder xml = new StringBuilder();
-
-        // Group by language
-        Map<String, List<SubtitleMetadataDTO>> streamsByLanguage = subtitleStreams.stream()
-                .collect(Collectors.groupingBy(
-                        sub -> sub.getLanguage() != null ? sub.getLanguage() : "und"
-                ));
-
-        // Sort languages alphabetically
-        List<String> sortedLanguages = streamsByLanguage.keySet().stream()
-                .sorted()
-                .toList();
-
-        int adaptationSetId = SUBTITLE_ADAPTATION_SET_ID_BASE;
-        for (String language : sortedLanguages) {
-            List<SubtitleMetadataDTO> languageSubtitles = streamsByLanguage.get(language);
-
-            for (SubtitleMetadataDTO subtitle : languageSubtitles) {
-                xml.append(generateSubtitleAdaptationSet(subtitle, adaptationSetId));
-                adaptationSetId++;
+                xml.writeEndElement(); // AdaptationSet
             }
         }
-
-        return xml.toString();
+        return nextId;
     }
 
-    /**
-     * Generates a single subtitle AdaptationSet.
-     *
-     * @param subtitle Subtitle stream metadata
-     * @param adaptationSetId ID for this AdaptationSet
-     * @return Subtitle AdaptationSet XML string
-     */
-    private String generateSubtitleAdaptationSet(SubtitleMetadataDTO subtitle, int adaptationSetId) {
-        StringBuilder xml = new StringBuilder();
-
-        String languageName = subtitle.getLanguageName();
-        if (languageName == null) {
-            languageName = ManifestXmlBuilder.getLanguageName(subtitle.getLanguage());
+    private void writeAudioRepresentation(XMLStreamWriter xml, AudioStreamMetadataDTO audio)
+            throws XMLStreamException {
+        xml.writeStartElement("Representation");
+        xml.writeAttribute("id", audio.getId());
+        xml.writeAttribute("bandwidth", String.valueOf(audio.getBandwidth()));
+        xml.writeAttribute("codecs", audio.getCodec());
+        if (!isBlank(audio.getAudioSamplingRate())) {
+            xml.writeAttribute("audioSamplingRate", audio.getAudioSamplingRate());
         }
+        xml.writeEmptyElement("AudioChannelConfiguration");
+        xml.writeAttribute("schemeIdUri", AUDIO_CHANNEL_SCHEME);
+        xml.writeAttribute("value", String.valueOf(audio.getAudioChannels()));
 
-        xml.append(ManifestXmlBuilder.indent(2))
-                .append("<AdaptationSet\n");
-        xml.append(ManifestXmlBuilder.indent(3))
-                .append("id=\"").append(adaptationSetId).append("\"\n");
-        xml.append(ManifestXmlBuilder.indent(3))
-                .append("contentType=\"text\"\n");
-        xml.append(ManifestXmlBuilder.indent(3))
-                .append("lang=\"").append(subtitle.getLanguage()).append("\"\n");
-        xml.append(ManifestXmlBuilder.indent(3))
-                .append("mimeType=\"").append(subtitle.getMimeType()).append("\">\n");
+        writeBaseUrl(xml, audio.getUrl());
+        writeSegmentBase(xml, audio.getInitRange(), audio.getIndexRange());
+        xml.writeEndElement(); // Representation
+    }
 
-        // Role element (subtitles or captions)
-        String role = "asr".equals(subtitle.getKind()) ? "subtitles" : subtitle.getKind();
-        xml.append(ManifestXmlBuilder.indent(3))
-                .append("<Role schemeIdUri=\"urn:mpeg:dash:role:2011\" value=\"")
-                .append(role)
-                .append("\"/>\n");
-
-        // Representation
-        xml.append(ManifestXmlBuilder.indent(3))
-                .append("<Representation id=\"")
-                .append(ManifestXmlBuilder.escapeXml(subtitle.getId()))
-                .append("\" bandwidth=\"")
-                .append(subtitle.getBandwidth())
-                .append("\">\n");
-
-        // BaseURL
-        xml.append(ManifestXmlBuilder.indent(4))
-                .append("<BaseURL>")
-                .append(ManifestXmlBuilder.escapeXml(subtitle.getUrl()))
-                .append("</BaseURL>\n");
-
-        xml.append(ManifestXmlBuilder.indent(3))
-                .append("</Representation>\n");
-
-        xml.append(ManifestXmlBuilder.indent(2))
-                .append("</AdaptationSet>\n");
-
-        return xml.toString();
+    /** Track id when YouTube provides one (multi-track videos), otherwise the language. */
+    private static String audioTrackKey(AudioStreamMetadataDTO audio) {
+        String trackId = audio.getAudioTrackId();
+        return isBlank(trackId)
+                ? "lang:" + languageOrUnd(audio.getLanguage())
+                : "track:" + trackId;
     }
 
     /**
-     * Generates SegmentBase element with initialization and index ranges.
-     *
-     * @param initRange Initialization range (e.g., "0-740")
-     * @param indexRange Index range (e.g., "741-1048")
-     * @return SegmentBase XML string
+     * DASH Role for an audio track. Player marks Role "main" as primary, and uses the primary
+     * track when the viewer's preferred language matches nothing.
      */
-    private String generateSegmentBase(String initRange, String indexRange) {
-        int indentLevel = 4;
+    private static String audioRole(AudioTrackType type, boolean singleTrack) {
+        if (type == null) {
+            return singleTrack ? "main" : "alternate";
+        }
+        return switch (type) {
+            case ORIGINAL -> "main";
+            case DUBBED -> "dub";
+            case DESCRIPTIVE -> "description";
+            default -> "alternate"; // SECONDARY, and anything NewPipe adds later
+        };
+    }
 
-        return ManifestXmlBuilder.indent(indentLevel) +
-                "<SegmentBase indexRange=\"" +
-                indexRange +
-                "\">\n" +
-                ManifestXmlBuilder.indent(indentLevel + 1) +
-                "<Initialization range=\"" +
-                initRange +
-                "\"/>\n" +
-                ManifestXmlBuilder.indent(indentLevel) +
-                "</SegmentBase>\n";
+    private static String audioLabel(AudioStreamMetadataDTO audio, String language) {
+        if (!isBlank(audio.getAudioTrackName())) {
+            return audio.getAudioTrackName();
+        }
+        if (!isBlank(audio.getLanguageName())) {
+            return audio.getLanguageName();
+        }
+        return ManifestXmlBuilder.getLanguageName(language);
+    }
+
+    // --- Subtitles -------------------------------------------------------------
+
+    /** One AdaptationSet per track, in the order the filter returned them. */
+    private int writeSubtitleAdaptationSets(XMLStreamWriter xml, List<SubtitleMetadataDTO> subtitles,
+                                            int nextId) throws XMLStreamException {
+        for (SubtitleMetadataDTO subtitle : subtitles) {
+            String language = languageOrUnd(subtitle.getLanguage());
+
+            xml.writeStartElement("AdaptationSet");
+            xml.writeAttribute("id", String.valueOf(nextId++));
+            xml.writeAttribute("contentType", "text");
+            xml.writeAttribute("mimeType", subtitle.getMimeType());
+            xml.writeAttribute("lang", language);
+            writeRole(xml, textRole(subtitle.getKind()));
+            writeLabel(xml, subtitleLabel(subtitle, language));
+
+            xml.writeStartElement("Representation");
+            xml.writeAttribute("id", subtitle.getId());
+            xml.writeAttribute("bandwidth", String.valueOf(subtitle.getBandwidth()));
+            writeBaseUrl(xml, subtitle.getUrl());
+            xml.writeEndElement(); // Representation
+
+            xml.writeEndElement(); // AdaptationSet
+        }
+        return nextId;
+    }
+
+    /** DASH role values are singular: "subtitle" and "caption". */
+    private static String textRole(String kind) {
+        return kind != null && kind.toLowerCase(Locale.ROOT).startsWith("caption")
+                ? "caption"
+                : "subtitle";
+    }
+
+    /** Auto-generated tracks get a suffix so the picker can tell them from manual ones. */
+    private static String subtitleLabel(SubtitleMetadataDTO subtitle, String language) {
+        String name = !isBlank(subtitle.getLanguageName())
+                ? subtitle.getLanguageName()
+                : ManifestXmlBuilder.getLanguageName(language);
+        return "asr".equalsIgnoreCase(subtitle.getKind()) ? name + " (auto-generated)" : name;
+    }
+
+    // --- Shared elements -------------------------------------------------------
+
+    private static void writeRole(XMLStreamWriter xml, String value) throws XMLStreamException {
+        xml.writeEmptyElement("Role");
+        xml.writeAttribute("schemeIdUri", ROLE_SCHEME);
+        xml.writeAttribute("value", value);
+    }
+
+    /** The MPD schema defines Label as a child element, not an attribute. */
+    private static void writeLabel(XMLStreamWriter xml, String label) throws XMLStreamException {
+        if (isBlank(label)) {
+            return;
+        }
+        xml.writeStartElement("Label");
+        xml.writeCharacters(label);
+        xml.writeEndElement();
+    }
+
+    private static void writeBaseUrl(XMLStreamWriter xml, String url) throws XMLStreamException {
+        xml.writeStartElement("BaseURL");
+        xml.writeCharacters(url);
+        xml.writeEndElement();
+    }
+
+    /** Always written: validation guarantees both ranges are present. */
+    private static void writeSegmentBase(XMLStreamWriter xml, String initRange, String indexRange)
+            throws XMLStreamException {
+        xml.writeStartElement("SegmentBase");
+        xml.writeAttribute("indexRange", indexRange);
+        xml.writeEmptyElement("Initialization");
+        xml.writeAttribute("range", initRange);
+        xml.writeEndElement(); // SegmentBase
+    }
+
+    // --- Helpers ---------------------------------------------------------------
+
+    /** Groups in sorted key order, so the same input always produces the same manifest. */
+    private static <T> Map<String, List<T>> groupBy(List<T> items, Function<T, String> key) {
+        return items.stream().collect(Collectors.groupingBy(key, TreeMap::new, Collectors.toList()));
+    }
+
+    /** "avc1.640028" to "avc1", "vp09.00.51.08" to "vp09", "mp4a.40.2" to "mp4a". */
+    private static String codecFamily(String codec) {
+        return codec.trim().split("\\.")[0].toLowerCase(Locale.ROOT);
+    }
+
+    private static String languageOrUnd(String language) {
+        return isBlank(language) ? UNDETERMINED_LANGUAGE : language;
+    }
+
+    private static boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 }
