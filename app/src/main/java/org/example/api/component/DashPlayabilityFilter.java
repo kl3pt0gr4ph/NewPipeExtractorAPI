@@ -115,7 +115,8 @@ public class DashPlayabilityFilter {
         if (reason != null) {
             return reason;
         }
-        return PLAYABLE_SUBTITLE_FORMATS.contains(subtitle.getFormat())
+        MediaFormat format = subtitle.getFormat();
+        return format != null && PLAYABLE_SUBTITLE_FORMATS.contains(format)
                 ? null
                 : "format players can't parse";
     }

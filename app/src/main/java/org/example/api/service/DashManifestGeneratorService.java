@@ -173,7 +173,9 @@ public class DashManifestGeneratorService {
         xml.writeAttribute("codecs", video.getCodec());
         xml.writeAttribute("width", String.valueOf(video.getWidth()));
         xml.writeAttribute("height", String.valueOf(video.getHeight()));
-        xml.writeAttribute("frameRate", String.valueOf(video.getFrameRate()));
+        if (!isBlank(video.getFrameRate())) {
+            xml.writeAttribute("frameRate", video.getFrameRate());
+        }
         writeBaseUrl(xml, video.getUrl());
         writeSegmentBase(xml, video.getInitRange(), video.getIndexRange());
         xml.writeEndElement(); // Representation
@@ -231,8 +233,9 @@ public class DashManifestGeneratorService {
         xml.writeAttribute("id", audio.getId());
         xml.writeAttribute("bandwidth", String.valueOf(audio.getBandwidth()));
         xml.writeAttribute("codecs", audio.getCodec());
-        xml.writeAttribute("audioSamplingRate", String.valueOf(audio.getAudioSamplingRate()));
-
+        if (!isBlank(audio.getAudioSamplingRate())) {
+            xml.writeAttribute("audioSamplingRate", audio.getAudioSamplingRate());
+        }
         xml.writeEmptyElement("AudioChannelConfiguration");
         xml.writeAttribute("schemeIdUri", AUDIO_CHANNEL_SCHEME);
         xml.writeAttribute("value", String.valueOf(audio.getAudioChannels()));
