@@ -5,7 +5,8 @@ import org.example.api.dto.dash.DashManifestConfigDTO;
 import org.example.api.exception.NoStreamsAvailableException;
 import org.example.api.service.DashManifestGeneratorService;
 import org.example.api.service.VideoStreamingService;
-import org.example.api.service.StreamSelectionService;
+import org.example.api.component.DashPlayabilityFilter;
+import org.example.api.component.DashPlayabilityFilter.PlayableStreams;
 import org.example.api.utils.ValidationUtils;
 import org.schabi.newpipe.extractor.Image;
 import org.schabi.newpipe.extractor.InfoItem;
@@ -19,6 +20,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.nio.charset.StandardCharsets;
+
 import java.util.List;
 
 /**
@@ -30,21 +33,21 @@ import java.util.List;
 @RequestMapping("/api/v1/streams")
 public class StreamingController {
     private static final String YOUTUBE_URL = "https://www.youtube.com/watch?v=";
+    private static final MediaType URI_LIST = new MediaType("text", "uri-list", StandardCharsets.UTF_8);
+    private static final MediaType DASH_MPD =
+            new MediaType("application", "dash+xml", StandardCharsets.UTF_8);
     private static final Logger logger = LoggerFactory.getLogger(StreamingController.class);
     private final VideoStreamingService videoStreamingService;
     private final DashManifestGeneratorService dashManifestGeneratorService;
-    private final StreamSelectionService streamSelectionService;
+    private final DashPlayabilityFilter dashPlayabilityFilter;
 
-    public StreamingController(VideoStreamingService videoStreamingService, DashManifestGeneratorService dashManifestGeneratorService, StreamSelectionService streamSelectionService) {
+    public StreamingController(VideoStreamingService videoStreamingService, DashManifestGeneratorService dashManifestGeneratorService, DashPlayabilityFilter dashPlayabilityFilter) {
         this.videoStreamingService = videoStreamingService;
         this.dashManifestGeneratorService = dashManifestGeneratorService;
-        this.streamSelectionService = streamSelectionService;
+        this.dashPlayabilityFilter = dashPlayabilityFilter;
     }
 
-    /**
-     * Builds the watch URL for a video id, validating both.
-     *
-     */
+    /** Builds the watch URL for a video id, validating both. */
     private String videoUrl(String id) {
         ValidationUtils.requireNonEmpty(id, "id");
         String url = YOUTUBE_URL + id;
@@ -67,9 +70,7 @@ public class StreamingController {
         return ResponseEntity.ok(info);
     }
 
-    /**
-     * Get audio streams for a video.
-     */
+    /** Get audio streams for a video. */
     @GetMapping("/audio")
     public ResponseEntity<List<AudioStream>> getAudioStreams(@RequestParam(name = "id") String id) {
         logger.debug("Retrieving audio stream for ID: {}", id);
@@ -78,9 +79,7 @@ public class StreamingController {
         return ResponseEntity.ok(streams);
     }
 
-    /**
-     * Get video-only streams.
-     */
+    /** Get video-only streams. */
     @GetMapping("/video")
     public ResponseEntity<List<VideoStream>> getVideoStreams(@RequestParam(name = "id") String id) {
         logger.debug("Retrieving video stream for ID: {}", id);
@@ -89,9 +88,7 @@ public class StreamingController {
         return ResponseEntity.ok(streams);
     }
 
-    /**
-     * Get DASH MPD URL for adaptive streaming.
-     */
+    /** Get DASH MPD URL for adaptive streaming. */
     @GetMapping("/video/dash")
     public ResponseEntity<String> getDashMpdUrl(@RequestParam(name = "id") String id) {
         logger.debug("Retrieving DASH MPD URL for ID: {}", id);
@@ -100,69 +97,55 @@ public class StreamingController {
         return ResponseEntity.ok(dashUrl);
     }
 
-    /**
-     * Get DASH MPD XML Manifest for adaptive bitrate streaming
-     */
+    /** Get DASH Manifest describing every playable representation. */
     @GetMapping("/dash")
     public ResponseEntity<String> getDashManifest(@RequestParam(name = "id") String id) {
-        logger.debug("Generating optimized DASH manifest for ID: {}", id);
+        logger.debug("Generating DASH manifest for ID: {}", id);
 
-        String url = videoUrl(id);
+        StreamInfo streamInfo = videoStreamingService.getStreamInfo(videoUrl(id));
+        PlayableStreams playable = dashPlayabilityFilter.filter(streamInfo);
 
-        StreamInfo streamInfo = videoStreamingService.getStreamInfo(url);
-
-        List<VideoStream> allVideoStreams = streamInfo.getVideoOnlyStreams();
-        List<AudioStream> allAudioStreams = streamInfo.getAudioStreams();
-        List<SubtitlesStream> allSubtitles = streamInfo.getSubtitles();
-
-        // SABR fallback: if adaptive streams are unavailable, use muxed streams (360p only)
-        boolean isMuxedFallback = allVideoStreams.isEmpty();
-
-        if (isMuxedFallback) {
-            List<VideoStream> muxedStreams = streamInfo.getVideoStreams();
-
-            if (muxedStreams.isEmpty()) {
-                throw new NoStreamsAvailableException(
-                        "No streams available — YouTube may be blocking extraction for this video"
-                );
-            }
-
-            logger.warn("No adaptive streams - falling back to {} muxed stream(s)", muxedStreams.size());
-
-            String directUrl = muxedStreams.getFirst().getContent();
-            // TODO: Replace X-STREAM-TYPE header with a standardized header from MDN
-            return ResponseEntity.ok()
-                    .contentType(MediaType.TEXT_PLAIN)
-                    .header("X-Stream-Type", "muxed-progressive")
-                    .body(directUrl);
+        if (!playable.supportsDashManifest()) {
+            return muxedProgressiveFallback(id, streamInfo, playable);
         }
 
-        // Apply intelligent stream selection
-        List<VideoStream> selectedVideoStreams = streamSelectionService.selectVideoStreams(allVideoStreams);
-        List<AudioStream> selectedAudioStreams = streamSelectionService.selectAudioStreams(allAudioStreams);
-        List<SubtitlesStream> selectedSubtitles = streamSelectionService.selectSubtitles(allSubtitles);
-
-        DashManifestConfigDTO config = DashManifestConfigDTO.fromWithSelectedStreams(
-                streamInfo,
-                selectedVideoStreams,
-                selectedAudioStreams,
-                selectedSubtitles
-        );
-
-        // Generate manifest XML with selected streams
+        DashManifestConfigDTO config = DashManifestConfigDTO.from(
+                streamInfo, playable.video(), playable.audio(), playable.subtitles());
         String manifest = dashManifestGeneratorService.generateManifestXml(config);
 
-        logger.debug("Generated optimized DASH manifest with {} characters (selected streams: {} video, {} audio, {} subtitle)",
-                manifest.length(), selectedVideoStreams.size(), selectedAudioStreams.size(), selectedSubtitles.size());
+        logger.info("Generated DASH manifest for ID {}: {} video, {} audio, {} subtitle representation(s)",
+                id, config.getVideoStreams().size(), config.getAudioStreams().size(),
+                config.getSubtitleStreams().size());
 
         return ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType("application/xml"))
+                .contentType(DASH_MPD)
                 .body(manifest);
     }
 
     /**
-     * Get stream thumbnails
+     * Used when no valid on-demand manifest can be built, e.g. SABR-restricted videos
+     * whose adaptive streams aren't progressive. Response contract is unchanged.
      */
+    private ResponseEntity<String> muxedProgressiveFallback(String id, StreamInfo streamInfo,
+                                                            PlayableStreams playable) {
+        VideoStream muxed = dashPlayabilityFilter.muxedFallback(streamInfo)
+                .orElseThrow(() -> new NoStreamsAvailableException(
+                        "No streams available — YouTube may be blocking extraction for this video"));
+
+        logger.warn("No DASH manifest possible for ID {} ({}/{} video, {}/{} audio playable); "
+                        + "falling back to muxed stream {}",
+                id, playable.video().size(), streamInfo.getVideoOnlyStreams().size(),
+                playable.audio().size(), streamInfo.getAudioStreams().size(), muxed.getId());
+
+        // X-Stream-Type is kept for one release while the frontend moves to
+        // checking Content-Type; remove it once that ships.
+        return ResponseEntity.ok()
+                .contentType(URI_LIST)
+                .header("X-Stream-Type", "muxed-progressive")
+                .body(muxed.getContent() + "\r\n");
+    }
+
+    /** Get stream thumbnails */
     @GetMapping("/thumbnails")
     public ResponseEntity<List<Image>> getThumbnails(@RequestParam(name = "id") String id) {
         logger.debug("Retrieving stream thumbnails for ID: {}", id);
@@ -171,9 +154,7 @@ public class StreamingController {
         return ResponseEntity.ok(thumbnails);
     }
 
-    /**
-     * Get subtitle streams.
-     */
+    /** Get subtitle streams. */
     @GetMapping("/subtitles")
     public ResponseEntity<List<SubtitlesStream>> getSubtitleStreams(@RequestParam(name = "id") String id) {
         logger.debug("Retrieving subtitle streams for ID: {}", id);
@@ -182,9 +163,7 @@ public class StreamingController {
         return ResponseEntity.ok(subtitles);
     }
 
-    /**
-     * Get stream segments (chapters).
-     */
+    /** Get stream segments (chapters). */
     @GetMapping("/segments")
     public ResponseEntity<List<StreamSegment>> getStreamSegments(@RequestParam(name = "id") String id) {
         logger.debug("Retrieving stream segments for ID: {}", id);
@@ -193,9 +172,7 @@ public class StreamingController {
         return ResponseEntity.ok(segments);
     }
 
-    /**
-     * Get preview frames for video scrubbing.
-     */
+    /** Get preview frames for video scrubbing. */
     @GetMapping("/preview-frames")
     public ResponseEntity<List<Frameset>> getPreviewFrames(@RequestParam(name = "id") String id) {
         logger.debug("Retrieving preview frames stream for ID: {}", id);
@@ -204,9 +181,7 @@ public class StreamingController {
         return ResponseEntity.ok(frames);
     }
 
-    /**
-     * Get stream description.
-     */
+    /** Get stream description. */
     @GetMapping("/description")
     public ResponseEntity<Description> getStreamDescription(@RequestParam(name = "id") String id) {
         logger.debug("Retrieving description stream for ID: {}", id);
@@ -215,9 +190,7 @@ public class StreamingController {
         return ResponseEntity.ok(description);
     }
 
-    /**
-     * Get comprehensive stream details (metadata).
-     */
+    /** Get comprehensive stream details (metadata). */
     @GetMapping("/details")
     public ResponseEntity<StreamDetailsDTO> getStreamDetails(@RequestParam(name = "id") String id) {
         logger.debug("Retrieving stream details for ID: {}", id);
@@ -228,9 +201,7 @@ public class StreamingController {
         return ResponseEntity.ok(details);
     }
 
-    /**
-     * Get related videos/streams.
-     */
+    /** Get related videos/streams. */
     @GetMapping("/related")
     public ResponseEntity<List<InfoItem>> getRelatedStreams(@RequestParam(name = "id") String id) {
         logger.debug("Retrieving related streams for ID: {}", id);
