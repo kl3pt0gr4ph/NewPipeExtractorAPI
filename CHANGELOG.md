@@ -6,6 +6,8 @@ The format is based on [keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-11
+
 ### Added
 - `DashPlayabilityFilter`: the single gate for streams that can go into an on-demand DASH manifest (#17)
 
@@ -72,6 +74,7 @@ The format is based on [keep a Changelog](https://keepachangelog.com/en/1.1.0/),
  - Streams that are not delivered over progressive HTTP, and streams without both an init and index byte range, are filtered out with a log line rather than being emitted as unplayable `Representations`.
  - Replaced `assert` statements in stream selection and logging with real null checks. Assertions are disabled at runtime unless `-ea` is set, so they provided no protection in production.
 
-[Unreleased]: https://github.com/VimVoyager/NewPipeExtractorApi/compare/v0.2.0...HEAD
-[0.2.0]: https://github.com/VimVoyager/NewPipeExtractorApi/compare/v1.1.1...v0.2.0
-[0.1.1]: https://github.com/VimVoyager/NewPipeExtractorApi/compare/v0.1.0...v0.1.1
+[Unreleased]: https://github.com/kl3pt0gr4ph/NewPipeExtractorApi/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/kl3pt0gr4ph/NewPipeExtractorApi/compare/v0.2.0...v0.3.0
+[0.2.0]: https://github.com/kl3pt0gr4ph/NewPipeExtractorApi/compare/v1.1.1...v0.2.0
+[0.1.1]: https://github.com/kl3pt0gr4ph/NewPipeExtractorApi/compare/v0.1.0...v0.1.1
