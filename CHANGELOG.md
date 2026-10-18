@@ -7,10 +7,10 @@ The format is based on [keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
-- Kiosk stream items now include `uploaderAvatars` (`url`, `width`, `height`, `estimatedResolutionLevel`), matching the avatar shape used in search and related-item responses. (#27)
+- Kiosk stream items now include `uploaderAvatars` (`url`, `width`, `height`, `estimatedResolutionLevel`), matching the avatar shape used in search and related-item responses. (#28)
 
 ### Changed
-- Kiosk `thumbnails` entries now include `estimatedResolutionLevel`. (#27)
+- Kiosk `thumbnails` entries now include `estimatedResolutionLevel`. (#28)
 
 ## [0.3.0] - 2026-10-11
 
