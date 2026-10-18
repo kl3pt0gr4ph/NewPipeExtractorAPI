@@ -6,7 +6,7 @@ The format is based on [keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
-## [0.4.0 - 2026-10-18]
+## [0.4.0] - 2026-10-18
 
 ### Added
 - Kiosk stream items now include `uploaderAvatars` (`url`, `width`, `height`, `estimatedResolutionLevel`), matching the avatar shape used in search and related-item responses. (#28)
