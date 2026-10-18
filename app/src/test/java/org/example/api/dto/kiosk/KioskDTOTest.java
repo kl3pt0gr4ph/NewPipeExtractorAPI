@@ -6,6 +6,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.schabi.newpipe.extractor.Image;
+import org.schabi.newpipe.extractor.Image.ResolutionLevel;
 import org.schabi.newpipe.extractor.Page;
 import org.schabi.newpipe.extractor.kiosk.KioskInfo;
 import org.schabi.newpipe.extractor.stream.StreamInfoItem;
@@ -21,15 +22,60 @@ import static org.mockito.Mockito.when;
 
 /**
  * Unit tests for KioskDTO.
+ *
+ * <p>{@link Image} is a plain value object, so real instances are used rather than mocks:
+ * a mocked Image returns {@code null} from {@code getEstimatedResolutionLevel()}, which a
+ * real one never does.</p>
  */
 @DisplayName("KioskDTO Tests")
 class KioskDTOTest {
+
+    private static final Image THUMBNAIL =
+            new Image("https://i.ytimg.com/vi/x/thumb.jpg", 180, 320, ResolutionLevel.MEDIUM);
+    private static final Image AVATAR =
+            new Image("https://yt3.ggpht.com/avatar=s48", 48, 48, ResolutionLevel.LOW);
 
     private ObjectMapper objectMapper;
 
     @BeforeEach
     void setUp() {
         objectMapper = new ObjectMapper();
+    }
+
+    /** A fully-stubbed stream item, shared by the end-to-end and item-level tests. */
+    private static StreamInfoItem stubStreamItem() {
+        StreamInfoItem streamItem = mock(StreamInfoItem.class);
+        when(streamItem.getName()).thenReturn("Trending Video");
+        when(streamItem.getUrl()).thenReturn("https://youtube.com/watch?v=x");
+        when(streamItem.getUploaderName()).thenReturn("Some Channel");
+        when(streamItem.getUploaderUrl()).thenReturn("https://youtube.com/channel/x");
+        when(streamItem.isUploaderVerified()).thenReturn(true);
+        when(streamItem.getUploaderAvatars()).thenReturn(List.of(AVATAR));
+        when(streamItem.getDuration()).thenReturn(120L);
+        when(streamItem.getViewCount()).thenReturn(500L);
+        when(streamItem.getUploadDate()).thenReturn(null);
+        when(streamItem.getTextualUploadDate()).thenReturn("2 days ago");
+        when(streamItem.getStreamType()).thenReturn(StreamType.VIDEO_STREAM);
+        when(streamItem.getThumbnails()).thenReturn(List.of(THUMBNAIL));
+        return streamItem;
+    }
+
+    private static KioskDTO.KioskStreamItemDTO expectedStreamItemDto() {
+        return new KioskDTO.KioskStreamItemDTO(
+                "Trending Video",
+                "https://youtube.com/watch?v=x",
+                "Some Channel",
+                "https://youtube.com/channel/x",
+                true,
+                List.of(new KioskDTO.ImageDTO("https://yt3.ggpht.com/avatar=s48", 48, 48, "LOW")),
+                120L,
+                500L,
+                null,
+                "2 days ago",
+                "VIDEO_STREAM",
+                List.of(new KioskDTO.ImageDTO(
+                        "https://i.ytimg.com/vi/x/thumb.jpg", 320, 180, "MEDIUM"))
+        );
     }
 
     // ── KioskDTO.from(KioskInfo) ────────────────────────────────────────
@@ -41,23 +87,7 @@ class KioskDTOTest {
         @Test
         @DisplayName("Maps a KioskInfo end-to-end, including nested items and next page")
         void mapsKioskInfoEndToEnd() {
-            Image thumbImage = mock(Image.class);
-            when(thumbImage.getUrl()).thenReturn("https://i.ytimg.com/vi/x/thumb.jpg");
-            when(thumbImage.getWidth()).thenReturn(320);
-            when(thumbImage.getHeight()).thenReturn(180);
-
-            StreamInfoItem streamItem = mock(StreamInfoItem.class);
-            when(streamItem.getName()).thenReturn("Trending Video");
-            when(streamItem.getUrl()).thenReturn("https://youtube.com/watch?v=x");
-            when(streamItem.getUploaderName()).thenReturn("Some Channel");
-            when(streamItem.getUploaderUrl()).thenReturn("https://youtube.com/channel/x");
-            when(streamItem.isUploaderVerified()).thenReturn(true);
-            when(streamItem.getDuration()).thenReturn(120L);
-            when(streamItem.getViewCount()).thenReturn(500L);
-            when(streamItem.getUploadDate()).thenReturn(null);
-            when(streamItem.getTextualUploadDate()).thenReturn("2 days ago");
-            when(streamItem.getStreamType()).thenReturn(StreamType.VIDEO_STREAM);
-            when(streamItem.getThumbnails()).thenReturn(List.of(thumbImage));
+            StreamInfoItem streamItem = stubStreamItem();
 
             Page nextPage = new Page(
                     "https://youtube.com/next", "pageId", List.of("id1"), null, "token".getBytes());
@@ -75,20 +105,7 @@ class KioskDTOTest {
                     "trending",
                     "Trending",
                     "https://youtube.com/feed/trending",
-                    List.of(new KioskDTO.KioskStreamItemDTO(
-                            "Trending Video",
-                            "https://youtube.com/watch?v=x",
-                            "Some Channel",
-                            "https://youtube.com/channel/x",
-                            true,
-                            120L,
-                            500L,
-                            null,
-                            "2 days ago",
-                            "VIDEO_STREAM",
-                            List.of(new KioskDTO.ThumbnailDTO(
-                                    "https://i.ytimg.com/vi/x/thumb.jpg", 320, 180))
-                    )),
+                    List.of(expectedStreamItemDto()),
                     new KioskDTO.NextPageDTO(
                             "https://youtube.com/next",
                             "pageId",
@@ -122,10 +139,28 @@ class KioskDTOTest {
     class StreamItemMappingTests {
 
         @Test
+        @DisplayName("Maps uploader avatars alongside thumbnails")
+        void mapsUploaderAvatars() {
+            assertThat(KioskDTO.KioskStreamItemDTO.from(stubStreamItem()).uploaderAvatars())
+                    .containsExactly(new KioskDTO.ImageDTO(
+                            "https://yt3.ggpht.com/avatar=s48", 48, 48, "LOW"));
+        }
+
+        @Test
+        @DisplayName("Maps empty uploader avatars to an empty list")
+        void mapsEmptyUploaderAvatars() {
+            StreamInfoItem streamItem = stubStreamItem();
+            when(streamItem.getUploaderAvatars()).thenReturn(List.of());
+
+            assertThat(KioskDTO.KioskStreamItemDTO.from(streamItem).uploaderAvatars()).isEmpty();
+        }
+
+        @Test
         @DisplayName("Leaves uploadDate null when the stream has none")
         void leavesUploadDateNullWhenAbsent() {
             StreamInfoItem streamItem = mock(StreamInfoItem.class);
             when(streamItem.getThumbnails()).thenReturn(List.of());
+            when(streamItem.getUploaderAvatars()).thenReturn(List.of());
             when(streamItem.getUploadDate()).thenReturn(null);
             when(streamItem.getStreamType()).thenReturn(StreamType.VIDEO_STREAM);
 
@@ -137,6 +172,7 @@ class KioskDTOTest {
         void throwsWhenStreamTypeIsNull() {
             StreamInfoItem streamItem = mock(StreamInfoItem.class);
             when(streamItem.getThumbnails()).thenReturn(List.of());
+            when(streamItem.getUploaderAvatars()).thenReturn(List.of());
             when(streamItem.getStreamType()).thenReturn(null);
 
             assertThatThrownBy(() -> KioskDTO.KioskStreamItemDTO.from(streamItem))
@@ -144,23 +180,32 @@ class KioskDTOTest {
         }
     }
 
-    // ── ThumbnailDTO.from(Image) ────────────────────────────────────────
+    // ── ImageDTO.from(Image) / fromAll(List<Image>) ─────────────────────
 
     @Nested
-    @DisplayName("ThumbnailDTO mapping")
-    class ThumbnailMappingTests {
+    @DisplayName("ImageDTO mapping")
+    class ImageMappingTests {
 
         @Test
-        @DisplayName("Maps url, width and height from an Image")
+        @DisplayName("Maps url, width, height and resolution level from an Image")
         void mapsFromImage() {
-            Image image = mock(Image.class);
-            when(image.getUrl()).thenReturn("https://i.ytimg.com/vi/x/thumb.jpg");
-            when(image.getWidth()).thenReturn(320);
-            when(image.getHeight()).thenReturn(180);
+            assertThat(KioskDTO.ImageDTO.from(THUMBNAIL))
+                    .isEqualTo(new KioskDTO.ImageDTO(
+                            "https://i.ytimg.com/vi/x/thumb.jpg", 320, 180, "MEDIUM"));
+        }
 
-            assertThat(KioskDTO.ThumbnailDTO.from(image))
-                    .isEqualTo(new KioskDTO.ThumbnailDTO(
-                            "https://i.ytimg.com/vi/x/thumb.jpg", 320, 180));
+        @Test
+        @DisplayName("fromAll maps every image, preserving order")
+        void fromAllMapsEveryImage() {
+            assertThat(KioskDTO.ImageDTO.fromAll(List.of(AVATAR, THUMBNAIL)))
+                    .extracting(KioskDTO.ImageDTO::url)
+                    .containsExactly(AVATAR.getUrl(), THUMBNAIL.getUrl());
+        }
+
+        @Test
+        @DisplayName("fromAll returns an empty list for null input")
+        void fromAllHandlesNull() {
+            assertThat(KioskDTO.ImageDTO.fromAll(null)).isEmpty();
         }
     }
 
@@ -217,6 +262,19 @@ class KioskDTOTest {
                     "\"id\":\"trending\"",
                     "\"name\":\"Trending\"",
                     "\"url\":\"https://youtube.com/feed/trending\"");
+        }
+
+        @Test
+        @DisplayName("Serializes uploader avatars in the same shape as other responses")
+        void serializesUploaderAvatars() throws Exception {
+            String json = objectMapper.writeValueAsString(expectedStreamItemDto());
+
+            assertThat(json).contains(
+                    "\"uploaderAvatars\":[{",
+                    "\"url\":\"https://yt3.ggpht.com/avatar=s48\"",
+                    "\"width\":48",
+                    "\"height\":48",
+                    "\"estimatedResolutionLevel\":\"LOW\"");
         }
     }
 }

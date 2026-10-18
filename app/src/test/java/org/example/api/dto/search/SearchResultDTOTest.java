@@ -1,10 +1,8 @@
-package org.example.api.dto;
+package org.example.api.dto.search;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.example.api.dto.search.SearchResultDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;

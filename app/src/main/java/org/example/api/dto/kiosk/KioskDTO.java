@@ -37,12 +37,13 @@ public record KioskDTO(
             String uploaderName,
             String uploaderUrl,
             boolean uploaderVerified,
+            List<ImageDTO> uploaderAvatars,
             long duration,
             long viewCount,
             String uploadDate,
             String textualUploadDate,
             String streamType,
-            List<ThumbnailDTO> thumbnails
+            List<ImageDTO> thumbnails
     ) {
         public static KioskStreamItemDTO from(StreamInfoItem item) {
             return new KioskStreamItemDTO(
@@ -51,6 +52,7 @@ public record KioskDTO(
                     item.getUploaderName(),
                     item.getUploaderUrl(),
                     item.isUploaderVerified(),
+                    ImageDTO.fromAll(item.getUploaderAvatars()),
                     item.getDuration(),
                     item.getViewCount(),
                     item.getUploadDate() != null
@@ -58,14 +60,19 @@ public record KioskDTO(
                             : null,
                     item.getTextualUploadDate(),
                     item.getStreamType().name(),
-                    item.getThumbnails().stream().map(ThumbnailDTO::from).toList()
+                    ImageDTO.fromAll(item.getThumbnails())
             );
         }
     }
 
-    public record ThumbnailDTO(String url, int width, int height) {
-        public static ThumbnailDTO from(Image image) {
-            return new ThumbnailDTO(image.getUrl(), image.getWidth(), image.getHeight());
+    public record ImageDTO(String url, int width, int height, String estimatedResolutionLevel) {
+        public static ImageDTO from(Image image) {
+            return new ImageDTO(image.getUrl(), image.getWidth(), image.getHeight(),
+                    image.getEstimatedResolutionLevel().name());
+        }
+
+        public static List<ImageDTO> fromAll(List<Image> images) {
+            return images == null ? List.of() : images.stream().map(ImageDTO::from).toList();
         }
     }
 
