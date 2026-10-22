@@ -1,6 +1,5 @@
 package org.example.api.config;
 
-import jakarta.servlet.http.HttpServletRequest;
 import org.example.api.dto.ErrorResponseDTO;
 import org.example.api.exception.ApiException;
 import org.example.api.exception.ExtractionException;

@@ -119,7 +119,7 @@ class GlobalExceptionHandlerTest {
             );
 
             // Assert
-            assertEquals(400, response.getStatusCodeValue());
+            assertEquals(400, response.getStatusCode().value());
             assertEquals(400, response.getBody().getStatus());
         }
     }
@@ -190,7 +190,7 @@ class GlobalExceptionHandlerTest {
             );
 
             // Assert
-            assertEquals(500, response.getStatusCodeValue());
+            assertEquals(500, response.getStatusCode().value());
             assertEquals(500, response.getBody().getStatus());
         }
     }
@@ -287,7 +287,7 @@ class GlobalExceptionHandlerTest {
             );
 
             // Assert
-            assertEquals(418, response.getStatusCodeValue());
+            assertEquals(418, response.getStatusCode().value());
             // Note: Spring's HttpStatus enum has "I'm a teapot" with lowercase 't'
             assertEquals("I'm a teapot", response.getBody().getError());
         }
@@ -353,7 +353,7 @@ class GlobalExceptionHandlerTest {
             );
 
             // Assert
-            assertEquals(400, response.getStatusCodeValue());
+            assertEquals(400, response.getStatusCode().value());
         }
     }
 
@@ -416,7 +416,7 @@ class GlobalExceptionHandlerTest {
             );
 
             // Assert
-            assertEquals(500, response.getStatusCodeValue());
+            assertEquals(500, response.getStatusCode().value());
             assertEquals("INTERNAL_ERROR", response.getBody().getErrorCode());
         }
 
@@ -529,51 +529,42 @@ class GlobalExceptionHandlerTest {
         @Test
         @DisplayName("Should extract simple path")
         void testPathExtraction_SimplePath() {
-            // Arrange
             when(mockRequest.getDescription(false)).thenReturn("uri=/api/v1/test");
             ValidationException exception = new ValidationException("Error", "CODE");
 
-            // Act
             ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleValidationException(
                     exception,
                     mockRequest
             );
 
-            // Assert
             assertEquals("/api/v1/test", response.getBody().getPath());
         }
 
         @Test
         @DisplayName("Should extract path with query parameters")
         void testPathExtraction_WithQueryParams() {
-            // Arrange
             when(mockRequest.getDescription(false)).thenReturn("uri=/api/v1/search?q=test&page=2");
             ValidationException exception = new ValidationException("Error", "CODE");
 
-            // Act
             ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleValidationException(
                     exception,
                     mockRequest
             );
 
-            // Assert
             assertEquals("/api/v1/search?q=test&page=2", response.getBody().getPath());
         }
 
         @Test
         @DisplayName("Should extract long path")
         void testPathExtraction_LongPath() {
-            // Arrange
             when(mockRequest.getDescription(false)).thenReturn("uri=/api/v1/streams/details/video/dQw4w9WgXcQ");
             ValidationException exception = new ValidationException("Error", "CODE");
 
-            // Act
             ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleValidationException(
                     exception,
                     mockRequest
             );
 
-            // Assert
             assertEquals("/api/v1/streams/details/video/dQw4w9WgXcQ", response.getBody().getPath());
         }
     }
@@ -585,16 +576,13 @@ class GlobalExceptionHandlerTest {
         @Test
         @DisplayName("Should map ValidationException to 400")
         void testStatusMapping_ValidationTo400() {
-            // Arrange
             ValidationException exception = new ValidationException("Error", "CODE");
 
-            // Act
             ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleValidationException(
                     exception,
                     mockRequest
             );
 
-            // Assert
             assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
             assertEquals(400, response.getBody().getStatus());
             assertEquals("Bad Request", response.getBody().getError());
@@ -603,16 +591,13 @@ class GlobalExceptionHandlerTest {
         @Test
         @DisplayName("Should map ExtractionException to 500")
         void testStatusMapping_ExtractionTo500() {
-            // Arrange
             ExtractionException exception = new ExtractionException("Error");
 
-            // Act
             ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleExtractionException(
                     exception,
                     mockRequest
             );
 
-            // Assert
             assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
             assertEquals(500, response.getBody().getStatus());
             assertEquals("Internal Server Error", response.getBody().getError());
@@ -621,17 +606,14 @@ class GlobalExceptionHandlerTest {
         @Test
         @DisplayName("Should map MissingParameter to 400")
         void testStatusMapping_MissingParamTo400() {
-            // Arrange
             MissingServletRequestParameterException exception =
                     new MissingServletRequestParameterException("id", "String");
 
-            // Act
             ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleMissingParameter(
                     exception,
                     mockRequest
             );
 
-            // Assert
             assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
             assertEquals(400, response.getBody().getStatus());
         }
@@ -639,16 +621,13 @@ class GlobalExceptionHandlerTest {
         @Test
         @DisplayName("Should map generic Exception to 500")
         void testStatusMapping_GenericTo500() {
-            // Arrange
             Exception exception = new Exception("Error");
 
-            // Act
             ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleGenericException(
                     exception,
                     mockRequest
             );
 
-            // Assert
             assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
             assertEquals(500, response.getBody().getStatus());
         }
@@ -661,17 +640,13 @@ class GlobalExceptionHandlerTest {
         @Test
         @DisplayName("Should handle null exception message")
         void testEdgeCase_NullMessage() {
-            // Arrange
             ValidationException exception = new ValidationException(null, "CODE");
 
-            // Act
             ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleValidationException(
                     exception,
                     mockRequest
             );
 
-            // Assert
-            // ValidationException prepends "Invalid " even to null
             assertNotNull(response.getBody().getMessage());
             assertTrue(response.getBody().getMessage().contains("Invalid"));
         }
@@ -679,35 +654,27 @@ class GlobalExceptionHandlerTest {
         @Test
         @DisplayName("Should handle empty error code")
         void testEdgeCase_EmptyErrorCode() {
-            // Arrange
             ValidationException exception = new ValidationException("Error", "");
 
-            // Act
             ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleValidationException(
                     exception,
                     mockRequest
             );
 
-            // Assert
-            // ValidationException uses fixed error code
             assertEquals("VALIDATION_ERROR", response.getBody().getErrorCode());
         }
 
         @Test
         @DisplayName("Should handle very long error message")
         void testEdgeCase_LongMessage() {
-            // Arrange
             String longMessage = "A".repeat(1000);
             ValidationException exception = new ValidationException(longMessage, "CODE");
 
-            // Act
             ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleValidationException(
                     exception,
                     mockRequest
             );
 
-            // Assert
-            // ValidationException prepends "Invalid " to message, adding length
             assertTrue(response.getBody().getMessage().length() >= 1000);
             assertTrue(response.getBody().getMessage().contains("AAA"));  // Contains the A's
         }
@@ -715,18 +682,14 @@ class GlobalExceptionHandlerTest {
         @Test
         @DisplayName("Should handle special characters in error message")
         void testEdgeCase_SpecialCharacters() {
-            // Arrange
             String specialMessage = "Error: \"Invalid\" <parameter> & value='test'";
             ValidationException exception = new ValidationException(specialMessage, "CODE");
 
-            // Act
             ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleValidationException(
                     exception,
                     mockRequest
             );
 
-            // Assert
-            // ValidationException prepends "Invalid " to message
             assertTrue(response.getBody().getMessage().contains(specialMessage));
         }
     }
@@ -738,22 +701,18 @@ class GlobalExceptionHandlerTest {
         @Test
         @DisplayName("Should handle different exception types consistently")
         void testMultipleTypes_Consistency() {
-            // Arrange
             ValidationException validationEx = new ValidationException("Validation error", "VAL_ERR");
             ExtractionException extractionEx = new ExtractionException("Extraction error");
             ApiException apiEx = new ApiException("Not found", "NOT_FOUND", 404);
 
-            // Act
             ResponseEntity<ErrorResponseDTO> response1 = exceptionHandler.handleValidationException(validationEx, mockRequest);
             ResponseEntity<ErrorResponseDTO> response2 = exceptionHandler.handleExtractionException(extractionEx, mockRequest);
             ResponseEntity<ErrorResponseDTO> response3 = exceptionHandler.handleApiException(apiEx, mockRequest);
 
-            // Assert - All should have consistent structure
             assertNotNull(response1.getBody());
             assertNotNull(response2.getBody());
             assertNotNull(response3.getBody());
 
-            // All should have all required fields
             assertNotNull(response1.getBody().getErrorCode());
             assertNotNull(response2.getBody().getErrorCode());
             assertNotNull(response3.getBody().getErrorCode());

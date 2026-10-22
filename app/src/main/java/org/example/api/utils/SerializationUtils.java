@@ -1,13 +1,15 @@
 package org.example.api.utils;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.*;
 import org.schabi.newpipe.extractor.InfoItem;
 import org.schabi.newpipe.extractor.StreamingService;
 import org.schabi.newpipe.extractor.search.SearchInfo;
 import org.springframework.stereotype.Component;
-
-import java.io.IOException;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectWriter;
+import tools.jackson.databind.SerializationContext;
+import tools.jackson.databind.SerializationFeature;
+import tools.jackson.databind.ValueSerializer;
 
 /**
  * Utility class for custom JSON serialization of complex objects.
@@ -21,7 +23,7 @@ public class SerializationUtils {
     private final ObjectMapper objectMapper;
 
     public SerializationUtils(ObjectMapper objectMapper) {
-        this.objectMapper = objectMapper; // Inject ObjectMapper if needed
+        this.objectMapper = objectMapper;
     }
 
     /**
@@ -31,31 +33,30 @@ public class SerializationUtils {
      * objects to JSON, limiting the depth and including only essential
      * information.
      */
-    public static class CustomSearchInfoSerializer extends JsonSerializer<SearchInfo> {
+    public static class CustomSearchInfoSerializer extends ValueSerializer<SearchInfo> {
 
         /**
          * Serialize a SearchInfo object with minimal, essential information.
          *
          * @param value The SearchInfo object to serialize
          * @param gen JsonGenerator for writing JSON content
-         * @param serializers Serializer provider
-         * @throws IOException If an error occurs during serialization
+         * @param ctxt Serialization context
          */
         @Override
-        public void serialize(SearchInfo value, JsonGenerator gen, SerializerProvider serializers) throws IOException {
+        public void serialize(SearchInfo value, JsonGenerator gen, SerializationContext ctxt) {
             gen.writeStartObject();
-            gen.writeStringField("searchString", value.getSearchString());
-            gen.writeNumberField("serviceId", value.getService() != null ? value.getService().getServiceId() : -1);
+            gen.writeStringProperty("searchString", value.getSearchString());
+            gen.writeNumberProperty("serviceId", value.getService() != null ? value.getService().getServiceId() : -1);
 
             // Carefully serialize items
-            gen.writeArrayFieldStart("items");
+            gen.writeArrayPropertyStart("items");
             if (value.getRelatedItems() != null) {
                 for (InfoItem item : value.getRelatedItems()) {
                     // Minimal serialization of items
                     gen.writeStartObject();
                     if (item != null) {
-                        gen.writeStringField("name", item.getName());
-                        gen.writeStringField("url", item.getUrl());
+                        gen.writeStringProperty("name", item.getName());
+                        gen.writeStringProperty("url", item.getUrl());
                         // Add other essential fields as needed
                     }
                     gen.writeEndObject();
@@ -66,29 +67,31 @@ public class SerializationUtils {
         }
     }
 
+
+
     /**
      * Custom JSON serializer for StreamingService objects.
      *
      * This serializer provides a simplified JSON representation
      * of StreamingService, avoiding nested serialization.
      */
-    public static class CustomStreamingServiceSerializer extends JsonSerializer<StreamingService> {
+    public static class CustomStreamingServiceSerializer extends ValueSerializer<StreamingService> {
 
         /**
          * Serialize a StreamingService object with minimal information.
          *
          * @param value The StreamingService object to serialize
          * @param gen JsonGenerator for writing JSON content
-         * @param serializers Serializer provider
-         * @throws IOException If an error occurs during serialization
+         * @param ctxt Serialization context
          */
         @Override
-        public void serialize(StreamingService value, JsonGenerator gen, SerializerProvider serializers) throws IOException {
+        public void serialize(StreamingService value, JsonGenerator gen, SerializationContext ctxt) {
             gen.writeStartObject();
-            gen.writeNumberField("serviceId", value.getServiceId());
+            gen.writeNumberProperty("serviceId", value.getServiceId());
             gen.writeEndObject();
         }
     }
+
 
     /**
      * Safely serialize an object to a JSON string.
@@ -108,6 +111,7 @@ public class SerializationUtils {
             return writer.writeValueAsString(obj);
         } catch (Exception e) {
             System.err.printf("Serialization Error: %s%n", e.getMessage());
+            // TODO: Replace printStackTrace with proper sl4j logging standard
             e.printStackTrace();
             return "{\"message\":\"Error serializing response\"}";
         }

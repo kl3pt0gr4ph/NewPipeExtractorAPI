@@ -1,6 +1,6 @@
 package org.example.api.dto;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -16,19 +16,6 @@ import static org.mockito.Mockito.when;
 
 /**
  * Unit tests for StreamDetailsDTO.
- *
- * <p>Reduced from 25 tests to 3. {@code from()} is a pure nine-field
- * passthrough mapper with no conditionals, defaults, or null-handling of
- * its own — every field is assigned unconditionally from the matching
- * StreamInfo getter. That means the 22 dropped tests (zero counts, viral
- * counts, unknown dislike, hidden subscriber, description variants,
- * getter/setter, most edge cases, practical usage) were all the exact
- * same code path with a different literal value substituted in; none of
- * them could fail differently from the two factory tests kept here. What
- * remains: one test proving every field is wired to its matching getter,
- * one proving nulls and NewPipe's sentinel values (-1 for
- * hidden/unknown) pass through unchanged rather than being coerced, and
- * one JSON round-trip.</p>
  */
 @DisplayName("StreamDetailsDTO Tests")
 class StreamDetailsDTOTest {

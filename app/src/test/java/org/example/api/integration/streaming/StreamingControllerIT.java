@@ -8,7 +8,8 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.boot.resttestclient.TestRestTemplate;
+import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -27,7 +28,8 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 /**
  * Integration tests for StreamingController
  */
-class SearchControllerIT extends BaseIntegrationTest {
+@AutoConfigureTestRestTemplate
+class StreamingControllerIT extends BaseIntegrationTest {
 
     @LocalServerPort
     private int port;
@@ -52,10 +54,10 @@ class SearchControllerIT extends BaseIntegrationTest {
                 Arguments.of("/video", (Consumer<String>) body -> assertThat(body)
                         .startsWith("[").endsWith("]").contains("resolution", "url")),
                 Arguments.of("/video/dash", (Consumer<String>) body -> {
-                            if (body != null && !body.isBlank()) {
-                                assertThat(body).startsWith("http");
-                            }
-                        }),
+                    if (body != null && !body.isBlank()) {
+                        assertThat(body).startsWith("http");
+                    }
+                }),
                 Arguments.of("/thumbnails", (Consumer<String>) body -> assertThat(body)
                         .startsWith("[").endsWith("]").contains("url", "height", "width")),
                 Arguments.of("/subtitles", (Consumer<String>) body -> assertThat(body)

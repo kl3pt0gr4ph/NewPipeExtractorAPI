@@ -1,10 +1,10 @@
 package org.example.api.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import org.example.api.config.GlobalExceptionHandler;
 import org.example.api.dto.kiosk.KioskDTO;
 import org.example.api.exception.ExtractionException;
-import org.example.api.service.KioskService; // adjust import to match your package
+import org.example.api.service.KioskService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -138,7 +138,6 @@ class KioskControllerTest {
         mockMvc.perform(get("/api/v1/kiosks/{kioskId}", kioskId))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.errorCode").value("INTERNAL_ERROR"))
-                // the generic handler discards the real exception message by design
                 .andExpect(jsonPath("$.message").value("An unexpected error occurred"));
 
         verify(kioskService).getKioskInfo(SERVICE_ID, kioskId);
