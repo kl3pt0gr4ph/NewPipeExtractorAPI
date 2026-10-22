@@ -1,6 +1,6 @@
 package org.example.api.dto.kiosk;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -23,9 +23,6 @@ import static org.mockito.Mockito.when;
 /**
  * Unit tests for KioskDTO.
  *
- * <p>{@link Image} is a plain value object, so real instances are used rather than mocks:
- * a mocked Image returns {@code null} from {@code getEstimatedResolutionLevel()}, which a
- * real one never does.</p>
  */
 @DisplayName("KioskDTO Tests")
 class KioskDTOTest {

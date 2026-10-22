@@ -1,14 +1,15 @@
 package org.example.api.service;
 
-import com.fasterxml.jackson.databind.*;
-import com.fasterxml.jackson.databind.module.SimpleModule;
 import org.example.api.model.Error;
 import org.example.api.utils.SerializationUtils;
 import org.schabi.newpipe.extractor.NewPipe;
 import org.schabi.newpipe.extractor.StreamingService;
 import org.schabi.newpipe.extractor.search.SearchInfo;
-import org.schabi.newpipe.extractor.stream.*;
 import org.springframework.stereotype.Service;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.SerializationFeature;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.module.SimpleModule;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -17,20 +18,21 @@ import java.util.Map;
 
 @Service
 public class RestService {
-    private final ObjectMapper objectMapper;
+    private final JsonMapper objectMapper;
 
     public RestService() {
         this.objectMapper = createCustomObjectMapper();
     }
 
-    private ObjectMapper createCustomObjectMapper() {
-        return new ObjectMapper()
-                .configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false)
-                .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-                .registerModule(new SimpleModule()
+    private JsonMapper createCustomObjectMapper() {
+        return JsonMapper.builder()
+                .disable(SerializationFeature.FAIL_ON_EMPTY_BEANS)
+                .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+                .addModule(new SimpleModule()
                         .addSerializer(SearchInfo.class, new SerializationUtils.CustomSearchInfoSerializer())
                         .addSerializer(StreamingService.class, new SerializationUtils.CustomStreamingServiceSerializer())
-                );
+                )
+                .build();
     }
 
     public String getServices() {
