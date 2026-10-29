@@ -6,6 +6,10 @@ The format is based on [keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Removed
+
+- `X-Stream-Type` header on the muxed fallback (deprecated in the previous release)
+
 ### Fixed
 
 - Main audio track with no name or language labelled "Unknown" instead of "Original"

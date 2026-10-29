@@ -124,7 +124,7 @@ public class StreamingController {
 
     /**
      * Used when no valid on-demand manifest can be built, e.g. SABR-restricted videos
-     * whose adaptive streams aren't progressive. Response contract is unchanged.
+     * whose adaptive streams aren't progressive. Signalled by {@code Content-Type: text/uri-list}
      */
     private ResponseEntity<String> muxedProgressiveFallback(String id, StreamInfo streamInfo,
                                                             PlayableStreams playable) {
@@ -137,11 +137,8 @@ public class StreamingController {
                 id, playable.video().size(), streamInfo.getVideoOnlyStreams().size(),
                 playable.audio().size(), streamInfo.getAudioStreams().size(), muxed.getId());
 
-        // X-Stream-Type is kept for one release while the frontend moves to
-        // checking Content-Type; remove it once that ships.
         return ResponseEntity.ok()
                 .contentType(URI_LIST)
-                .header("X-Stream-Type", "muxed-progressive")
                 .body(muxed.getContent() + "\r\n");
     }
 
