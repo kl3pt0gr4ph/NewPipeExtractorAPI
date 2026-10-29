@@ -41,6 +41,7 @@ public class DashManifestGeneratorService {
     private static final String AUDIO_CHANNEL_SCHEME =
             "urn:mpeg:dash:23003:3:audio_channel_configuration:2011";
     private static final String UNDETERMINED_LANGUAGE = "und";
+    private static final String ROLE_MAIN = "main";
 
     /** Configured once and never changed, so it is safe to share between requests. */
     private static final XMLOutputFactory XML_OUTPUT = XMLOutputFactory.newInstance();
@@ -197,8 +198,8 @@ public class DashManifestGeneratorService {
         for (List<AudioStreamMetadataDTO> track : byTrack.values()) {
             AudioStreamMetadataDTO first = track.getFirst();
             String language = languageOrUnd(first.getLanguage());
-            String label = audioLabel(first, language);
             String role = audioRole(first.getAudioTrackType(), singleTrack);
+            String label = audioLabel(first, language, role);
 
             Map<String, List<AudioStreamMetadataDTO>> byCodec =
                     groupBy(track, a -> a.getMimeType() + "|" + codecFamily(a.getCodec()));
@@ -259,19 +260,26 @@ public class DashManifestGeneratorService {
      */
     private static String audioRole(AudioTrackType type, boolean singleTrack) {
         if (type == null) {
-            return singleTrack ? "main" : "alternate";
+            return singleTrack ? ROLE_MAIN : "alternate";
         }
         return switch (type) {
-            case ORIGINAL -> "main";
+            case ORIGINAL -> ROLE_MAIN;
             case DUBBED -> "dub";
             case DESCRIPTIVE -> "description";
             default -> "alternate"; // SECONDARY, and anything NewPipe adds later
         };
     }
 
-    private static String audioLabel(AudioStreamMetadataDTO audio, String language) {
+    /**
+     * YouTube's track name when there is one. Without a name or a language, the main track
+     * is the video's own audio, so it reads "Original"; any other such track is "Unknown".
+     */
+    private static String audioLabel(AudioStreamMetadataDTO audio, String language, String role) {
         if (!isBlank(audio.getAudioTrackName())) {
             return audio.getAudioTrackName();
+        }
+        if (UNDETERMINED_LANGUAGE.equals(language)) {
+            return ROLE_MAIN.equals(role) ? "Original" : "Unknown";
         }
         if (!isBlank(audio.getLanguageName())) {
             return audio.getLanguageName();

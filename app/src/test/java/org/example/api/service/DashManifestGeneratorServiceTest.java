@@ -363,7 +363,7 @@ class DashManifestGeneratorServiceTest {
             assertThat(reps).extracting(r -> r.getAttribute("height"))
                     .containsExactly("1080", "720", "360");
 
-            Element top = reps.get(0);
+            Element top = reps.getFirst();
             assertThat(top.getAttribute("id")).isEqualTo("video-1080");
             assertThat(top.getAttribute("bandwidth")).isEqualTo("3423702");
             assertThat(top.getAttribute("codecs")).isEqualTo("avc1.640028");
@@ -515,6 +515,44 @@ class DashManifestGeneratorServiceTest {
                     generate(configWith(List.of(defaultVideo()), List.of(audio), List.of())), "audio"));
 
             assertThat(set.getAttribute("lang")).isEqualTo("und");
+        }
+
+        @Test
+        @DisplayName("Labels a single track with no name or language 'Original'")
+        void labelsUntaggedMainTrackOriginal() {
+            AudioStreamMetadataDTO audio = createAudioStream("audio-1", null, 128_000);
+
+            Element set = only(setsOfType(
+                    generate(configWith(List.of(defaultVideo()), List.of(audio), List.of())), "audio"));
+
+            assertThat(role(set)).isEqualTo("main");
+            assertThat(label(set)).isEqualTo("Original");
+        }
+
+        @Test
+        @DisplayName("Labels a non-main track with no name or language 'Unknown'")
+        void labelsUntaggedNonMainTrackUnknown() {
+            AudioStreamMetadataDTO audio = inTrack(createAudioStream("audio-1", null, 128_000),
+                    "und.3", AudioTrackType.DUBBED, null);
+
+            Element set = only(setsOfType(
+                    generate(configWith(List.of(defaultVideo()), List.of(audio), List.of())), "audio"));
+
+            assertThat(role(set)).isEqualTo("dub");
+            assertThat(label(set)).isEqualTo("Unknown");
+        }
+
+        @Test
+        @DisplayName("Keeps YouTube's track name even when the language is unknown")
+        void keepsTrackNameWhenLanguageUnknown() {
+            AudioStreamMetadataDTO audio = inTrack(createAudioStream("audio-1", null, 128_000),
+                    "en.4", AudioTrackType.ORIGINAL, "English original");
+
+            Element set = only(setsOfType(
+                    generate(configWith(List.of(defaultVideo()), List.of(audio), List.of())), "audio"));
+
+            assertThat(role(set)).isEqualTo("main");
+            assertThat(label(set)).isEqualTo("English original");
         }
 
         @Test

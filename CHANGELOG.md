@@ -6,6 +6,10 @@ The format is based on [keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Fixed
+
+- Main audio track with no name or language labelled "Unknown" instead of "Original"
+
 ## [0.4.0] - 2026-10-18
 
 ### Added
