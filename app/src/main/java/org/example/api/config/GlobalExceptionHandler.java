@@ -1,5 +1,8 @@
 package org.example.api.config;
 
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.example.api.dto.ErrorResponseDTO;
 import org.example.api.exception.ApiException;
 import org.example.api.exception.ExtractionException;
@@ -17,13 +20,26 @@ import org.springframework.web.context.request.WebRequest;
 /**
  * Global exception handler for the API.
  * Provides consistent error responses across all endpoints.
+ *
+ * <p>The {@link ApiResponse} annotations here are picked up by springdoc and added to
+ * every operation in the OpenAPI spec, so controllers don't repeat them. Responses that
+ * only some endpoints can produce (e.g. {@code 503}) are declared on those endpoints.</p>
  */
 @ControllerAdvice
 public class GlobalExceptionHandler {
     private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    private static final String BAD_REQUEST_DESCRIPTION =
+            "A required parameter is missing (`MISSING_PARAMETER`) or invalid (`VALIDATION_ERROR`)";
+    private static final String SERVER_ERROR_DESCRIPTION =
+            "Extraction failed (`EXTRACTION_ERROR`), e.g. the video is unavailable or YouTube changed, "
+                    + "or something unexpected went wrong (`INTERNAL_ERROR`)";
+
     /**
      * Handle validation exceptions (400 Bad Request).
      */
+    @ApiResponse(responseCode = "400", description = BAD_REQUEST_DESCRIPTION,
+            content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     @ExceptionHandler(ValidationException.class)
     public ResponseEntity<ErrorResponseDTO> handleValidationException(
             ValidationException ex,
@@ -45,6 +61,8 @@ public class GlobalExceptionHandler {
     /**
      * Handle extraction exceptions (500 Internal Server Error).
      */
+    @ApiResponse(responseCode = "500", description = SERVER_ERROR_DESCRIPTION,
+            content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     @ExceptionHandler(ExtractionException.class)
     public ResponseEntity<ErrorResponseDTO> handleExtractionException(
             ExtractionException ex,
@@ -88,6 +106,8 @@ public class GlobalExceptionHandler {
     /**
      * Handle missing request parameters (400 Bad Request).
      */
+    @ApiResponse(responseCode = "400", description = BAD_REQUEST_DESCRIPTION,
+            content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     @ExceptionHandler(MissingServletRequestParameterException.class)
     public ResponseEntity<ErrorResponseDTO> handleMissingParameter(
             MissingServletRequestParameterException ex,
@@ -127,6 +147,8 @@ public class GlobalExceptionHandler {
     /**
      * Handle all other exceptions (500 Internal Server Error).
      */
+    @ApiResponse(responseCode = "500", description = SERVER_ERROR_DESCRIPTION,
+            content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponseDTO> handleGenericException(
             Exception ex,
