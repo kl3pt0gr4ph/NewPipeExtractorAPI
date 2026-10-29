@@ -1,9 +1,3 @@
-target
-.git
-.gitignore
-*.md
-.mvn
-.vscode
-.idea
-*.log
-.DS_Store
+!app/pom.xml
+!app/src
+app/src/test
