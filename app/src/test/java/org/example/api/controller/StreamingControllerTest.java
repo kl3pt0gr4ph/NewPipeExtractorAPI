@@ -258,8 +258,7 @@ class StreamingControllerTest {
             mockMvc.perform(get("/api/v1/streams/dash").param("id", TEST_VIDEO_ID))
                     .andExpect(status().isOk())
                     .andExpect(content().contentType(URI_LIST))
-                    // Kept for one release while the frontend switches to Content-Type
-                    .andExpect(header().string("X-Stream-Type", "muxed-progressive"))
+                    .andExpect(header().doesNotExist("X-Stream-Type"))
                     .andExpect(content().string(DIRECT_URL + "\r\n"));
 
             // The fallback path must not build a manifest
