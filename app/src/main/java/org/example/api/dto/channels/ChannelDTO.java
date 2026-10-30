@@ -1,5 +1,6 @@
 package org.example.api.dto.channels;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import org.schabi.newpipe.extractor.channel.ChannelInfo;
 import org.schabi.newpipe.extractor.linkhandler.ListLinkHandler;
 
@@ -9,6 +10,7 @@ import java.util.List;
  * Data Transfer Object representing a YouTube channel extracted via NewPipe.
  * Maps to the JSON structure returned by {@link ChannelInfo}.
  */
+@Schema(name = "Channel", description = "A YouTube channel's header: name, images, description and tabs")
 public class ChannelDTO {
 
     // ── Nested Records ──────────────────────────────────────────────────────────
@@ -16,46 +18,62 @@ public class ChannelDTO {
     /**
      * An avatar or banner image associated with the channel.
      */
+    @Schema(name = "ChannelImage")
     public record ImageDto(
             String url,
-            int height,
-            int width,
+            @Schema(description = "Height in pixels, or -1 when unknown") int height,
+            @Schema(description = "Width in pixels, or -1 when unknown") int width,
+            @Schema(description = "NewPipe's rough size class, for picking an image when the "
+                    + "dimensions are unknown",
+                    allowableValues = {"LOW", "MEDIUM", "HIGH", "UNKNOWN"})
             String estimatedResolutionLevel
     ) {}
 
     /**
      * A navigable tab on the channel page (Videos, Shorts, Live, Playlists, etc.).
      */
+    @Schema(name = "ChannelTab")
     public record TabDto(
             String originalUrl,
             String url,
-            String id,
+            @Schema(description = "Channel ID the tab belongs to") String id,
+            @Schema(description = "Identifies the tab. Pass the single entry as `tab` to "
+                    + "`/channels/tab`, e.g. `videos`.")
             List<String> contentFilters,
             String sortFilter,
+            @Schema(description = "Scheme and host of `url`", example = "https://www.youtube.com")
             String baseUrl
     ) {}
 
     // ── Main DTO ────────────────────────────────────────────────────────────────
 
     private int serviceId;
+    @Schema(description = "Channel ID, e.g. `UC…`")
     private String id;
     private String url;
     private String originalUrl;
     private String name;
+    @Schema(description = "Always empty; kept for response-shape compatibility. "
+            + "Extraction failures surface as an error response instead.")
     private List<Object> errors;
 
+    @Schema(description = "Parent channel, for channels that have one; usually empty on YouTube")
     private String parentChannelName;
     private String parentChannelUrl;
+    @Schema(description = "RSS feed of the channel's uploads")
     private String feedUrl;
 
+    @Schema(description = "Subscribers, or -1 when hidden or unknown")
     private long subscriberCount;
     private String description;
+    @Schema(description = "Whether YouTube shows a verified badge")
     private boolean verified;
 
     private List<ImageDto> avatars;
     private List<ImageDto> banners;
     private List<ImageDto> parentChannelAvatars;
 
+    @Schema(description = "Tabs the channel offers, e.g. videos, shorts, livestreams, playlists")
     private List<TabDto> tabs;
     private List<String> tags;
 

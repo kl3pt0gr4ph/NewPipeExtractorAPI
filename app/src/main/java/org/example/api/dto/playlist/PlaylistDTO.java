@@ -1,10 +1,13 @@
 package org.example.api.dto.playlist;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import org.schabi.newpipe.extractor.playlist.PlaylistInfo;
 import org.schabi.newpipe.extractor.stream.StreamInfoItem;
 
 import java.util.List;
+import java.util.Objects;
 
+@Schema(name = "Playlist", description = "A playlist's metadata and its first page of videos")
 public class PlaylistDTO {
 
     private String id;
@@ -13,32 +16,49 @@ public class PlaylistDTO {
     private String name;
     private String uploaderUrl;
     private String uploaderName;
+    @Schema(description = "Sub-channel the playlist belongs to, where YouTube reports one")
     private String subChannelUrl;
     private String subChannelName;
+    @Schema(description = "Absent when the playlist has no description")
     private DescriptionDto description;
     private List<ThumbnailDto> thumbnails;
     private List<ThumbnailDto> banners;
+    @Schema(description = "Uploader channel avatar")
     private List<AvatarDto> uploaderAvatars;
+    @Schema(description = "First page of videos. This response has no `nextPage`, so it doesn't "
+            + "provide the `pageUrl` that `/playlists/page` needs.")
     private List<RelatedItemDto> relatedItems;
+    @Schema(description = "Total videos in the playlist, or -1 when unknown")
     private long streamCount;
 
     // ── Nested Records ───────────────────────────────────────────────────────────
 
-    public record DescriptionDto(String content, int type) {}
+    @Schema(name = "PlaylistDescription")
+    public record DescriptionDto(
+            String content,
+            @Schema(description = "1 = HTML, 2 = Markdown, 3 = plain text", allowableValues = {"1", "2", "3"})
+            int type
+    ) {}
+    @Schema(name = "PlaylistImage")
     public record ThumbnailDto(String url, int height, int width) {}
+    @Schema(name = "PlaylistAvatar")
     public record AvatarDto(String url, int height, int width) {}
+    @Schema(name = "PlaylistItem")
     public record RelatedItemDto(
+            @Schema(description = "Always `STREAM`; other item types are skipped", example = "STREAM")
             String infoType,
             String url,
             String name,
             String uploaderName,
             String uploaderUrl,
+            @Schema(description = "Relative upload date as YouTube words it", example = "3 weeks ago")
             String textualUploadDate,
-            long viewCount,
-            long duration,
+            @Schema(description = "Views, or -1 when unknown") long viewCount,
+            @Schema(description = "Length in seconds, or -1 when unknown") long duration,
             boolean uploaderVerified,
             boolean shortFormContent,
             List<ThumbnailDto> thumbnails,
+            @Schema(description = "Always empty; not mapped yet")
             List<AvatarDto> uploaderAvatars
     ) {}
 
@@ -74,21 +94,20 @@ public class PlaylistDTO {
                 .map(a -> new AvatarDto(a.getUrl(), a.getHeight(), a.getWidth()))
                 .toList());
         dto.setRelatedItems(info.getRelatedItems().stream()
-                .filter(item -> item instanceof StreamInfoItem)
+                .filter(Objects::nonNull)
                 .map(item -> {
-                    StreamInfoItem s = (StreamInfoItem) item;
                     return new RelatedItemDto(
                             "STREAM",
-                            s.getUrl(),
-                            s.getName(),
-                            s.getUploaderName(),
-                            s.getUploaderUrl(),
-                            s.getTextualUploadDate(),
-                            s.getViewCount(),
-                            s.getDuration(),
-                            s.isUploaderVerified(),
-                            s.isShortFormContent(),
-                            s.getThumbnails().stream()
+                            ((StreamInfoItem) item).getUrl(),
+                            ((StreamInfoItem) item).getName(),
+                            ((StreamInfoItem) item).getUploaderName(),
+                            ((StreamInfoItem) item).getUploaderUrl(),
+                            ((StreamInfoItem) item).getTextualUploadDate(),
+                            ((StreamInfoItem) item).getViewCount(),
+                            ((StreamInfoItem) item).getDuration(),
+                            ((StreamInfoItem) item).isUploaderVerified(),
+                            ((StreamInfoItem) item).isShortFormContent(),
+                            ((StreamInfoItem) item).getThumbnails().stream()
                                     .map(t -> new ThumbnailDto(t.getUrl(), t.getHeight(), t.getWidth()))
                                     .toList(),
                             List.of()
