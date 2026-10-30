@@ -6,6 +6,10 @@ The format is based on [keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- OpenAPI spec at `/v3/api-docs` (and `/v3/api-docs.yaml`) and Swagger UI at `/swagger-ui.html`, generated from the controllers. On by default; turn off with `SPRINGDOC_APIDOCS_ENABLED=false`, or set `OPENTUBE_OPENAPI_SERVERURL` to advertise a public base URL
+
 ### Removed
 
 - `X-Stream-Type` header on the muxed fallback (deprecated in the previous release)

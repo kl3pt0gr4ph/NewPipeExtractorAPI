@@ -1,5 +1,6 @@
 package org.example.api.dto.channels;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import org.schabi.newpipe.extractor.InfoItem;
 import org.schabi.newpipe.extractor.ListExtractor.InfoItemsPage;
 import org.schabi.newpipe.extractor.channel.tabs.ChannelTabInfo;
@@ -15,27 +16,31 @@ import java.util.List;
  * <p>Mirrors the structure of {@link ChannelTabInfo} and its paged items,
  * keeping raw NewPipe types out of the API surface.</p>
  */
+@Schema(name = "ChannelTabPage", description = "One page of a channel tab")
 public class ChannelTabDTO {
 
     // ── Nested Records ──────────────────────────────────────────────────────────
 
     /** Thumbnail image for a video item. */
+    @Schema(name = "ChannelTabThumbnail")
     public record ThumbnailDto(String url, int height, int width) {}
 
     /**
      * A single video/short/livestream item within the tab.
      * Maps to {@link StreamInfoItem}.
      */
+    @Schema(name = "ChannelTabItem")
     public record VideoItemDto(
             String url,
             String name,
             String uploaderName,
             String uploaderUrl,
             boolean uploaderVerified,
-            long duration,
-            long viewCount,
+            @Schema(description = "Length in seconds, or -1 when unknown (e.g. live)") long duration,
+            @Schema(description = "Views, or -1 when unknown") long viewCount,
+            @Schema(description = "Relative upload date as YouTube words it", example = "3 weeks ago")
             String textualUploadDate,
-            boolean isShortFormContent,
+            @Schema(description = "Whether the item is a Short") boolean isShortFormContent,
             List<ThumbnailDto> thumbnails
     ) {
         public static VideoItemDto from(StreamInfoItem item) {
@@ -77,25 +82,36 @@ public class ChannelTabDTO {
      * <p>The previous implementation only sent {@code url}, discarding {@code body} and
      * {@code ids}, which broke pagination in two independent ways simultaneously.</p>
      */
+    @Schema(name = "ChannelTabNextPage",
+            description = "Continuation cursor. Pass all three fields back to `/channels/tab/page` "
+                    + "as `pageUrl`, `pageBody` and `pageIds`, unmodified.")
     public record PageDto(
-            String url,
+            @Schema(description = "InnerTube browse URL") String url,
+            @Schema(description = "Base64-encoded continuation POST body", format = "byte")
             String body,     // Base64-encoded byte[] — the JSON continuation token POST body
+            @Schema(description = "Channel name, channel URL and verified status, in that order")
             List<String> ids // ["channelName", "channelUrl", "verifiedStatus"]
     ) {}
 
     // ── Main DTO ────────────────────────────────────────────────────────────────
 
     /** The tab type that was queried (e.g. "videos", "shorts", "livestreams"). */
+    @Schema(description = "Tab that was read", example = "videos")
     private String tab;
 
     /** Channel ID this tab belongs to. */
+    @Schema(description = "Channel `id` as requested; pass it back as `channelId` for the next page",
+            example = "@LinusTechTips")
     private String channelId;
 
     /** Items on the current page. Only {@link StreamInfoItem}s are mapped;
      *  other item types (playlists, channels) are silently skipped for now. */
+    @Schema(description = "Items on this page. Only videos, Shorts and livestreams are included; "
+            + "playlist and channel items are skipped.")
     private List<VideoItemDto> items;
 
     /** Pagination info. Null when no further pages exist. */
+    @Schema(description = "Cursor for the next page; absent on the last page")
     private PageDto nextPage;
 
     // ── Constructors ────────────────────────────────────────────────────────────

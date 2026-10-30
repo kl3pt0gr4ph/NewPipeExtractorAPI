@@ -1,5 +1,13 @@
 package org.example.api.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import org.example.api.model.Error;
 import org.example.api.service.RestService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,6 +18,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.Map;
+
+import static org.example.api.config.openapi.OpenApiDocs.*;
 
 /**
  * REST controller for handling API requests for YouTube information from New Pipe Extractor.
@@ -34,10 +44,10 @@ import java.util.Map;
  * The constructor uses Spring's dependency injection to initialize the RestService instance.
  * </p>
  */
+@Tag(name = TAG_SERVICES)
 @RestController
 @RequestMapping("/api/v1")
 public class NewPipeController {
-    private static final String YOUTUBE_URL = "https://www.youtube.com/watch?v=";
     private static final Logger logger = LoggerFactory.getLogger(NewPipeController.class);
     private final RestService restService;
 
@@ -61,22 +71,33 @@ public class NewPipeController {
      *                           - A success response with the services data in JSON format if the retrieval is successful (HTTP 200 OK).
      *                           - An error response with an appropriate message (HTTP 500 Internal Server Error) if an error occurs during the process.
      */
+    @Operation(summary = "Supported services",
+            description = "The streaming services NewPipeExtractor supports, with their IDs. "
+                    + "The rest of this API only queries YouTube (service 0).")
+    @ApiResponse(responseCode = "200", description = "Services",
+            content = @Content(mediaType = "application/json",
+                    array = @ArraySchema(schema = @Schema(type = "object")),
+                    examples = @ExampleObject(value = """
+                            [
+                              { "serviceId": 0, "serviceName": "YouTube" },
+                              { "serviceId": 1, "serviceName": "SoundCloud" }
+                            ]""")))
+    @ApiResponse(responseCode = "500",
+            description = "Services couldn't be listed. Unlike other endpoints, the body is `ServicesError`.",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Error.class)))
     @GetMapping("/services")
     public ResponseEntity<?> getServices() {
         try {
             logger.info("Attempting to retrieve services");
 
-            // Use the RestService method instead of duplicating logic
             String servicesJson = restService.getServices();
 
-            // Check if it's an error response
             if (servicesJson.contains("\"message\"")) {
                 Map<String, String> errorResponse = new HashMap<>();
                 errorResponse.put("message", "Error retrieving services");
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
             }
 
-            // Return the JSON string as-is since RestService already handles serialization
             return ResponseEntity.ok(servicesJson);
 
         } catch (Exception e) {
