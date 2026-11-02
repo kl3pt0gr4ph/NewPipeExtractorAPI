@@ -34,17 +34,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests for DownloaderImpl, using MockWebServer for hermetic HTTP.
- *
- * <p>Migrated to the mockwebserver3 API (OkHttp 5): MockResponse is now
- * immutable and built via {@code MockResponse.Builder}; {@code shutdown()}
- * is {@code close()}; {@code RecordedRequest.getHeader(name)} is
- * {@code getHeaders().get(name)}; and the recorded body is a ByteString
- * ({@code getBody().utf8()}).</p>
- *
- * <p>Consolidated at the same time: standalone User-Agent/method tests are
- * folded into the request-path success tests, the three init tests are one,
- * 404/500 passthrough is parameterized, and the Privacy nest (which asserted
- * the absence of headers the code never sets) is gone.</p>
  */
 @DisplayName("DownloaderImpl Tests")
 class DownloaderImplTest {
@@ -343,6 +332,22 @@ class DownloaderImplTest {
             List<String> acceptHeaders = recordedRequest.getHeaders().values("Accept");
             assertTrue(acceptHeaders.contains("application/json"));
             assertTrue(acceptHeaders.contains("text/html"));
+        }
+
+        @Test
+        @DisplayName("Lets a request's own User-Agent replace the default")
+        void execute_requestUserAgentReplacesDefault() throws Exception {
+            // NewPipe sets its own User-Agent for the mobile InnerTube clients
+            mockWebServer.enqueue(okBody("OK"));
+            String clientUserAgent = "com.google.ios.youtube/20.10.4 (iPhone16,2; U; CPU iOS 18_3_2 like Mac OS X;)";
+
+            downloader.execute(new Request.Builder()
+                    .get(baseUrl + "api/data")
+                    .headers(Map.of("User-Agent", List.of(clientUserAgent)))
+                    .build());
+
+            assertEquals(List.of(clientUserAgent),
+                    mockWebServer.takeRequest().getHeaders().values("User-Agent"));
         }
 
         @ParameterizedTest(name = "Passes through HTTP {0} with its body")
