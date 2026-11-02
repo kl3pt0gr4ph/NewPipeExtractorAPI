@@ -6,6 +6,20 @@ The format is based on [keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Channel tab items carry an `infoType` field: `STREAM`, `PLAYLIST` or `CHANNEL`
+- `albums` listed as a `tab` value for `/channels/tab` and `/channels/tab/page`
+
+### Changed
+
+- Default User-Agent updated from Firefox 43 to Firefox 140 ESR, matching NewPipeExtractor's own
+
+### Fixed
+
+- `/channels/tab` returned no items for the `playlists` and `albums` tabs: playlist and channel items are now mapped, as `PLAYLIST` and `CHANNEL` items
+- `/channels/tab` and `/channels/tab/page` returned an empty `items` list when NewPipeExtractor failed to read a tab; they now return `500 EXTRACTION_ERROR` with the cause
+
 ## [0.5.0] - 2026-11-02
 
 ### Added
