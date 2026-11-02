@@ -30,7 +30,11 @@ import java.util.Optional;
  *   <li>{@code "shorts"}      — YouTube Shorts</li>
  *   <li>{@code "livestreams"} — past and upcoming live streams</li>
  *   <li>{@code "playlists"}   — channel playlists</li>
+ *   <li>{@code "albums"}      — releases, on music channels</li>
  * </ul>
+ *
+ * <p>Only the Videos tab's content arrives with the channel request; every other tab is a
+ * second request to YouTube, made by {@code fetchPage()} and {@code getInitialPage()}.</p>
  */
 @Service
 public class ChannelTabService {
@@ -57,6 +61,7 @@ public class ChannelTabService {
             ChannelTabExtractor extractor = service.getChannelTabExtractor(tabHandler);
             extractor.fetchPage();
             ChannelTabInfo tabInfo = ChannelTabInfo.getInfo(extractor);
+            checkExtractionErrors(tab, channelUrl, tabInfo.getRelatedItems(), tabInfo.getErrors());
 
             logger.info("Fetched {} item(s) from tab '{}' (hasNextPage={})",
                     tabInfo.getRelatedItems().size(), tab, tabInfo.hasNextPage());
@@ -115,6 +120,7 @@ public class ChannelTabService {
             extractor.fetchPage();
 
             InfoItemsPage<InfoItem> page = extractor.getPage(pageInstance);
+            checkExtractionErrors(tab, channelUrl, page.getItems(), page.getErrors());
 
             logger.info("Fetched {} item(s) from tab '{}' page (hasNextPage={})",
                     page.getItems().size(), tab, page.hasNextPage());
@@ -129,6 +135,28 @@ public class ChannelTabService {
     }
 
     // ── Helpers ─────────────────────────────────────────────────────────────────
+
+    /**
+     * NewPipe doesn't throw when a tab's items fail to load: {@code ChannelTabInfo.getInfo}
+     * catches the failure, records it in {@code getErrors()} and returns an empty page, and the
+     * item collectors record items they can't parse the same way. Unchecked, a broken tab looks
+     * exactly like an empty one.
+     */
+    private void checkExtractionErrors(String tab, String channelUrl,
+                                       List<? extends InfoItem> items, List<Throwable> errors)
+            throws ExtractionException {
+        if (errors == null || errors.isEmpty()) {
+            return;
+        }
+        Throwable first = errors.getFirst();
+        if (items == null || items.isEmpty()) {
+            throw new ExtractionException(
+                    "Couldn't read the '%s' tab for %s: %s".formatted(tab, channelUrl, first.getMessage()),
+                    first);
+        }
+        logger.warn("Tab '{}' for {} returned {} item(s) with {} extraction error(s); first: {}",
+                tab, channelUrl, items.size(), errors.size(), first.toString());
+    }
 
     private Optional<ListLinkHandler> findTabHandler(List<ListLinkHandler> tabs, String tab) {
         return tabs.stream()

@@ -12,6 +12,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 import org.schabi.newpipe.extractor.InfoItem;
 import org.schabi.newpipe.extractor.ListExtractor.InfoItemsPage;
 import org.schabi.newpipe.extractor.NewPipe;
@@ -20,7 +21,9 @@ import org.schabi.newpipe.extractor.StreamingService;
 import org.schabi.newpipe.extractor.channel.ChannelInfo;
 import org.schabi.newpipe.extractor.channel.tabs.ChannelTabExtractor;
 import org.schabi.newpipe.extractor.channel.tabs.ChannelTabInfo;
+import org.schabi.newpipe.extractor.exceptions.ParsingException;
 import org.schabi.newpipe.extractor.linkhandler.ListLinkHandler;
+import org.schabi.newpipe.extractor.stream.StreamInfoItem;
 
 import java.util.Base64;
 import java.util.List;
@@ -42,15 +45,6 @@ import static org.mockito.Mockito.when;
 
 /**
  * Unit tests for ChannelTabService.
- *
- * <p>Consolidated from 12 tests to 9 (10 executions). The two getChannelTab
- * success-path tests fired identical requests, as did the two
- * getChannelTabPage success-path tests; the null-pageIds and short-pageIds
- * tests were the same guard clause. In exchange, the page-reconstruction
- * test is much stronger: it captures the actual Page handed to the
- * extractor and asserts url, ids, AND decoded body bytes — the three
- * fields whose absence caused the documented NPE — where the old test
- * only checked {@code getPage(any(Page.class))}.</p>
  */
 @DisplayName("ChannelTabService Tests")
 class ChannelTabServiceTest {
@@ -178,6 +172,59 @@ class ChannelTabServiceTest {
             }
         }
 
+        private ChannelTabInfo tabInfoWith(List<? extends InfoItem> items, List<Throwable> errors) {
+            ChannelTabInfo tabInfo = mock(ChannelTabInfo.class);
+            Mockito.<List<? extends InfoItem>>when(tabInfo.getRelatedItems()).thenReturn(items);
+            when(tabInfo.getErrors()).thenReturn(errors);
+            when(tabInfo.getNextPage()).thenReturn(null);
+            return tabInfo;
+        }
+
+        @Test
+        @DisplayName("Fails instead of returning an empty tab when NewPipe recorded an error")
+        void failsWhenTabIsEmptyBecauseOfAnError() throws Exception {
+            // ChannelTabInfo.getInfo catches a failed initial page into getErrors()
+            ParsingException swallowed = new ParsingException("Could not get tab content");
+            TabMocks mocks = stubChannelWithTab(CHANNEL_URL, "shorts");
+            ChannelTabInfo tabInfo = tabInfoWith(List.of(), List.of(swallowed));
+
+            try (MockedStatic<NewPipe> newPipeMock = mockStatic(NewPipe.class);
+                 MockedStatic<ChannelInfo> channelInfoMock = mockStatic(ChannelInfo.class);
+                 MockedStatic<ChannelTabInfo> tabInfoMock = mockStatic(ChannelTabInfo.class)) {
+
+                wireStatics(newPipeMock, channelInfoMock, CHANNEL_URL, mocks);
+                tabInfoMock.when(() -> ChannelTabInfo.getInfo(mocks.extractor())).thenReturn(tabInfo);
+
+                ExtractionException ex = assertThrows(ExtractionException.class, () ->
+                        channelTabService.getChannelTab(CHANNEL_URL, "shorts", CHANNEL_ID));
+
+                assertTrue(ex.getMessage().contains("shorts"));
+                assertTrue(ex.getMessage().contains("Could not get tab content"));
+                assertSame(swallowed, ex.getCause());
+            }
+        }
+
+        @Test
+        @DisplayName("Returns the items when errors were recorded alongside them")
+        void returnsItemsDespitePartialErrors() throws Exception {
+            TabMocks mocks = stubChannelWithTab(CHANNEL_URL, "videos");
+            ChannelTabInfo tabInfo = tabInfoWith(
+                    List.of(mock(StreamInfoItem.class)),
+                    List.of(new ParsingException("Could not get upload date")));
+
+            try (MockedStatic<NewPipe> newPipeMock = mockStatic(NewPipe.class);
+                 MockedStatic<ChannelInfo> channelInfoMock = mockStatic(ChannelInfo.class);
+                 MockedStatic<ChannelTabInfo> tabInfoMock = mockStatic(ChannelTabInfo.class)) {
+
+                wireStatics(newPipeMock, channelInfoMock, CHANNEL_URL, mocks);
+                tabInfoMock.when(() -> ChannelTabInfo.getInfo(mocks.extractor())).thenReturn(tabInfo);
+
+                ChannelTabDTO result = channelTabService.getChannelTab(CHANNEL_URL, "videos", CHANNEL_ID);
+
+                assertEquals(1, result.getItems().size());
+            }
+        }
+
         @Test
         @DisplayName("Wraps unexpected exceptions in ExtractionException, preserving the thrown exception as cause")
         void wrapsUnexpectedExceptions() {
@@ -262,6 +309,51 @@ class ChannelTabServiceTest {
                 ArgumentCaptor<Page> pageCaptor = ArgumentCaptor.forClass(Page.class);
                 verify(mocks.extractor()).getPage(pageCaptor.capture());
                 assertNull(pageCaptor.getValue().getBody());
+            }
+        }
+
+        @Test
+        @DisplayName("Fails instead of returning an empty page when NewPipe recorded an error")
+        void failsWhenPageIsEmptyBecauseOfAnError() throws Exception {
+            ParsingException swallowed = new ParsingException("Could not parse continuation");
+            TabMocks mocks = stubChannelWithTab(CHANNEL_URL, "playlists");
+            InfoItemsPage<InfoItem> emptyPage = mockEmptyPage();
+            when(emptyPage.getErrors()).thenReturn(List.of(swallowed));
+            when(mocks.extractor().getPage(any(Page.class))).thenReturn(emptyPage);
+
+            try (MockedStatic<NewPipe> newPipeMock = mockStatic(NewPipe.class);
+                 MockedStatic<ChannelInfo> channelInfoMock = mockStatic(ChannelInfo.class)) {
+
+                wireStatics(newPipeMock, channelInfoMock, CHANNEL_URL, mocks);
+
+                ExtractionException ex = assertThrows(ExtractionException.class, () ->
+                        channelTabService.getChannelTabPage(
+                                "UCtest", "playlists", PAGE_URL, null, PAGE_IDS));
+
+                assertTrue(ex.getMessage().contains("playlists"));
+                assertSame(swallowed, ex.getCause());
+            }
+        }
+
+        @Test
+        @DisplayName("Returns the page's items when errors were recorded alongside them")
+        void returnsPageItemsDespitePartialErrors() throws Exception {
+            TabMocks mocks = stubChannelWithTab(CHANNEL_URL, "videos");
+            @SuppressWarnings("unchecked")
+            InfoItemsPage<InfoItem> page = mock(InfoItemsPage.class);
+            when(page.getItems()).thenReturn(List.of(mock(StreamInfoItem.class)));
+            when(page.getErrors()).thenReturn(List.of(new ParsingException("Could not get view count")));
+            when(mocks.extractor().getPage(any(Page.class))).thenReturn(page);
+
+            try (MockedStatic<NewPipe> newPipeMock = mockStatic(NewPipe.class);
+                 MockedStatic<ChannelInfo> channelInfoMock = mockStatic(ChannelInfo.class)) {
+
+                wireStatics(newPipeMock, channelInfoMock, CHANNEL_URL, mocks);
+
+                ChannelTabDTO result = channelTabService.getChannelTabPage(
+                        "UCtest", "videos", PAGE_URL, null, PAGE_IDS);
+
+                assertEquals(1, result.getItems().size());
             }
         }
 

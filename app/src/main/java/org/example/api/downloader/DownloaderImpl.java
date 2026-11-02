@@ -18,7 +18,14 @@ import java.util.List;
 import java.util.Map;
 
 public class DownloaderImpl extends Downloader {
-    public static final String USER_AGENT = "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:43.0) Gecko/20100101 Firefox/43.0";
+    /**
+     * Default User-Agent, sent unless NewPipe sets its own for a request (it does for the
+     * mobile InnerTube clients). Matches NewPipeExtractor's own test downloader: the latest
+     * Firefox ESR. YouTube can serve old browsers a different page layout, which NewPipe
+     * then can't parse, so keep this current when bumping NewPipeExtractor.
+     */
+    public static final String USER_AGENT =
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0) Gecko/20100101 Firefox/140.0";
 
     private static DownloaderImpl instance;
     private String mCookies;

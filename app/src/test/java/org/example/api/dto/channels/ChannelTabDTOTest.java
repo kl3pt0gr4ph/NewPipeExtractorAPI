@@ -10,7 +10,10 @@ import org.schabi.newpipe.extractor.Image;
 import org.schabi.newpipe.extractor.InfoItem;
 import org.schabi.newpipe.extractor.ListExtractor.InfoItemsPage;
 import org.schabi.newpipe.extractor.Page;
+import org.schabi.newpipe.extractor.channel.ChannelInfoItem;
 import org.schabi.newpipe.extractor.channel.tabs.ChannelTabInfo;
+import org.schabi.newpipe.extractor.playlist.PlaylistInfo;
+import org.schabi.newpipe.extractor.playlist.PlaylistInfoItem;
 import org.schabi.newpipe.extractor.stream.StreamInfoItem;
 
 import java.util.Base64;
@@ -52,6 +55,33 @@ class ChannelTabDTOTest {
         return item;
     }
 
+    private PlaylistInfoItem playlistItem(String url, String name) {
+        PlaylistInfoItem item = mock(PlaylistInfoItem.class);
+        when(item.getUrl()).thenReturn(url);
+        when(item.getName()).thenReturn(name);
+        when(item.getUploaderName()).thenReturn("Linus Tech Tips");
+        when(item.getUploaderUrl()).thenReturn("https://www.youtube.com/@LinusTechTips");
+        when(item.isUploaderVerified()).thenReturn(true);
+        when(item.getStreamCount()).thenReturn(42L);
+        when(item.getPlaylistType()).thenReturn(PlaylistInfo.PlaylistType.NORMAL);
+        when(item.getThumbnails()).thenReturn(List.of(
+                new Image("https://img/playlist.jpg", 94, 168, Image.ResolutionLevel.LOW)));
+        return item;
+    }
+
+    private ChannelInfoItem channelItem(String url, String name) {
+        ChannelInfoItem item = mock(ChannelInfoItem.class);
+        when(item.getUrl()).thenReturn(url);
+        when(item.getName()).thenReturn(name);
+        when(item.getDescription()).thenReturn("Unboxings and first looks");
+        when(item.getSubscriberCount()).thenReturn(2_000_000L);
+        when(item.getStreamCount()).thenReturn(900L);
+        when(item.isVerified()).thenReturn(true);
+        when(item.getThumbnails()).thenReturn(List.of(
+                new Image("https://img/avatar.jpg", 88, 88, Image.ResolutionLevel.LOW)));
+        return item;
+    }
+
     // ── VideoItemDto.from ────────────────────────────────────────────────
 
     @Test
@@ -62,6 +92,7 @@ class ChannelTabDTOTest {
 
         // Whole-record equality: any field drift fails loudly.
         assertThat(dto).isEqualTo(new ChannelTabDTO.VideoItemDto(
+                "STREAM",
                 "https://youtube.com/watch?v=abc",
                 "Video A",
                 "Linus Tech Tips",
@@ -76,19 +107,66 @@ class ChannelTabDTOTest {
                         new ChannelTabDTO.ThumbnailDto("https://img/thumb-high.jpg", 188, 336))));
     }
 
+    // ── PlaylistItemDto.from / ChannelItemDto.from ───────────────────────
+
+    @Test
+    @DisplayName("Maps every PlaylistInfoItem field")
+    void playlistItemDto_mapsAllFields() {
+        ChannelTabDTO.PlaylistItemDto dto = ChannelTabDTO.PlaylistItemDto.from(
+                playlistItem("https://youtube.com/playlist?list=PL1", "Builds"));
+
+        assertThat(dto).isEqualTo(new ChannelTabDTO.PlaylistItemDto(
+                "PLAYLIST",
+                "https://youtube.com/playlist?list=PL1",
+                "Builds",
+                "Linus Tech Tips",
+                "https://www.youtube.com/@LinusTechTips",
+                true,
+                42L,
+                "NORMAL",
+                List.of(new ChannelTabDTO.ThumbnailDto("https://img/playlist.jpg", 94, 168))));
+    }
+
+    @Test
+    @DisplayName("Maps a playlist with no type to a null playlistType")
+    void playlistItemDto_mapsMissingPlaylistTypeToNull() {
+        PlaylistInfoItem item = playlistItem("https://youtube.com/playlist?list=PL1", "Builds");
+        when(item.getPlaylistType()).thenReturn(null);
+
+        assertThat(ChannelTabDTO.PlaylistItemDto.from(item).playlistType()).isNull();
+    }
+
+    @Test
+    @DisplayName("Maps every ChannelInfoItem field")
+    void channelItemDto_mapsAllFields() {
+        ChannelTabDTO.ChannelItemDto dto = ChannelTabDTO.ChannelItemDto.from(
+                channelItem("https://www.youtube.com/@ShortCircuit", "ShortCircuit"));
+
+        assertThat(dto).isEqualTo(new ChannelTabDTO.ChannelItemDto(
+                "CHANNEL",
+                "https://www.youtube.com/@ShortCircuit",
+                "ShortCircuit",
+                "Unboxings and first looks",
+                2_000_000L,
+                900L,
+                true,
+                List.of(new ChannelTabDTO.ThumbnailDto("https://img/avatar.jpg", 88, 88))));
+    }
+
     // ── from(ChannelTabInfo) ─────────────────────────────────────────────
 
     @Test
-    @DisplayName("Maps stream items in order, skips non-stream items, and carries tab, channelId, and cursor")
-    void from_mapsFilteredItemsAndCursor() {
-        StreamInfoItem first = streamItem("https://youtube.com/watch?v=1", "First");
-        StreamInfoItem second = streamItem("https://youtube.com/watch?v=2", "Second");
-        InfoItem nonStream = mock(InfoItem.class); // e.g. a playlist card in the tab
+    @DisplayName("Maps stream, playlist and channel items in order, skips unknown types, and carries tab, channelId, and cursor")
+    void from_mapsItemsAndCursor() {
+        StreamInfoItem stream = streamItem("https://youtube.com/watch?v=1", "Stream");
+        PlaylistInfoItem playlist = playlistItem("https://youtube.com/playlist?list=PL2", "Playlist");
+        ChannelInfoItem channel = channelItem("https://www.youtube.com/@ShortCircuit", "Channel");
+        InfoItem unknown = mock(InfoItem.class); // not a stream, playlist or channel
 
         byte[] body = "{\"continuation\":\"token\"}".getBytes();
         ChannelTabInfo tabInfo = mock(ChannelTabInfo.class);
         Mockito.<List<? extends InfoItem>>when(tabInfo.getRelatedItems())
-                .thenReturn(List.of(first, nonStream, second));
+                .thenReturn(List.of(stream, unknown, playlist, channel));
         when(tabInfo.getNextPage()).thenReturn(new Page(PAGE_URL, null, PAGE_IDS, null, body));
 
         ChannelTabDTO dto = ChannelTabDTO.from(tabInfo, "videos", "UCXuq");
@@ -96,8 +174,13 @@ class ChannelTabDTOTest {
         assertThat(dto.getTab()).isEqualTo("videos");
         assertThat(dto.getChannelId()).isEqualTo("UCXuq");
         assertThat(dto.getItems())
-                .extracting(ChannelTabDTO.VideoItemDto::name)
-                .containsExactly("First", "Second"); // non-stream item dropped
+                .extracting(ChannelTabDTO.ItemDto::infoType)
+                .containsExactly("STREAM", "PLAYLIST", "CHANNEL"); // unknown type dropped
+        assertThat(dto.getItems())
+                .hasExactlyElementsOfTypes(
+                        ChannelTabDTO.VideoItemDto.class,
+                        ChannelTabDTO.PlaylistItemDto.class,
+                        ChannelTabDTO.ChannelItemDto.class);
         assertThat(dto.getNextPage()).isEqualTo(new ChannelTabDTO.PageDto(
                 PAGE_URL,
                 Base64.getEncoder().encodeToString(body),
@@ -134,8 +217,9 @@ class ChannelTabDTOTest {
         assertThat(dto.getTab()).isEqualTo("shorts");
         assertThat(dto.getChannelId()).isEqualTo("UCXuq");
         assertThat(dto.getItems())
-                .extracting(ChannelTabDTO.VideoItemDto::name)
-                .containsExactly("Page item");
+                .singleElement()
+                .isInstanceOfSatisfying(ChannelTabDTO.VideoItemDto.class,
+                        video -> assertThat(video.name()).isEqualTo("Page item"));
         assertThat(dto.getNextPage()).isEqualTo(
                 new ChannelTabDTO.PageDto(PAGE_URL, null, PAGE_IDS));
     }

@@ -27,21 +27,21 @@ This is the backend for [OpenTube](https://github.com/kl3pt0gr4ph/OpenTube-Front
 
 ```mermaid
 flowchart LR
-    Frontend["OpenTube Frontend<br/>(SvelteKit)"]
-    subgraph Backend["NewPipeExtractorAPI (Spring Boot, :8080)"]
-        Controllers["Controllers<br/>/api/v1/*"]
-        Services["Services"]
-        Cache["StreamInfo cache<br/>(Caffeine)"]
-        Extractor["NewPipeExtractor<br/>+ OkHttp"]
-    end
-    YouTube["YouTube"]
+   Frontend["OpenTube Frontend<br/>(SvelteKit)"]
+   subgraph Backend["NewPipeExtractorAPI (Spring Boot, :8080)"]
+      Controllers["Controllers<br/>/api/v1/*"]
+      Services["Services"]
+      Cache["StreamInfo cache<br/>(Caffeine)"]
+      Extractor["NewPipeExtractor<br/>+ OkHttp"]
+   end
+   YouTube["YouTube"]
 
-    Frontend -- "GET /api/v1/*" --> Controllers
-    Controllers --> Services
-    Services --> Cache
-    Cache -- "miss" --> Extractor
-    Services --> Extractor
-    Extractor -- "metadata, stream URLs" --> YouTube
+   Frontend -- "GET /api/v1/*" --> Controllers
+   Controllers --> Services
+   Services --> Cache
+   Cache -- "miss" --> Extractor
+   Services --> Extractor
+   Extractor -- "metadata, stream URLs" --> YouTube
 ```
 
 Each controller turns the request's `id` into a YouTube URL, a service extracts it with NewPipeExtractor, and the result goes back as JSON. The backend never touches media: the frontend fetches every video segment itself, through its own proxy.
@@ -56,7 +56,7 @@ Each controller turns the request's `id` into a YouTube URL, a service extracts 
 2. **Generate.** `DashManifestGeneratorService` groups what's left into AdaptationSets:
 
    | Content   | One AdaptationSet per         | Labelled with                                                       |
-      | --------- | ----------------------------- | ------------------------------------------------------------------- |
+         | --------- | ----------------------------- | ------------------------------------------------------------------- |
    | Video     | Container and codec family    | Representations sorted by height, highest first                     |
    | Audio     | Track, then container and codec | `lang`, a `Role` and a `<Label>`; representations by bandwidth   |
    | Subtitles | Track                         | `lang`, a `subtitle` or `caption` Role and a `<Label>`              |
@@ -67,15 +67,15 @@ A trimmed example of one audio track:
 
 ```xml
 <AdaptationSet id="1" contentType="audio" mimeType="audio/mp4" lang="en" subsegmentAlignment="true" startWithSAP="1">
-  <Role schemeIdUri="urn:mpeg:dash:role:2011" value="main"/>
-  <Label>English original</Label>
-  <Representation id="140" bandwidth="130482" codecs="mp4a.40.2" audioSamplingRate="44100">
-    <AudioChannelConfiguration schemeIdUri="urn:mpeg:dash:23003:3:audio_channel_configuration:2011" value="2"/>
-    <BaseURL>https://rr3---sn-example.googlevideo.com/videoplayback?…</BaseURL>
-    <SegmentBase indexRange="601-900">
-      <Initialization range="0-600"/>
-    </SegmentBase>
-  </Representation>
+   <Role schemeIdUri="urn:mpeg:dash:role:2011" value="main"/>
+   <Label>English original</Label>
+   <Representation id="140" bandwidth="130482" codecs="mp4a.40.2" audioSamplingRate="44100">
+      <AudioChannelConfiguration schemeIdUri="urn:mpeg:dash:23003:3:audio_channel_configuration:2011" value="2"/>
+      <BaseURL>https://rr3---sn-example.googlevideo.com/videoplayback?…</BaseURL>
+      <SegmentBase indexRange="601-900">
+         <Initialization range="0-600"/>
+      </SegmentBase>
+   </Representation>
 </AdaptationSet>
 ```
 
@@ -178,7 +178,7 @@ Results mix videos, channels and playlists (see each item's `type`), with duplic
 | Endpoint             | Parameters                                                                                          |
 | -------------------- | --------------------------------------------------------------------------------------------------- |
 | `/channels`          | `id`. Name, avatars, banners, description, subscriber count and available tabs                       |
-| `/channels/tab`      | `id`, `tab`: `videos` (default), `shorts`, `livestreams` or `playlists`                              |
+| `/channels/tab`      | `id`, `tab`: `videos` (default), `shorts`, `livestreams`, `playlists` or `albums`. Each item's `infoType` (`STREAM`, `PLAYLIST` or `CHANNEL`) says which shape it has |
 | `/channels/tab/page` | `channelId`, `tab`, `pageUrl`, `pageBody`, and `pageIds` repeated three times, all from `nextPage`  |
 
 ### Playlists and comments
@@ -212,12 +212,12 @@ Errors share one shape:
 
 ```json
 {
-  "timestamp": "2026-10-29T10:30:00.123Z",
-  "status": 400,
-  "error": "Bad Request",
-  "message": "Required parameter 'id' is missing",
-  "errorCode": "MISSING_PARAMETER",
-  "path": "/api/v1/streams/details"
+   "timestamp": "2026-10-29T10:30:00.123Z",
+   "status": 400,
+   "error": "Bad Request",
+   "message": "Required parameter 'id' is missing",
+   "errorCode": "MISSING_PARAMETER",
+   "path": "/api/v1/streams/details"
 }
 ```
 
@@ -272,18 +272,18 @@ To change a JVM setting for one deployment, set `JDK_JAVA_OPTIONS`, e.g. `-XX:Ma
 
 ```yaml
 services:
-  backend:
-    image: mrtumble/opentube-backend:latest
-    restart: unless-stopped
-    ports:
-      - "8080:8080"
-    read_only: true
-    tmpfs:
-      - /tmp
-    cap_drop:
-      - ALL
-    security_opt:
-      - no-new-privileges:true
+   backend:
+      image: mrtumble/opentube-backend:latest
+      restart: unless-stopped
+      ports:
+         - "8080:8080"
+      read_only: true
+      tmpfs:
+         - /tmp
+      cap_drop:
+         - ALL
+      security_opt:
+         - no-new-privileges:true
 ```
 
 Don't add a `healthcheck:` block unless you need different timings: the one in the image is used automatically.

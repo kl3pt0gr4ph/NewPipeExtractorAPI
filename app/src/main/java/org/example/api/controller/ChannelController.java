@@ -62,7 +62,7 @@ public class ChannelController {
             @RequestParam(name = "id") String id,
             @Parameter(description = CHANNEL_TAB, schema = @Schema(type = "string",
                     defaultValue = ChannelTabs.VIDEOS,
-                    allowableValues = {"videos", "shorts", "livestreams", "playlists"}))
+                    allowableValues = {"videos", "shorts", "livestreams", "playlists", "albums"}))
             @RequestParam(name = "tab", defaultValue = ChannelTabs.VIDEOS) String tab
     ) {
         logger.debug("Fetching channel tab '{}' for ID: {}", tab, id);
@@ -97,7 +97,7 @@ public class ChannelController {
             @RequestParam(name = "channelId") String channelId,
             @Parameter(description = "Same tab as the first request", schema = @Schema(type = "string",
                     defaultValue = ChannelTabs.VIDEOS,
-                    allowableValues = {"videos", "shorts", "livestreams", "playlists"}))
+                    allowableValues = {"videos", "shorts", "livestreams", "playlists", "albums"}))
             @RequestParam(name = "tab", defaultValue = ChannelTabs.VIDEOS) String tab,
             @Parameter(description = "`nextPage.url`. " + FROM_NEXT_PAGE)
             @RequestParam(name = "pageUrl") String pageUrl,
