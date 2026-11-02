@@ -6,6 +6,8 @@ The format is based on [keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-02
+
 ### Added
 
 - OpenAPI spec at `/v3/api-docs` (and `/v3/api-docs.yaml`) and Swagger UI at `/swagger-ui.html`, generated from the controllers. On by default; turn off with `SPRINGDOC_APIDOCS_ENABLED=false`, or set `OPENTUBE_OPENAPI_SERVERURL` to advertise a public base URL
@@ -94,7 +96,8 @@ The format is based on [keep a Changelog](https://keepachangelog.com/en/1.1.0/),
  - Streams that are not delivered over progressive HTTP, and streams without both an init and index byte range, are filtered out with a log line rather than being emitted as unplayable `Representations`.
  - Replaced `assert` statements in stream selection and logging with real null checks. Assertions are disabled at runtime unless `-ea` is set, so they provided no protection in production.
 
-[Unreleased]: https://github.com/kl3pt0gr4ph/NewPipeExtractorApi/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/kl3pt0gr4ph/NewPipeExtractorApi/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/kl3pt0gr4ph/NewPipeExtractorApi/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/kl3pt0gr4ph/NewPipeExtractorApi/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/kl3pt0gr4ph/NewPipeExtractorApi/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/kl3pt0gr4ph/NewPipeExtractorApi/compare/v1.1.1...v0.2.0
