@@ -1,17 +1,23 @@
 package org.example.api.dto.channels;
 
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.DiscriminatorMapping;
 import io.swagger.v3.oas.annotations.media.Schema;
+import org.schabi.newpipe.extractor.Image;
 import org.schabi.newpipe.extractor.InfoItem;
 import org.schabi.newpipe.extractor.ListExtractor.InfoItemsPage;
+import org.schabi.newpipe.extractor.channel.ChannelInfoItem;
 import org.schabi.newpipe.extractor.channel.tabs.ChannelTabInfo;
+import org.schabi.newpipe.extractor.playlist.PlaylistInfoItem;
 import org.schabi.newpipe.extractor.stream.StreamInfoItem;
 
 import java.util.Base64;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Data Transfer Object representing paginated content from a channel tab
- * (Videos, Shorts, Livestreams, or Playlists).
+ * (Videos, Shorts, Livestreams, Playlists or Albums).
  *
  * <p>Mirrors the structure of {@link ChannelTabInfo} and its paged items,
  * keeping raw NewPipe types out of the API surface.</p>
@@ -21,16 +27,30 @@ public class ChannelTabDTO {
 
     // ── Nested Records ──────────────────────────────────────────────────────────
 
-    /** Thumbnail image for a video item. */
+    /** Thumbnail image for a tab item. */
     @Schema(name = "ChannelTabThumbnail")
-    public record ThumbnailDto(String url, int height, int width) {}
+    public record ThumbnailDto(String url, int height, int width) {
+        static List<ThumbnailDto> fromAll(List<Image> images) {
+            return images == null ? List.of() : images.stream()
+                    .map(img -> new ThumbnailDto(img.getUrl(), img.getHeight(), img.getWidth()))
+                    .toList();
+        }
+    }
 
     /**
-     * A single video/short/livestream item within the tab.
-     * Maps to {@link StreamInfoItem}.
+     * One item in a channel tab. {@code infoType} says which record it is, using the same
+     * values as NewPipe's {@code InfoItem.InfoType} and the related-items response.
+     */
+    public sealed interface ItemDto permits VideoItemDto, PlaylistItemDto, ChannelItemDto {
+        String infoType();
+    }
+
+    /**
+     * A video, Short or livestream. Maps to {@link StreamInfoItem}.
      */
     @Schema(name = "ChannelTabItem")
     public record VideoItemDto(
+            @Schema(allowableValues = "STREAM") String infoType,
             String url,
             String name,
             String uploaderName,
@@ -42,12 +62,12 @@ public class ChannelTabDTO {
             String textualUploadDate,
             @Schema(description = "Whether the item is a Short") boolean isShortFormContent,
             List<ThumbnailDto> thumbnails
-    ) {
+    ) implements ItemDto {
+        public static final String INFO_TYPE = "STREAM";
+
         public static VideoItemDto from(StreamInfoItem item) {
-            List<ThumbnailDto> thumbnails = item.getThumbnails().stream()
-                    .map(img -> new ThumbnailDto(img.getUrl(), img.getHeight(), img.getWidth()))
-                    .toList();
             return new VideoItemDto(
+                    INFO_TYPE,
                     item.getUrl(),
                     item.getName(),
                     item.getUploaderName(),
@@ -57,7 +77,71 @@ public class ChannelTabDTO {
                     item.getViewCount(),
                     item.getTextualUploadDate(),
                     item.isShortFormContent(),
-                    thumbnails
+                    ThumbnailDto.fromAll(item.getThumbnails())
+            );
+        }
+    }
+
+    /**
+     * A playlist or album, from the Playlists or Albums tab. Maps to {@link PlaylistInfoItem}.
+     */
+    @Schema(name = "ChannelTabPlaylist")
+    public record PlaylistItemDto(
+            @Schema(allowableValues = "PLAYLIST") String infoType,
+            String url,
+            String name,
+            String uploaderName,
+            String uploaderUrl,
+            boolean uploaderVerified,
+            @Schema(description = "Number of videos, or -1 when unknown") long streamCount,
+            @Schema(description = "A normal playlist or one of YouTube's auto-generated mixes",
+                    allowableValues = {"NORMAL", "MIX_STREAM", "MIX_MUSIC", "MIX_CHANNEL", "MIX_GENRE"})
+            String playlistType,
+            List<ThumbnailDto> thumbnails
+    ) implements ItemDto {
+        public static final String INFO_TYPE = "PLAYLIST";
+
+        public static PlaylistItemDto from(PlaylistInfoItem item) {
+            return new PlaylistItemDto(
+                    INFO_TYPE,
+                    item.getUrl(),
+                    item.getName(),
+                    item.getUploaderName(),
+                    item.getUploaderUrl(),
+                    item.isUploaderVerified(),
+                    item.getStreamCount(),
+                    item.getPlaylistType() != null ? item.getPlaylistType().name() : null,
+                    ThumbnailDto.fromAll(item.getThumbnails())
+            );
+        }
+    }
+
+    /**
+     * A channel, e.g. a featured channel. Maps to {@link ChannelInfoItem}.
+     */
+    @Schema(name = "ChannelTabChannel")
+    public record ChannelItemDto(
+            @Schema(allowableValues = "CHANNEL") String infoType,
+            String url,
+            String name,
+            @Schema(description = "Description snippet") String description,
+            @Schema(description = "Subscribers, or -1 when hidden or unknown") long subscriberCount,
+            @Schema(description = "Number of videos, or -1 when unknown") long streamCount,
+            boolean verified,
+            List<ThumbnailDto> thumbnails
+    ) implements ItemDto {
+        public static final String INFO_TYPE = "CHANNEL";
+
+        public static ChannelItemDto from(ChannelInfoItem item) {
+            return new ChannelItemDto(
+                    INFO_TYPE,
+                    item.getUrl(),
+                    item.getName(),
+                    item.getDescription(),
+                    item.getSubscriberCount(),
+                    item.getStreamCount(),
+                    item.isVerified(),
+                    ThumbnailDto.fromAll(item.getThumbnails())
             );
         }
     }
@@ -78,9 +162,6 @@ public class ChannelTabDTO {
      *       Without this list, {@code channelIds} is null, causing the NPE in
      *       {@code collectItemsFrom} at line 235.</li>
      * </ul>
-     *
-     * <p>The previous implementation only sent {@code url}, discarding {@code body} and
-     * {@code ids}, which broke pagination in two independent ways simultaneously.</p>
      */
     @Schema(name = "ChannelTabNextPage",
             description = "Continuation cursor. Pass all three fields back to `/channels/tab/page` "
@@ -104,11 +185,23 @@ public class ChannelTabDTO {
             example = "@LinusTechTips")
     private String channelId;
 
-    /** Items on the current page. Only {@link StreamInfoItem}s are mapped;
-     *  other item types (playlists, channels) are silently skipped for now. */
-    @Schema(description = "Items on this page. Only videos, Shorts and livestreams are included; "
-            + "playlist and channel items are skipped.")
-    private List<VideoItemDto> items;
+    /** Items on the current page: videos, playlists or channels, told apart by {@code infoType}. */
+    @ArraySchema(
+            arraySchema = @Schema(description = "Items on this page. Each item's `infoType` says "
+                    + "which shape it has: `videos`, `shorts` and `livestreams` hold `STREAM` "
+                    + "items; `playlists` and `albums` hold `PLAYLIST` items."),
+            schema = @Schema(
+                    oneOf = {VideoItemDto.class, PlaylistItemDto.class, ChannelItemDto.class},
+                    discriminatorProperty = "infoType",
+                    discriminatorMapping = {
+                            @DiscriminatorMapping(value = VideoItemDto.INFO_TYPE,
+                                    schema = VideoItemDto.class),
+                            @DiscriminatorMapping(value = PlaylistItemDto.INFO_TYPE,
+                                    schema = PlaylistItemDto.class),
+                            @DiscriminatorMapping(value = ChannelItemDto.INFO_TYPE,
+                                    schema = ChannelItemDto.class)
+                    }))
+    private List<ItemDto> items;
 
     /** Pagination info. Null when no further pages exist. */
     @Schema(description = "Cursor for the next page; absent on the last page")
@@ -140,11 +233,21 @@ public class ChannelTabDTO {
 
     // ── Helpers ─────────────────────────────────────────────────────────────────
 
-    private static List<VideoItemDto> mapItems(List<? extends InfoItem> rawItems) {
+    /** Maps every item type a channel tab can hold, in order; any other type is skipped. */
+    private static List<ItemDto> mapItems(List<? extends InfoItem> rawItems) {
         return rawItems.stream()
-                .filter(item -> item instanceof StreamInfoItem)
-                .map(item -> VideoItemDto.from((StreamInfoItem) item))
+                .map(ChannelTabDTO::toItemDto)
+                .filter(Objects::nonNull)
                 .toList();
+    }
+
+    private static ItemDto toItemDto(InfoItem item) {
+        return switch (item) {
+            case StreamInfoItem stream -> VideoItemDto.from(stream);
+            case PlaylistInfoItem playlist -> PlaylistItemDto.from(playlist);
+            case ChannelInfoItem channel -> ChannelItemDto.from(channel);
+            case null, default -> null;
+        };
     }
 
     private static PageDto buildNextPage(org.schabi.newpipe.extractor.Page nextPage) {
@@ -163,8 +266,8 @@ public class ChannelTabDTO {
     public String getChannelId() { return channelId; }
     public void setChannelId(String channelId) { this.channelId = channelId; }
 
-    public List<VideoItemDto> getItems() { return items; }
-    public void setItems(List<VideoItemDto> items) { this.items = items; }
+    public List<ItemDto> getItems() { return items; }
+    public void setItems(List<ItemDto> items) { this.items = items; }
 
     public PageDto getNextPage() { return nextPage; }
     public void setNextPage(PageDto nextPage) { this.nextPage = nextPage; }
