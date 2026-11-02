@@ -31,8 +31,9 @@ public final class OpenApiDocs {
     public static final String PLAYLIST_ID_EXAMPLE = "PLHovnlOusNLiJz3sm0d5i2Evwa2LDLdrg";
 
     public static final String CHANNEL_TAB =
-            "Channel tab to read. Only video-like items are returned, so `playlists` currently "
-                    + "comes back with an empty `items` list.";
+            "Channel tab to read. Must be one the channel has; see `tabs` in `/channels`. "
+                    + "`videos`, `shorts` and `livestreams` hold `STREAM` items; `playlists` and "
+                    + "`albums` hold `PLAYLIST` items.";
 
     public static final String FROM_NEXT_PAGE =
             "Taken verbatim from the `nextPage` object of the previous response.";
