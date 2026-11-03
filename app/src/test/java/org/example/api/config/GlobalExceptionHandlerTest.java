@@ -2,720 +2,363 @@ package org.example.api.config;
 
 import org.example.api.dto.ErrorResponseDTO;
 import org.example.api.exception.ApiException;
+import org.example.api.exception.ErrorCode;
 import org.example.api.exception.ExtractionException;
+import org.example.api.exception.NewPipeExceptionMapper;
+import org.example.api.exception.NoStreamsAvailableException;
 import org.example.api.exception.ValidationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.schabi.newpipe.extractor.exceptions.AccountTerminatedException;
+import org.schabi.newpipe.extractor.exceptions.AgeRestrictedContentException;
+import org.schabi.newpipe.extractor.exceptions.ContentNotAvailableException;
+import org.schabi.newpipe.extractor.exceptions.GeographicRestrictionException;
+import org.schabi.newpipe.extractor.exceptions.PaidContentException;
+import org.schabi.newpipe.extractor.exceptions.ParsingException;
+import org.schabi.newpipe.extractor.exceptions.PrivateContentException;
+import org.schabi.newpipe.extractor.exceptions.ReCaptchaException;
+import org.schabi.newpipe.extractor.exceptions.SignInConfirmNotBotException;
+import org.schabi.newpipe.extractor.exceptions.SoundCloudGoPlusContentException;
+import org.schabi.newpipe.extractor.exceptions.UnsupportedContentInCountryException;
+import org.schabi.newpipe.extractor.exceptions.YoutubeMusicPremiumContentException;
+import org.springframework.core.MethodParameter;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import java.io.IOException;
+import java.net.SocketTimeoutException;
+import java.util.List;
+import java.util.concurrent.CompletionException;
+import java.util.stream.Stream;
 
-/**
- * Test suite for GlobalExceptionHandler.
- * Tests exception handling, error response generation, and logging.
- */
-@DisplayName("GlobalExceptionHandler Tests")
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+@DisplayName("GlobalExceptionHandler")
 class GlobalExceptionHandlerTest {
 
-    private GlobalExceptionHandler exceptionHandler;
-    private WebRequest mockRequest;
+    /** Text no response may contain unless detail is turned on. */
+    private static final String RAW = "raw NewPipe wording 7f3c";
+
+    private GlobalExceptionHandler handler;
+    private WebRequest request;
 
     @BeforeEach
     void setUp() {
-        exceptionHandler = new GlobalExceptionHandler();
-        mockRequest = mock(WebRequest.class);
-        when(mockRequest.getDescription(false)).thenReturn("uri=/api/v1/test");
+        handler = new GlobalExceptionHandler();
+        request = mock(WebRequest.class);
+        when(request.getDescription(false)).thenReturn("uri=/api/v1/test");
     }
 
-    @Nested
-    @DisplayName("ValidationException Handling Tests")
-    class ValidationExceptionTests {
-
-        @Test
-        @DisplayName("Should handle ValidationException with all fields")
-        void testHandleValidationException_AllFields() {
-            // Arrange
-            // Note: ValidationException prepends "Invalid " to message and uses fixed error code
-            ValidationException exception = new ValidationException(
-                    "Video ID must not be empty",
-                    "INVALID_VIDEO_ID"
-            );
-
-            // Act
-            ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleValidationException(
-                    exception,
-                    mockRequest
-            );
-
-            // Assert
-            assertNotNull(response);
-            assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-
-            ErrorResponseDTO error = response.getBody();
-            assertNotNull(error);
-            assertEquals(400, error.getStatus());
-            assertEquals("Bad Request", error.getError());
-            // ValidationException prepends "Invalid " to the message
-            assertTrue(error.getMessage().contains("Video ID must not be empty"));
-            assertEquals("VALIDATION_ERROR", error.getErrorCode());  // Fixed error code
-            assertEquals("/api/v1/test", error.getPath());
-            assertNotNull(error.getTimestamp());
+    /** What a service does with a NewPipe failure, then what the advice does with the result. */
+    private ResponseEntity<ErrorResponseDTO> handleThrown(GlobalExceptionHandler h, Throwable thrown) {
+        RuntimeException translated = NewPipeExceptionMapper.translate(thrown);
+        if (translated instanceof ApiException api) {
+            return h.handleApiException(api, request);
         }
-
-        @Test
-        @DisplayName("Should handle ValidationException with minimal message")
-        void testHandleValidationException_MinimalMessage() {
-            // Arrange
-            ValidationException exception = new ValidationException(
-                    "Invalid input",
-                    "VALIDATION_ERROR"
-            );
-
-            // Act
-            ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleValidationException(
-                    exception,
-                    mockRequest
-            );
-
-            // Assert
-            assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-            // ValidationException prepends "Invalid " to message
-            assertTrue(response.getBody().getMessage().contains("Invalid input"));
-        }
-
-        @Test
-        @DisplayName("Should extract path from WebRequest")
-        void testHandleValidationException_PathExtraction() {
-            // Arrange
-            when(mockRequest.getDescription(false)).thenReturn("uri=/api/v1/streams/details");
-            ValidationException exception = new ValidationException("Error", "CODE");
-
-            // Act
-            ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleValidationException(
-                    exception,
-                    mockRequest
-            );
-
-            // Assert
-            assertEquals("/api/v1/streams/details", response.getBody().getPath());
-        }
-
-        @Test
-        @DisplayName("Should return 400 status code")
-        void testHandleValidationException_StatusCode() {
-            // Arrange
-            ValidationException exception = new ValidationException("Error", "CODE");
-
-            // Act
-            ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleValidationException(
-                    exception,
-                    mockRequest
-            );
-
-            // Assert
-            assertEquals(400, response.getStatusCode().value());
-            assertEquals(400, response.getBody().getStatus());
-        }
+        return h.handleGenericException(translated, request);
     }
 
-    @Nested
-    @DisplayName("ExtractionException Handling Tests")
-    class ExtractionExceptionTests {
-
-        @Test
-        @DisplayName("Should handle ExtractionException with all fields")
-        void testHandleExtractionException_AllFields() {
-            // Arrange
-            ExtractionException exception = new ExtractionException(
-                    "Failed to extract video information"
-            );
-
-            // Act
-            ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleExtractionException(
-                    exception,
-                    mockRequest
-            );
-
-            // Assert
-            assertNotNull(response);
-            assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
-
-            ErrorResponseDTO error = response.getBody();
-            assertNotNull(error);
-            assertEquals(500, error.getStatus());
-            assertEquals("Internal Server Error", error.getError());
-            assertEquals("Failed to extract video information", error.getMessage());
-            assertEquals("EXTRACTION_ERROR", error.getErrorCode());
-            assertEquals("/api/v1/test", error.getPath());
-            assertNotNull(error.getTimestamp());
-        }
-
-        @Test
-        @DisplayName("Should handle ExtractionException with cause")
-        void testHandleExtractionException_WithCause() {
-            // Arrange
-            Exception cause = new RuntimeException("NewPipe error");
-            ExtractionException exception = new ExtractionException(
-                    "Extraction failed",
-                    cause
-            );
-
-            // Act
-            ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleExtractionException(
-                    exception,
-                    mockRequest
-            );
-
-            // Assert
-            assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
-            assertEquals("Extraction failed", response.getBody().getMessage());
-        }
-
-        @Test
-        @DisplayName("Should return 500 status code")
-        void testHandleExtractionException_StatusCode() {
-            // Arrange
-            ExtractionException exception = new ExtractionException("Error");
-
-            // Act
-            ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleExtractionException(
-                    exception,
-                    mockRequest
-            );
-
-            // Assert
-            assertEquals(500, response.getStatusCode().value());
-            assertEquals(500, response.getBody().getStatus());
-        }
+    private ResponseEntity<ErrorResponseDTO> handleThrown(Throwable thrown) {
+        return handleThrown(handler, thrown);
     }
 
+    private static void assertError(ResponseEntity<ErrorResponseDTO> response, int status, String errorCode) {
+        assertThat(response.getStatusCode().value()).isEqualTo(status);
+        ErrorResponseDTO body = response.getBody();
+        assertThat(body).isNotNull();
+        assertThat(body.getStatus()).isEqualTo(status);
+        assertThat(body.getError()).isEqualTo(HttpStatus.valueOf(status).getReasonPhrase());
+        assertThat(body.getErrorCode()).isEqualTo(errorCode);
+        assertThat(body.getPath()).isEqualTo("/api/v1/test");
+        assertThat(body.getTimestamp()).isNotBlank();
+    }
+
+    // ── NewPipe exception mapping ───────────────────────────────────────────
+
+    static Stream<Arguments> newPipeExceptions() {
+        return Stream.of(
+                Arguments.of(new ContentNotAvailableException(RAW), 404, "CONTENT_UNAVAILABLE"),
+                Arguments.of(new PrivateContentException(RAW), 403, "CONTENT_PRIVATE"),
+                Arguments.of(new AgeRestrictedContentException(RAW), 403, "AGE_RESTRICTED"),
+                Arguments.of(new GeographicRestrictionException(RAW), 451, "GEO_RESTRICTED"),
+                Arguments.of(new UnsupportedContentInCountryException(RAW), 451, "GEO_RESTRICTED"),
+                Arguments.of(new PaidContentException(RAW), 403, "PAID_CONTENT"),
+                Arguments.of(new YoutubeMusicPremiumContentException(), 403, "PAID_CONTENT"),
+                Arguments.of(new SoundCloudGoPlusContentException(), 403, "PAID_CONTENT"),
+                Arguments.of(new AccountTerminatedException(RAW), 410, "ACCOUNT_TERMINATED"),
+                Arguments.of(new SignInConfirmNotBotException(RAW), 503, "UPSTREAM_BLOCKED"),
+                Arguments.of(new ReCaptchaException(RAW, "https://www.youtube.com/watch?v=x"), 503, "UPSTREAM_BLOCKED"),
+                Arguments.of(new ParsingException(RAW), 502, "UPSTREAM_CHANGED"),
+                Arguments.of(new IOException(RAW), 502, "UPSTREAM_UNREACHABLE"),
+                Arguments.of(new SocketTimeoutException(RAW), 502, "UPSTREAM_UNREACHABLE"),
+                Arguments.of(new org.schabi.newpipe.extractor.exceptions.ExtractionException(RAW),
+                        500, "EXTRACTION_ERROR"));
+    }
+
+    @ParameterizedTest(name = "{0} -> {1} {2}")
+    @MethodSource("newPipeExceptions")
+    @DisplayName("Each NewPipe exception gets its own status and errorCode, with the API's message")
+    void mapsNewPipeException(Throwable thrown, int status, String errorCode) {
+        ResponseEntity<ErrorResponseDTO> response = handleThrown(thrown);
+
+        assertError(response, status, errorCode);
+        ErrorResponseDTO body = response.getBody();
+        assertThat(body.getMessage()).isEqualTo(ErrorCode.valueOf(errorCode).defaultMessage());
+        assertThat(body.getMessage()).doesNotContain(RAW);
+        assertThat(body.getDetail()).isNull();
+    }
+
+    @ParameterizedTest(name = "{0} -> {1} {2}")
+    @MethodSource("newPipeExceptions")
+    @DisplayName("The mapping also applies when the NewPipe exception is wrapped")
+    void mapsWrappedNewPipeException(Throwable thrown, int status, String errorCode) {
+        assertError(handleThrown(new CompletionException(thrown)), status, errorCode);
+    }
+
+    @Test
+    @DisplayName("A restriction wins over the generic ParsingException wrapped around it")
+    void mostSpecificExceptionInChainWins() {
+        Throwable thrown = new ParsingException("Could not get stream info",
+                new AgeRestrictedContentException(RAW));
+
+        assertError(handleThrown(thrown), 403, "AGE_RESTRICTED");
+    }
+
+    @Test
+    @DisplayName("Of two generic exceptions in a chain, the outermost decides")
+    void outermostGenericExceptionWins() {
+        Throwable thrown = new ParsingException(RAW, new IOException("connection reset"));
+
+        assertError(handleThrown(thrown), 502, "UPSTREAM_CHANGED");
+    }
+
+    @Test
+    @DisplayName("The translated exception keeps the original as its cause")
+    void translationKeepsCause() {
+        PrivateContentException original = new PrivateContentException(RAW);
+
+        RuntimeException translated = NewPipeExceptionMapper.translate(original);
+
+        assertThat(translated).isInstanceOf(ExtractionException.class).hasCause(original);
+    }
+
+    @Test
+    @DisplayName("An ApiException is passed through translation unchanged")
+    void apiExceptionPassesThrough() {
+        ValidationException own = new ValidationException("tab", "this channel has no 'x' tab");
+
+        assertThat(NewPipeExceptionMapper.translate(own)).isSameAs(own);
+        assertThat(NewPipeExceptionMapper.translate(new CompletionException(own))).isSameAs(own);
+    }
+
+    @Test
+    @DisplayName("An unrelated RuntimeException passes through and becomes 500 INTERNAL_ERROR")
+    void unrelatedRuntimeExceptionIsInternalError() {
+        NullPointerException bug = new NullPointerException(RAW);
+
+        assertThat(NewPipeExceptionMapper.translate(bug)).isSameAs(bug);
+
+        ResponseEntity<ErrorResponseDTO> response = handleThrown(bug);
+        assertError(response, 500, "INTERNAL_ERROR");
+        assertThat(response.getBody().getMessage()).doesNotContain(RAW);
+    }
+
+    @Test
+    @DisplayName("An unrelated checked exception becomes 500 INTERNAL_ERROR")
+    void unrelatedCheckedExceptionIsInternalError() {
+        Exception checked = new Exception(RAW);
+
+        RuntimeException translated = NewPipeExceptionMapper.translate(checked);
+
+        assertThat(translated).isInstanceOf(ApiException.class).hasCause(checked);
+        assertError(handleThrown(checked), 500, "INTERNAL_ERROR");
+    }
+
+    // ── ApiException ────────────────────────────────────────────────────────
+
+    @ParameterizedTest(name = "{0}")
+    @EnumSource(ErrorCode.class)
+    @DisplayName("Every ErrorCode is returned with its own status, reason phrase and default message")
+    void everyCodeRoundTrips(ErrorCode code) {
+        ResponseEntity<ErrorResponseDTO> response = handler.handleApiException(new ApiException(code), request);
+
+        assertError(response, code.httpStatus(), code.name());
+        assertThat(response.getBody().getMessage()).isEqualTo(code.defaultMessage());
+    }
+
+    @Test
+    @DisplayName("A message the API wrote is passed through as message")
+    void apiWrittenMessageIsKept() {
+        ResponseEntity<ErrorResponseDTO> response = handler.handleApiException(
+                new ValidationException("URL", "must start with http:// or https://"), request);
+
+        assertError(response, 400, "VALIDATION_ERROR");
+        assertThat(response.getBody().getMessage()).isEqualTo("Invalid URL: must start with http:// or https://");
+    }
+
+    @Test
+    @DisplayName("NoStreamsAvailableException is 503 NO_STREAMS_AVAILABLE")
+    void noStreamsAvailable() {
+        ResponseEntity<ErrorResponseDTO> response = handler.handleApiException(
+                new NoStreamsAvailableException("No streams available"), request);
+
+        assertError(response, 503, "NO_STREAMS_AVAILABLE");
+        assertThat(response.getBody().getMessage()).isEqualTo("No streams available");
+    }
+
+    // ── detail ──────────────────────────────────────────────────────────────
+
     @Nested
-    @DisplayName("ApiException Handling Tests")
-    class ApiExceptionTests {
+    @DisplayName("detail")
+    class DetailTests {
+
+        private final GlobalExceptionHandler withDetail =
+                new GlobalExceptionHandler(new ApiErrorProperties(true));
 
         @Test
-        @DisplayName("Should handle ApiException with 404 status")
-        void testHandleApiException_NotFound() {
-            // Arrange
-            ApiException exception = new ApiException(
-                    "Video not found",
-                    "VIDEO_NOT_FOUND",
-                    404
-            );
+        @DisplayName("Holds the underlying exception chain when include-detail is on")
+        void includesCauseChainWhenEnabled() {
+            Throwable thrown = new ParsingException("Could not get stream info",
+                    new PrivateContentException(RAW));
 
-            // Act
-            ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleApiException(
-                    exception,
-                    mockRequest
-            );
+            ErrorResponseDTO body = handleThrown(withDetail, thrown).getBody();
 
-            // Assert
-            assertNotNull(response);
-            assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
-
-            ErrorResponseDTO error = response.getBody();
-            assertNotNull(error);
-            assertEquals(404, error.getStatus());
-            assertEquals("Not Found", error.getError());
-            assertEquals("Video not found", error.getMessage());
-            assertEquals("VIDEO_NOT_FOUND", error.getErrorCode());
+            assertThat(body.getErrorCode()).isEqualTo("CONTENT_PRIVATE");
+            assertThat(body.getMessage()).doesNotContain(RAW);
+            assertThat(body.getDetail())
+                    .isEqualTo("ParsingException: Could not get stream info <- PrivateContentException: " + RAW);
         }
 
         @Test
-        @DisplayName("Should handle ApiException with 429 rate limit")
-        void testHandleApiException_RateLimit() {
-            // Arrange
-            ApiException exception = new ApiException(
-                    "Rate limit exceeded",
-                    "RATE_LIMIT_EXCEEDED",
-                    429
-            );
+        @DisplayName("Holds the exception for unexpected errors when include-detail is on")
+        void includesUnexpectedExceptionWhenEnabled() {
+            ErrorResponseDTO body = withDetail.handleGenericException(
+                    new IllegalStateException(RAW), request).getBody();
 
-            // Act
-            ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleApiException(
-                    exception,
-                    mockRequest
-            );
-
-            // Assert
-            assertEquals(HttpStatus.TOO_MANY_REQUESTS, response.getStatusCode());
-            assertEquals(429, response.getBody().getStatus());
-            assertEquals("Too Many Requests", response.getBody().getError());
+            assertThat(body.getMessage()).isEqualTo("An unexpected error occurred");
+            assertThat(body.getDetail()).isEqualTo("IllegalStateException: " + RAW);
         }
 
         @Test
-        @DisplayName("Should handle ApiException with 503 service unavailable")
-        void testHandleApiException_ServiceUnavailable() {
-            // Arrange
-            ApiException exception = new ApiException(
-                    "Service temporarily unavailable",
-                    "SERVICE_UNAVAILABLE",
-                    503
-            );
+        @DisplayName("Is absent when include-detail is off (the default)")
+        void absentByDefault() {
+            ErrorResponseDTO body = handleThrown(new PrivateContentException(RAW)).getBody();
 
-            // Act
-            ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleApiException(
-                    exception,
-                    mockRequest
-            );
-
-            // Assert
-            assertEquals(HttpStatus.SERVICE_UNAVAILABLE, response.getStatusCode());
-            assertEquals(503, response.getBody().getStatus());
+            assertThat(body.getDetail()).isNull();
         }
 
         @Test
-        @DisplayName("Should handle ApiException with custom status")
-        void testHandleApiException_CustomStatus() {
-            // Arrange
-            ApiException exception = new ApiException(
-                    "I'm a teapot",  // lowercase 'teapot' to match actual output
-                    "TEAPOT",
-                    418
-            );
+        @DisplayName("Is absent when the error has no underlying exception")
+        void absentWithoutCause() {
+            ErrorResponseDTO body = withDetail.handleApiException(
+                    new ValidationException("id", "must not be empty"), request).getBody();
 
-            // Act
-            ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleApiException(
-                    exception,
-                    mockRequest
-            );
-
-            // Assert
-            assertEquals(418, response.getStatusCode().value());
-            // Note: Spring's HttpStatus enum has "I'm a teapot" with lowercase 't'
-            assertEquals("I'm a teapot", response.getBody().getError());
+            assertThat(body.getDetail()).isNull();
         }
     }
 
+    // ── Spring MVC exceptions ───────────────────────────────────────────────
+
     @Nested
-    @DisplayName("MissingServletRequestParameterException Handling Tests")
-    class MissingParameterTests {
+    @DisplayName("Spring MVC exceptions")
+    class SpringExceptionTests {
 
         @Test
-        @DisplayName("Should handle missing required parameter")
-        void testHandleMissingParameter_Required() {
-            // Arrange
-            MissingServletRequestParameterException exception =
-                    new MissingServletRequestParameterException("videoId", "String");
+        @DisplayName("A missing parameter is 400 MISSING_PARAMETER naming the parameter")
+        void missingParameter() {
+            ResponseEntity<ErrorResponseDTO> response = handler.handleMissingParameter(
+                    new MissingServletRequestParameterException("id", "String"), request);
 
-            // Act
-            ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleMissingParameter(
-                    exception,
-                    mockRequest
-            );
-
-            // Assert
-            assertNotNull(response);
-            assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-
-            ErrorResponseDTO error = response.getBody();
-            assertNotNull(error);
-            assertEquals(400, error.getStatus());
-            assertEquals("Bad Request", error.getError());
-            assertEquals("Required parameter 'videoId' is missing", error.getMessage());
-            assertEquals("MISSING_PARAMETER", error.getErrorCode());
+            assertError(response, 400, "MISSING_PARAMETER");
+            assertThat(response.getBody().getMessage()).isEqualTo("Required parameter 'id' is missing");
         }
 
         @Test
-        @DisplayName("Should handle missing parameter with different name")
-        void testHandleMissingParameter_DifferentName() {
-            // Arrange
-            MissingServletRequestParameterException exception =
-                    new MissingServletRequestParameterException("query", "String");
+        @DisplayName("A parameter of the wrong type is 400 VALIDATION_ERROR naming the parameter and type")
+        void typeMismatch() {
+            MethodArgumentTypeMismatchException ex = new MethodArgumentTypeMismatchException(
+                    "abc", Integer.class, "count", mock(MethodParameter.class),
+                    new NumberFormatException("For input string: \"abc\""));
 
-            // Act
-            ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleMissingParameter(
-                    exception,
-                    mockRequest
-            );
+            ResponseEntity<ErrorResponseDTO> response = handler.handleTypeMismatch(ex, request);
 
-            // Assert
-            assertEquals("Required parameter 'query' is missing", response.getBody().getMessage());
+            assertError(response, 400, "VALIDATION_ERROR");
+            assertThat(response.getBody().getMessage()).isEqualTo("Parameter 'count' must be of type Integer");
         }
 
         @Test
-        @DisplayName("Should return 400 status for missing parameter")
-        void testHandleMissingParameter_StatusCode() {
-            // Arrange
-            MissingServletRequestParameterException exception =
-                    new MissingServletRequestParameterException("id", "String");
+        @DisplayName("An unknown path is 404 NOT_FOUND, not 500 (Spring Boot's NoResourceFoundException)")
+        void noResourceFound() {
+            ResponseEntity<ErrorResponseDTO> response = handler.handleNoResource(
+                    new NoResourceFoundException(HttpMethod.GET, "/api/v1/nope", "api/v1/nope"), request);
 
-            // Act
-            ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleMissingParameter(
-                    exception,
-                    mockRequest
-            );
+            assertError(response, 404, "NOT_FOUND");
+        }
 
-            // Assert
-            assertEquals(400, response.getStatusCode().value());
+        @Test
+        @DisplayName("An unknown path is 404 NOT_FOUND (NoHandlerFoundException)")
+        void noHandlerFound() {
+            ResponseEntity<ErrorResponseDTO> response = handler.handleNoResource(
+                    new NoHandlerFoundException("GET", "/api/v1/nope", new HttpHeaders()), request);
+
+            assertError(response, 404, "NOT_FOUND");
+        }
+
+        @Test
+        @DisplayName("An unsupported method is 405 METHOD_NOT_ALLOWED with an Allow header")
+        void methodNotSupported() {
+            ResponseEntity<ErrorResponseDTO> response = handler.handleMethodNotSupported(
+                    new HttpRequestMethodNotSupportedException("POST", List.of("GET")), request);
+
+            assertError(response, 405, "METHOD_NOT_ALLOWED");
+            assertThat(response.getBody().getMessage()).isEqualTo("Method 'POST' isn't supported at this path");
+            assertThat(response.getHeaders().getAllow()).containsExactly(HttpMethod.GET);
         }
     }
 
-    @Nested
-    @DisplayName("Generic Exception Handling Tests")
-    class GenericExceptionTests {
-
-        @Test
-        @DisplayName("Should handle generic RuntimeException")
-        void testHandleGenericException_RuntimeException() {
-            // Arrange
-            RuntimeException exception = new RuntimeException("Unexpected error occurred");
-
-            // Act
-            ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleGenericException(
-                    exception,
-                    mockRequest
-            );
-
-            // Assert
-            assertNotNull(response);
-            assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
-
-            ErrorResponseDTO error = response.getBody();
-            assertNotNull(error);
-            assertEquals(500, error.getStatus());
-            assertEquals("Internal Server Error", error.getError());
-            assertEquals("An unexpected error occurred", error.getMessage());
-            assertEquals("INTERNAL_ERROR", error.getErrorCode());
-        }
-
-        @Test
-        @DisplayName("Should handle NullPointerException")
-        void testHandleGenericException_NullPointerException() {
-            // Arrange
-            NullPointerException exception = new NullPointerException("Null value encountered");
-
-            // Act
-            ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleGenericException(
-                    exception,
-                    mockRequest
-            );
-
-            // Assert
-            assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
-            assertEquals("An unexpected error occurred", response.getBody().getMessage());
-            assertEquals("INTERNAL_ERROR", response.getBody().getErrorCode());
-        }
-
-        @Test
-        @DisplayName("Should handle IllegalArgumentException")
-        void testHandleGenericException_IllegalArgumentException() {
-            // Arrange
-            IllegalArgumentException exception = new IllegalArgumentException("Invalid argument");
-
-            // Act
-            ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleGenericException(
-                    exception,
-                    mockRequest
-            );
-
-            // Assert
-            assertEquals(500, response.getStatusCode().value());
-            assertEquals("INTERNAL_ERROR", response.getBody().getErrorCode());
-        }
-
-        @Test
-        @DisplayName("Should not expose internal error details")
-        void testHandleGenericException_NoDetailsExposed() {
-            // Arrange
-            Exception exception = new Exception("Internal database error: connection failed");
-
-            // Act
-            ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleGenericException(
-                    exception,
-                    mockRequest
-            );
-
-            // Assert
-            // Should use generic message, not expose internal details
-            assertEquals("An unexpected error occurred", response.getBody().getMessage());
-            assertFalse(response.getBody().getMessage().contains("database"));
-            assertFalse(response.getBody().getMessage().contains("connection"));
-        }
-    }
+    // ── Catch-all ───────────────────────────────────────────────────────────
 
     @Nested
-    @DisplayName("Error Response Structure Tests")
-    class ErrorResponseStructureTests {
+    @DisplayName("Catch-all")
+    class CatchAllTests {
 
         @Test
-        @DisplayName("Should include timestamp in all error responses")
-        void testErrorResponse_HasTimestamp() {
-            // Arrange
-            ValidationException exception = new ValidationException("Error", "CODE");
+        @DisplayName("Anything unexpected is 500 INTERNAL_ERROR with a generic message")
+        void unexpectedIsInternalError() {
+            ResponseEntity<ErrorResponseDTO> response = handler.handleGenericException(
+                    new IllegalStateException("Internal database error: connection failed"), request);
 
-            // Act
-            ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleValidationException(
-                    exception,
-                    mockRequest
-            );
-
-            // Assert
-            assertNotNull(response.getBody().getTimestamp());
+            assertError(response, 500, "INTERNAL_ERROR");
+            assertThat(response.getBody().getMessage())
+                    .isEqualTo("An unexpected error occurred")
+                    .doesNotContain("database", "connection");
         }
 
         @Test
-        @DisplayName("Should include path in all error responses")
-        void testErrorResponse_HasPath() {
-            // Arrange
-            ValidationException exception = new ValidationException("Error", "CODE");
+        @DisplayName("Keeps the query string in path")
+        void pathKeepsQueryString() {
+            when(request.getDescription(false)).thenReturn("uri=/api/v1/search?q=test&page=2");
 
-            // Act
-            ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleValidationException(
-                    exception,
-                    mockRequest
-            );
+            ResponseEntity<ErrorResponseDTO> response = handler.handleGenericException(
+                    new RuntimeException(), request);
 
-            // Assert
-            assertNotNull(response.getBody().getPath());
-            assertTrue(response.getBody().getPath().startsWith("/"));
-        }
-
-        @Test
-        @DisplayName("Should include error code in all error responses")
-        void testErrorResponse_HasErrorCode() {
-            // Arrange
-            // ExtractionException has fixed error code
-            ExtractionException exception = new ExtractionException("Error");
-
-            // Act
-            ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleExtractionException(
-                    exception,
-                    mockRequest
-            );
-
-            // Assert
-            assertNotNull(response.getBody().getErrorCode());
-            assertEquals("EXTRACTION_ERROR", response.getBody().getErrorCode());  // Fixed code
-        }
-
-        @Test
-        @DisplayName("Should have consistent response structure")
-        void testErrorResponse_ConsistentStructure() {
-            // Arrange
-            ValidationException validationEx = new ValidationException("Validation failed", "VAL_ERR");
-            ExtractionException extractionEx = new ExtractionException("Extraction failed");
-
-            // Act
-            ResponseEntity<ErrorResponseDTO> response1 = exceptionHandler.handleValidationException(validationEx, mockRequest);
-            ResponseEntity<ErrorResponseDTO> response2 = exceptionHandler.handleExtractionException(extractionEx, mockRequest);
-
-            // Assert - Both should have same fields populated
-            assertNotNull(response1.getBody().getTimestamp());
-            assertNotNull(response2.getBody().getTimestamp());
-            assertNotNull(response1.getBody().getStatus());
-            assertNotNull(response2.getBody().getStatus());
-            assertNotNull(response1.getBody().getError());
-            assertNotNull(response2.getBody().getError());
-            assertNotNull(response1.getBody().getMessage());
-            assertNotNull(response2.getBody().getMessage());
-            assertNotNull(response1.getBody().getErrorCode());
-            assertNotNull(response2.getBody().getErrorCode());
-            assertNotNull(response1.getBody().getPath());
-            assertNotNull(response2.getBody().getPath());
-        }
-    }
-
-    @Nested
-    @DisplayName("Path Extraction Tests")
-    class PathExtractionTests {
-
-        @Test
-        @DisplayName("Should extract simple path")
-        void testPathExtraction_SimplePath() {
-            when(mockRequest.getDescription(false)).thenReturn("uri=/api/v1/test");
-            ValidationException exception = new ValidationException("Error", "CODE");
-
-            ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleValidationException(
-                    exception,
-                    mockRequest
-            );
-
-            assertEquals("/api/v1/test", response.getBody().getPath());
-        }
-
-        @Test
-        @DisplayName("Should extract path with query parameters")
-        void testPathExtraction_WithQueryParams() {
-            when(mockRequest.getDescription(false)).thenReturn("uri=/api/v1/search?q=test&page=2");
-            ValidationException exception = new ValidationException("Error", "CODE");
-
-            ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleValidationException(
-                    exception,
-                    mockRequest
-            );
-
-            assertEquals("/api/v1/search?q=test&page=2", response.getBody().getPath());
-        }
-
-        @Test
-        @DisplayName("Should extract long path")
-        void testPathExtraction_LongPath() {
-            when(mockRequest.getDescription(false)).thenReturn("uri=/api/v1/streams/details/video/dQw4w9WgXcQ");
-            ValidationException exception = new ValidationException("Error", "CODE");
-
-            ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleValidationException(
-                    exception,
-                    mockRequest
-            );
-
-            assertEquals("/api/v1/streams/details/video/dQw4w9WgXcQ", response.getBody().getPath());
-        }
-    }
-
-    @Nested
-    @DisplayName("HTTP Status Mapping Tests")
-    class HttpStatusMappingTests {
-
-        @Test
-        @DisplayName("Should map ValidationException to 400")
-        void testStatusMapping_ValidationTo400() {
-            ValidationException exception = new ValidationException("Error", "CODE");
-
-            ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleValidationException(
-                    exception,
-                    mockRequest
-            );
-
-            assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-            assertEquals(400, response.getBody().getStatus());
-            assertEquals("Bad Request", response.getBody().getError());
-        }
-
-        @Test
-        @DisplayName("Should map ExtractionException to 500")
-        void testStatusMapping_ExtractionTo500() {
-            ExtractionException exception = new ExtractionException("Error");
-
-            ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleExtractionException(
-                    exception,
-                    mockRequest
-            );
-
-            assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
-            assertEquals(500, response.getBody().getStatus());
-            assertEquals("Internal Server Error", response.getBody().getError());
-        }
-
-        @Test
-        @DisplayName("Should map MissingParameter to 400")
-        void testStatusMapping_MissingParamTo400() {
-            MissingServletRequestParameterException exception =
-                    new MissingServletRequestParameterException("id", "String");
-
-            ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleMissingParameter(
-                    exception,
-                    mockRequest
-            );
-
-            assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-            assertEquals(400, response.getBody().getStatus());
-        }
-
-        @Test
-        @DisplayName("Should map generic Exception to 500")
-        void testStatusMapping_GenericTo500() {
-            Exception exception = new Exception("Error");
-
-            ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleGenericException(
-                    exception,
-                    mockRequest
-            );
-
-            assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
-            assertEquals(500, response.getBody().getStatus());
-        }
-    }
-
-    @Nested
-    @DisplayName("Edge Cases Tests")
-    class EdgeCasesTests {
-
-        @Test
-        @DisplayName("Should handle null exception message")
-        void testEdgeCase_NullMessage() {
-            ValidationException exception = new ValidationException(null, "CODE");
-
-            ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleValidationException(
-                    exception,
-                    mockRequest
-            );
-
-            assertNotNull(response.getBody().getMessage());
-            assertTrue(response.getBody().getMessage().contains("Invalid"));
-        }
-
-        @Test
-        @DisplayName("Should handle empty error code")
-        void testEdgeCase_EmptyErrorCode() {
-            ValidationException exception = new ValidationException("Error", "");
-
-            ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleValidationException(
-                    exception,
-                    mockRequest
-            );
-
-            assertEquals("VALIDATION_ERROR", response.getBody().getErrorCode());
-        }
-
-        @Test
-        @DisplayName("Should handle very long error message")
-        void testEdgeCase_LongMessage() {
-            String longMessage = "A".repeat(1000);
-            ValidationException exception = new ValidationException(longMessage, "CODE");
-
-            ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleValidationException(
-                    exception,
-                    mockRequest
-            );
-
-            assertTrue(response.getBody().getMessage().length() >= 1000);
-            assertTrue(response.getBody().getMessage().contains("AAA"));  // Contains the A's
-        }
-
-        @Test
-        @DisplayName("Should handle special characters in error message")
-        void testEdgeCase_SpecialCharacters() {
-            String specialMessage = "Error: \"Invalid\" <parameter> & value='test'";
-            ValidationException exception = new ValidationException(specialMessage, "CODE");
-
-            ResponseEntity<ErrorResponseDTO> response = exceptionHandler.handleValidationException(
-                    exception,
-                    mockRequest
-            );
-
-            assertTrue(response.getBody().getMessage().contains(specialMessage));
-        }
-    }
-
-    @Nested
-    @DisplayName("Multiple Exception Types Tests")
-    class MultipleExceptionTypesTests {
-
-        @Test
-        @DisplayName("Should handle different exception types consistently")
-        void testMultipleTypes_Consistency() {
-            ValidationException validationEx = new ValidationException("Validation error", "VAL_ERR");
-            ExtractionException extractionEx = new ExtractionException("Extraction error");
-            ApiException apiEx = new ApiException("Not found", "NOT_FOUND", 404);
-
-            ResponseEntity<ErrorResponseDTO> response1 = exceptionHandler.handleValidationException(validationEx, mockRequest);
-            ResponseEntity<ErrorResponseDTO> response2 = exceptionHandler.handleExtractionException(extractionEx, mockRequest);
-            ResponseEntity<ErrorResponseDTO> response3 = exceptionHandler.handleApiException(apiEx, mockRequest);
-
-            assertNotNull(response1.getBody());
-            assertNotNull(response2.getBody());
-            assertNotNull(response3.getBody());
-
-            assertNotNull(response1.getBody().getErrorCode());
-            assertNotNull(response2.getBody().getErrorCode());
-            assertNotNull(response3.getBody().getErrorCode());
+            assertThat(response.getBody().getPath()).isEqualTo("/api/v1/search?q=test&page=2");
         }
     }
 }
