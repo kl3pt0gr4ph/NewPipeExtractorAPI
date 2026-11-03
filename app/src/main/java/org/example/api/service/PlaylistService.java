@@ -34,8 +34,8 @@ public class PlaylistService {
             InfoItemsPage<StreamInfoItem> page = PlaylistInfo.getMoreItems(service, url, pageInstance);
 
             logger.info("Extracted playlist page with {} item(s) (hasNextPage={})",
-                    page.getItems().size(), page.getNextPage());
-            return PlaylistInfo.getMoreItems(service, url, pageInstance);
+                    page.getItems().size(), page.hasNextPage());
+            return page;
         } catch (Exception e) {
             throw new ExtractionException(e.getMessage(), e);
         }
