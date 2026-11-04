@@ -4,7 +4,6 @@ import org.example.api.dto.dash.AudioStreamMetadataDTO;
 import org.example.api.dto.dash.DashManifestConfigDTO;
 import org.example.api.dto.dash.SubtitleMetadataDTO;
 import org.example.api.dto.dash.VideoStreamMetadataDTO;
-import org.example.api.exception.ValidationException;
 import org.example.api.utils.ManifestXmlBuilder;
 import org.schabi.newpipe.extractor.stream.AudioTrackType;
 import org.slf4j.Logger;
@@ -70,16 +69,21 @@ public class DashManifestGeneratorService {
 
     // --- Validation ------------------------------------------------------------
 
+    /**
+     * The config is built by {@code StreamingController} from an extraction, never from
+     * client input, so every failure here is a bug: {@link IllegalStateException}, which the
+     * catch-all reports as {@code 500 INTERNAL_ERROR}. A {@code 400} would blame the client.
+     */
     private void validateConfig(DashManifestConfigDTO config) {
         if (config == null) {
-            throw new ValidationException("Manifest configuration cannot be null");
+            throw new IllegalStateException("Manifest configuration cannot be null");
         }
         if (config.getDurationSeconds() <= 0) {
-            throw new ValidationException("Duration must be greater than 0");
+            throw new IllegalStateException("Duration must be greater than 0");
         }
         if (config.getVideoStreams() == null || config.getAudioStreams() == null
                 || config.getSubtitleStreams() == null) {
-            throw new ValidationException("Stream lists cannot be null");
+            throw new IllegalStateException("Stream lists cannot be null");
         }
 
         // Past this point a failure is a bug in the filter or the DTO conversion,
