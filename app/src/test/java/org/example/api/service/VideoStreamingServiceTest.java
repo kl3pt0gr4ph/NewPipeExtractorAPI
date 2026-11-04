@@ -2,6 +2,8 @@ package org.example.api.service;
 
 import org.example.api.cache.StreamInfoCache;
 import org.example.api.cache.StreamInfoCacheProperties;
+import org.example.api.exception.ApiException;
+import org.example.api.exception.ErrorCode;
 import org.example.api.exception.ExtractionException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -13,6 +15,8 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.MockedStatic;
 import org.schabi.newpipe.extractor.Image;
 import org.schabi.newpipe.extractor.InfoItem;
+import org.schabi.newpipe.extractor.exceptions.ParsingException;
+import org.schabi.newpipe.extractor.exceptions.PrivateContentException;
 import org.schabi.newpipe.extractor.stream.AudioStream;
 import org.schabi.newpipe.extractor.stream.Description;
 import org.schabi.newpipe.extractor.stream.Frameset;
@@ -21,6 +25,7 @@ import org.schabi.newpipe.extractor.stream.StreamSegment;
 import org.schabi.newpipe.extractor.stream.SubtitlesStream;
 import org.schabi.newpipe.extractor.stream.VideoStream;
 
+import java.io.IOException;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
@@ -160,17 +165,19 @@ class VideoStreamingServiceTest {
         }
 
         @Test
-        @DisplayName("Wraps extraction failures in ExtractionException preserving message and cause")
-        void wrapsFailure_inExtractionException() {
-            RuntimeException boom = new RuntimeException("Video unavailable");
+        @DisplayName("Translates a private video to CONTENT_PRIVATE, keeping the cause and its text out of the message")
+        void translatesFailure() {
+            PrivateContentException thrown = new PrivateContentException("This video is private");
 
             try (MockedStatic<StreamInfo> extractor = mockStatic(StreamInfo.class)) {
-                extractor.when(() -> StreamInfo.getInfo(TEST_URL)).thenThrow(boom);
+                extractor.when(() -> StreamInfo.getInfo(TEST_URL)).thenThrow(thrown);
 
                 assertThatThrownBy(() -> service.getStreamInfo(TEST_URL))
                         .isInstanceOf(ExtractionException.class)
-                        .hasMessage("Video unavailable")
-                        .hasCause(boom);
+                        .hasMessage(ErrorCode.CONTENT_PRIVATE.defaultMessage())
+                        .hasCause(thrown)
+                        .extracting(e -> ((ApiException) e).getCode())
+                        .isEqualTo(ErrorCode.CONTENT_PRIVATE);
             }
         }
     }
@@ -241,20 +248,20 @@ class VideoStreamingServiceTest {
         }
     }
 
-    @ParameterizedTest(name = "{0} wraps failures in ExtractionException")
+    @ParameterizedTest(name = "{0} translates failures")
     @MethodSource("accessors")
-    @DisplayName("Accessors wrap extraction failures in ExtractionException")
-    void accessor_wrapsExtractionFailure(String name, Consumer<StreamInfo> stub,
-                                         ServiceCall call, Object expected) {
-        RuntimeException boom = new RuntimeException("Extraction failed");
+    @DisplayName("Accessors translate extraction failures")
+    void accessor_translatesExtractionFailure(String name, Consumer<StreamInfo> stub,
+                                              ServiceCall call, Object expected) {
+        ParsingException thrown = new ParsingException("Could not get video id");
 
         try (MockedStatic<StreamInfo> extractor = mockStatic(StreamInfo.class)) {
-            extractor.when(() -> StreamInfo.getInfo(TEST_URL)).thenThrow(boom);
+            extractor.when(() -> StreamInfo.getInfo(TEST_URL)).thenThrow(thrown);
 
             assertThatThrownBy(() -> call.apply(service))
                     .isInstanceOf(ExtractionException.class)
-                    .hasMessage("Extraction failed")
-                    .hasCause(boom);
+                    .hasMessage(ErrorCode.UPSTREAM_CHANGED.defaultMessage())
+                    .hasCause(thrown);
         }
     }
 
@@ -305,7 +312,7 @@ class VideoStreamingServiceTest {
 
             try (MockedStatic<StreamInfo> extractor = mockStatic(StreamInfo.class)) {
                 extractor.when(() -> StreamInfo.getInfo(TEST_URL))
-                        .thenThrow(new RuntimeException("transient"))
+                        .thenThrow(new IOException("transient"))
                         .thenReturn(info);
 
                 assertThatThrownBy(() -> service.getStreamInfo(TEST_URL))

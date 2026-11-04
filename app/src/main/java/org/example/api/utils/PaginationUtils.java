@@ -1,7 +1,7 @@
 package org.example.api.utils;
 
 import tools.jackson.databind.ObjectMapper;
-import org.example.api.exception.ExtractionException;
+import org.example.api.exception.NewPipeExceptionMapper;
 import org.springframework.stereotype.Component;
 
 import java.util.function.Supplier;
@@ -45,7 +45,7 @@ public class PaginationUtils {
             Object info = infoExtractor.get();
             return serializationUtils.safeSerialize(info);
         } catch (Exception e) {
-            throw new ExtractionException("Failed to extract page", e);
+            throw NewPipeExceptionMapper.translate(e);
         }
     }
 }

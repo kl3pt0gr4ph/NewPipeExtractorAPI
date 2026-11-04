@@ -2,6 +2,7 @@ package org.example.api.service;
 
 import org.example.api.cache.StreamInfoCache;
 import org.example.api.exception.ExtractionException;
+import org.example.api.exception.NewPipeExceptionMapper;
 import org.schabi.newpipe.extractor.Image;
 import org.schabi.newpipe.extractor.InfoItem;
 import org.schabi.newpipe.extractor.stream.*;
@@ -65,7 +66,7 @@ public class VideoStreamingService {
                     info.getVideoStreams().size());
             return info;
         } catch (Exception e) {
-            throw new ExtractionException(e.getMessage(), e);
+            throw NewPipeExceptionMapper.translate(e);
         }
     }
 

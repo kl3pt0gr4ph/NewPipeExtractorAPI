@@ -1,6 +1,7 @@
 package org.example.api.service;
 
 import org.example.api.exception.ExtractionException;
+import org.example.api.exception.NewPipeExceptionMapper;
 import org.schabi.newpipe.extractor.channel.ChannelInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,8 +17,7 @@ public class ChannelService {
             logger.info("Extracting channel info: '{}'", info.getName());
             return info;
         } catch (Exception e) {
-            logger.error("Failed to extract channel info for URL: {}", url, e);
-            throw new ExtractionException(e.getMessage(), e);
+            throw NewPipeExceptionMapper.translate(e);
         }
     }
 }

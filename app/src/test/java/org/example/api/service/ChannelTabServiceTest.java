@@ -1,7 +1,9 @@
 package org.example.api.service;
 
 import org.example.api.dto.channels.ChannelTabDTO;
+import org.example.api.exception.ErrorCode;
 import org.example.api.exception.ExtractionException;
+import org.example.api.exception.ValidationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -31,6 +33,7 @@ import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -154,7 +157,7 @@ class ChannelTabServiceTest {
         }
 
         @Test
-        @DisplayName("Throws ExtractionException naming the missing tab and the available ones")
+        @DisplayName("A tab the channel doesn't have is 400 VALIDATION_ERROR naming it and the available ones")
         void throwsWhenTabNotFound() throws Exception {
             TabMocks mocks = stubChannelWithTab(CHANNEL_URL, "videos");
 
@@ -163,11 +166,11 @@ class ChannelTabServiceTest {
 
                 wireStatics(newPipeMock, channelInfoMock, CHANNEL_URL, mocks);
 
-                ExtractionException ex = assertThrows(ExtractionException.class, () ->
+                ValidationException ex = assertThrows(ValidationException.class, () ->
                         channelTabService.getChannelTab(CHANNEL_URL, "playlists", CHANNEL_ID));
 
-                assertTrue(ex.getMessage().contains("playlists"));
-                assertTrue(ex.getMessage().contains("not found"));
+                assertEquals(ErrorCode.VALIDATION_ERROR, ex.getCode());
+                assertTrue(ex.getMessage().contains("no 'playlists' tab"));
                 assertTrue(ex.getMessage().contains("videos")); // available tabs listed
             }
         }
@@ -181,7 +184,7 @@ class ChannelTabServiceTest {
         }
 
         @Test
-        @DisplayName("Fails instead of returning an empty tab when NewPipe recorded an error")
+        @DisplayName("Fails instead of returning an empty tab when NewPipe recorded an error, translating that error")
         void failsWhenTabIsEmptyBecauseOfAnError() throws Exception {
             // ChannelTabInfo.getInfo catches a failed initial page into getErrors()
             ParsingException swallowed = new ParsingException("Could not get tab content");
@@ -198,8 +201,8 @@ class ChannelTabServiceTest {
                 ExtractionException ex = assertThrows(ExtractionException.class, () ->
                         channelTabService.getChannelTab(CHANNEL_URL, "shorts", CHANNEL_ID));
 
-                assertTrue(ex.getMessage().contains("shorts"));
-                assertTrue(ex.getMessage().contains("Could not get tab content"));
+                assertEquals(ErrorCode.UPSTREAM_CHANGED, ex.getCode());
+                assertFalse(ex.getMessage().contains("Could not get tab content"));
                 assertSame(swallowed, ex.getCause());
             }
         }
@@ -226,9 +229,10 @@ class ChannelTabServiceTest {
         }
 
         @Test
-        @DisplayName("Wraps unexpected exceptions in ExtractionException, preserving the thrown exception as cause")
-        void wrapsUnexpectedExceptions() {
-            RuntimeException thrown = new RuntimeException("Connection refused");
+        @DisplayName("Translates NewPipe exceptions, preserving the thrown exception as cause")
+        void translatesNewPipeExceptions() {
+            org.schabi.newpipe.extractor.exceptions.ExtractionException thrown =
+                    new org.schabi.newpipe.extractor.exceptions.ExtractionException("No service can handle the url");
 
             try (MockedStatic<NewPipe> newPipeMock = mockStatic(NewPipe.class)) {
                 newPipeMock.when(() -> NewPipe.getServiceByUrl(CHANNEL_URL)).thenThrow(thrown);
@@ -236,6 +240,8 @@ class ChannelTabServiceTest {
                 ExtractionException ex = assertThrows(ExtractionException.class, () ->
                         channelTabService.getChannelTab(CHANNEL_URL, "videos", CHANNEL_ID));
 
+                assertEquals(ErrorCode.EXTRACTION_ERROR, ex.getCode());
+                assertFalse(ex.getMessage().contains("No service"));
                 assertSame(thrown, ex.getCause());
             }
         }
@@ -330,7 +336,7 @@ class ChannelTabServiceTest {
                         channelTabService.getChannelTabPage(
                                 "UCtest", "playlists", PAGE_URL, null, PAGE_IDS));
 
-                assertTrue(ex.getMessage().contains("playlists"));
+                assertEquals(ErrorCode.UPSTREAM_CHANGED, ex.getCode());
                 assertSame(swallowed, ex.getCause());
             }
         }
@@ -365,17 +371,19 @@ class ChannelTabServiceTest {
 
         @ParameterizedTest(name = "Rejects {0}")
         @MethodSource("invalidPageIds")
-        @DisplayName("Rejects pageIds that cannot supply the channelUrl")
+        @DisplayName("Rejects pageIds that cannot supply the channelUrl with 400 VALIDATION_ERROR")
         void rejectsInvalidPageIds(String name, List<String> pageIds) {
-            ExtractionException ex = assertThrows(ExtractionException.class, () ->
+            ValidationException ex = assertThrows(ValidationException.class, () ->
                     channelTabService.getChannelTabPage(
                             "UCtest", "videos", PAGE_URL, "bodyBase64", pageIds));
 
-            assertTrue(ex.getMessage().contains("pageIds missing channelUrl"));
+            assertEquals(ErrorCode.VALIDATION_ERROR, ex.getCode());
+            assertTrue(ex.getMessage().contains("pageIds"));
+            assertTrue(ex.getMessage().contains("channel URL at index 1"));
         }
 
         @Test
-        @DisplayName("Throws ExtractionException when the tab is not found for the channel")
+        @DisplayName("A tab the channel doesn't have is 400 VALIDATION_ERROR")
         void throwsWhenTabNotFound() throws Exception {
             TabMocks mocks = stubChannelWithTab(CHANNEL_URL, "videos");
 
@@ -384,19 +392,20 @@ class ChannelTabServiceTest {
 
                 wireStatics(newPipeMock, channelInfoMock, CHANNEL_URL, mocks);
 
-                ExtractionException ex = assertThrows(ExtractionException.class, () ->
+                ValidationException ex = assertThrows(ValidationException.class, () ->
                         channelTabService.getChannelTabPage(
                                 "UCtest", "playlists", PAGE_URL, "body", PAGE_IDS));
 
-                assertTrue(ex.getMessage().contains("playlists"));
-                assertTrue(ex.getMessage().contains("not found"));
+                assertEquals(ErrorCode.VALIDATION_ERROR, ex.getCode());
+                assertTrue(ex.getMessage().contains("no 'playlists' tab"));
             }
         }
 
         @Test
-        @DisplayName("Wraps unexpected exceptions in ExtractionException, preserving the thrown exception as cause")
-        void wrapsUnexpectedExceptions() {
-            RuntimeException thrown = new RuntimeException("Connection refused");
+        @DisplayName("Translates NewPipe exceptions, preserving the thrown exception as cause")
+        void translatesNewPipeExceptions() {
+            org.schabi.newpipe.extractor.exceptions.ExtractionException thrown =
+                    new org.schabi.newpipe.extractor.exceptions.ExtractionException("No service can handle the url");
 
             try (MockedStatic<NewPipe> newPipeMock = mockStatic(NewPipe.class)) {
                 newPipeMock.when(() -> NewPipe.getServiceByUrl(CHANNEL_URL)).thenThrow(thrown);
@@ -405,6 +414,7 @@ class ChannelTabServiceTest {
                         channelTabService.getChannelTabPage(
                                 "UCtest", "videos", PAGE_URL, "body", PAGE_IDS));
 
+                assertEquals(ErrorCode.EXTRACTION_ERROR, ex.getCode());
                 assertSame(thrown, ex.getCause());
             }
         }

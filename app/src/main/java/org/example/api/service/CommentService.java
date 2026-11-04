@@ -2,6 +2,7 @@ package org.example.api.service;
 
 import org.example.api.dto.CommentsDTO;
 import org.example.api.exception.ExtractionException;
+import org.example.api.exception.NewPipeExceptionMapper;
 import org.schabi.newpipe.extractor.ListExtractor;
 import org.schabi.newpipe.extractor.Page;
 import org.schabi.newpipe.extractor.comments.CommentsInfo;
@@ -23,7 +24,7 @@ public class CommentService {
             logger.info("Extracted {} comment(s)", info.getRelatedItems().size());
             return info;
         } catch (Exception e) {
-            throw new ExtractionException(e.getMessage(), e);
+            throw NewPipeExceptionMapper.translate(e);
         }
     }
 
@@ -35,7 +36,7 @@ public class CommentService {
             Page pageInstance = new Page(pageUrl);
             return CommentsInfo.getMoreItems(info, pageInstance);
         } catch (Exception e) {
-            throw new ExtractionException(e.getMessage(), e);
+            throw NewPipeExceptionMapper.translate(e);
         }
     }
 
