@@ -155,7 +155,8 @@ public class StreamingController {
                             description = "One progressive stream URL followed by CRLF"))
             })
     @ApiResponse(responseCode = "503",
-            description = "Nothing playable, not even a muxed stream (`NO_STREAMS_AVAILABLE`)",
+            description = "`NO_STREAMS_AVAILABLE`: nothing playable, not even a muxed stream. "
+                    + "`UPSTREAM_BLOCKED`: YouTube is rate-limiting or bot-checking the server's IP",
             content = @Content(mediaType = "application/json",
                     schema = @Schema(implementation = ErrorResponseDTO.class)))
     @GetMapping("/dash")
