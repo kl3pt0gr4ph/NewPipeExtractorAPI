@@ -5,6 +5,7 @@ import org.example.api.component.DashPlayabilityFilter.PlayableStreams;
 import org.example.api.config.GlobalExceptionHandler;
 import org.example.api.dto.dash.DashManifestConfigDTO;
 import org.example.api.exception.ExtractionException;
+import org.example.api.exception.NewPipeExceptionMapper;
 import org.example.api.service.DashManifestGeneratorService;
 import org.example.api.service.VideoStreamingService;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,6 +20,10 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.schabi.newpipe.extractor.Image;
 import org.schabi.newpipe.extractor.InfoItem;
+import org.schabi.newpipe.extractor.exceptions.AgeRestrictedContentException;
+import org.schabi.newpipe.extractor.exceptions.ContentNotAvailableException;
+import org.schabi.newpipe.extractor.exceptions.GeographicRestrictionException;
+import org.schabi.newpipe.extractor.exceptions.PrivateContentException;
 import org.schabi.newpipe.extractor.stream.AudioStream;
 import org.schabi.newpipe.extractor.stream.Description;
 import org.schabi.newpipe.extractor.stream.Frameset;
@@ -38,6 +43,7 @@ import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
@@ -294,5 +300,27 @@ class StreamingControllerTest {
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.errorCode").value("EXTRACTION_ERROR"))
                 .andExpect(jsonPath("$.message").value(containsString("Extraction failed")));
+    }
+
+    static Stream<Arguments> restrictedVideos() {
+        return Stream.of(
+                Arguments.of(new PrivateContentException("This video is private"), 403, "CONTENT_PRIVATE"),
+                Arguments.of(new AgeRestrictedContentException("Sign in to confirm your age"), 403, "AGE_RESTRICTED"),
+                Arguments.of(new GeographicRestrictionException("Not available in your country"), 451, "GEO_RESTRICTED"),
+                Arguments.of(new ContentNotAvailableException("This video has been removed"), 404, "CONTENT_UNAVAILABLE"));
+    }
+
+    @ParameterizedTest(name = "{2}")
+    @MethodSource("restrictedVideos")
+    @DisplayName("A restricted or removed video gets its own status and errorCode, without NewPipe's wording")
+    void restrictedVideo_returnsSpecificError(Exception newPipeException, int httpStatus, String errorCode)
+            throws Exception {
+        when(videoStreamingService.getStreamInfo(anyString()))
+                .thenThrow(NewPipeExceptionMapper.translate(newPipeException));
+
+        mockMvc.perform(get("/api/v1/streams/details").param("id", TEST_VIDEO_ID))
+                .andExpect(status().is(httpStatus))
+                .andExpect(jsonPath("$.errorCode").value(errorCode))
+                .andExpect(jsonPath("$.message").value(not(containsString(newPipeException.getMessage()))));
     }
 }

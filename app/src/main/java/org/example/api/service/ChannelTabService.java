@@ -2,6 +2,8 @@ package org.example.api.service;
 
 import org.example.api.dto.channels.ChannelTabDTO;
 import org.example.api.exception.ExtractionException;
+import org.example.api.exception.NewPipeExceptionMapper;
+import org.example.api.exception.ValidationException;
 import org.schabi.newpipe.extractor.InfoItem;
 import org.schabi.newpipe.extractor.ListExtractor.InfoItemsPage;
 import org.schabi.newpipe.extractor.NewPipe;
@@ -53,10 +55,7 @@ public class ChannelTabService {
             ChannelInfo channelInfo = ChannelInfo.getInfo(channelUrl);
 
             ListLinkHandler tabHandler = findTabHandler(channelInfo.getTabs(), tab)
-                    .orElseThrow(() -> new ExtractionException(
-                            "Tab '%s' not found for channel '%s'. Available tabs: %s"
-                                    .formatted(tab, channelUrl, describeAvailableTabs(channelInfo.getTabs()))
-                    ));
+                    .orElseThrow(() -> tabNotFound(tab, channelInfo.getTabs()));
 
             ChannelTabExtractor extractor = service.getChannelTabExtractor(tabHandler);
             extractor.fetchPage();
@@ -68,10 +67,8 @@ public class ChannelTabService {
 
             return ChannelTabDTO.from(tabInfo, tab, channelId);
 
-        } catch (ExtractionException e) {
-            throw e;
         } catch (Exception e) {
-            throw new ExtractionException(e.getMessage(), e);
+            throw NewPipeExceptionMapper.translate(e);
         }
     }
 
@@ -104,17 +101,15 @@ public class ChannelTabService {
                     : null;
 
             if (channelUrl == null) {
-                throw new ExtractionException(
-                        "Cannot reconstruct extractor: pageIds missing channelUrl (index 1). " +
-                                "Ensure nextPage.ids is passed correctly from the previous response.");
+                throw new ValidationException("pageIds",
+                        "missing the channel URL at index 1; pass nextPage.ids from the previous "
+                                + "response unchanged");
             }
 
             StreamingService service = NewPipe.getServiceByUrl(channelUrl);
             ChannelInfo channelInfo = ChannelInfo.getInfo(channelUrl);
             ListLinkHandler tabHandler = findTabHandler(channelInfo.getTabs(), tab)
-                    .orElseThrow(() -> new ExtractionException(
-                            "Tab '%s' not found for channel '%s'".formatted(tab, channelUrl)
-                    ));
+                    .orElseThrow(() -> tabNotFound(tab, channelInfo.getTabs()));
 
             ChannelTabExtractor extractor = service.getChannelTabExtractor(tabHandler);
             extractor.fetchPage();
@@ -127,10 +122,8 @@ public class ChannelTabService {
 
             return ChannelTabDTO.fromPage(page, tab, channelId);
 
-        } catch (ExtractionException e) {
-            throw e;
         } catch (Exception e) {
-            throw new ExtractionException(e.getMessage(), e);
+            throw NewPipeExceptionMapper.translate(e);
         }
     }
 
@@ -143,16 +136,13 @@ public class ChannelTabService {
      * exactly like an empty one.
      */
     private void checkExtractionErrors(String tab, String channelUrl,
-                                       List<? extends InfoItem> items, List<Throwable> errors)
-            throws ExtractionException {
+                                       List<? extends InfoItem> items, List<Throwable> errors) {
         if (errors == null || errors.isEmpty()) {
             return;
         }
         Throwable first = errors.getFirst();
         if (items == null || items.isEmpty()) {
-            throw new ExtractionException(
-                    "Couldn't read the '%s' tab for %s: %s".formatted(tab, channelUrl, first.getMessage()),
-                    first);
+            throw NewPipeExceptionMapper.translate(first);
         }
         logger.warn("Tab '{}' for {} returned {} item(s) with {} extraction error(s); first: {}",
                 tab, channelUrl, items.size(), errors.size(), first.toString());
@@ -163,6 +153,11 @@ public class ChannelTabService {
                 .filter(t -> t.getContentFilters().stream()
                         .anyMatch(f -> f.equalsIgnoreCase(tab)))
                 .findFirst();
+    }
+
+    private ValidationException tabNotFound(String tab, List<ListLinkHandler> tabs) {
+        return new ValidationException("tab",
+                "this channel has no '%s' tab. Available tabs: %s".formatted(tab, describeAvailableTabs(tabs)));
     }
 
     private String describeAvailableTabs(List<ListLinkHandler> tabs) {

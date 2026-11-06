@@ -10,15 +10,32 @@ The format is based on [keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Channel tab items carry an `infoType` field: `STREAM`, `PLAYLIST` or `CHANNEL`
 - `albums` listed as a `tab` value for `/channels/tab` and `/channels/tab/page`
+- Error codes for why content can't be played: `CONTENT_UNAVAILABLE` (404), `CONTENT_PRIVATE` (403), `AGE_RESTRICTED` (403), `PAID_CONTENT` (403), `GEO_RESTRICTED` (451) and `ACCOUNT_TERMINATED` (410)
+- Error codes for YouTube-side failures: `UPSTREAM_BLOCKED` (503), `UPSTREAM_CHANGED` (502) and `UPSTREAM_UNREACHABLE` (502)
+- `NOT_FOUND` (404) for unknown paths and kiosk IDs, and `METHOD_NOT_ALLOWED` (405, with an `Allow` header)
+- `OPENTUBE_ERRORS_INCLUDEDETAIL`: adds a `detail` field with the underlying exception chain to error responses. Off by default; on in the `local` profile
+- Every `errorCode` documented in the README and the OpenAPI spec
 
 ### Changed
 
 - Default User-Agent updated from Firefox 43 to Firefox 140 ESR, matching NewPipeExtractor's own
+- NewPipeExtractor failures map to a specific status and `errorCode` instead of all being `500 EXTRACTION_ERROR`. `EXTRACTION_ERROR` remains only for failures with no more specific code
+- `message` is written by the API and no longer contains NewPipeExtractor's exception text, which is logged instead
+- `/services` errors use the standard `ErrorResponse` body instead of `{ "message": … }`
+- Asking a channel for a tab it doesn't have, or passing `nextPage.ids` without the channel URL, is `400 VALIDATION_ERROR` instead of `500 EXTRACTION_ERROR`
+- `/services` items are documented as a `Service` schema
+
 
 ### Fixed
 
 - `/channels/tab` returned no items for the `playlists` and `albums` tabs: playlist and channel items are now mapped, as `PLAYLIST` and `CHANNEL` items
 - `/channels/tab` and `/channels/tab/page` returned an empty `items` list when NewPipeExtractor failed to read a tab; they now return `500 EXTRACTION_ERROR` with the cause
+- Unknown paths returned `500 INTERNAL_ERROR` instead of `404`
+- A parameter of the wrong type returned `500 INTERNAL_ERROR` instead of `400 VALIDATION_ERROR`
+- An unknown kiosk ID returned `500 EXTRACTION_ERROR` instead of `404 NOT_FOUND`
+- Internal faults while building a DASH manifest returned `400 VALIDATION_ERROR`, blaming the client; they're now `500 INTERNAL_ERROR`
+- `/playlists/page` fetched each page from YouTube twice
+
 
 ## [0.5.0] - 2026-11-02
 

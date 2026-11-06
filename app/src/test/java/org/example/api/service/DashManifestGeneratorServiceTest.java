@@ -4,7 +4,6 @@ import org.example.api.dto.dash.AudioStreamMetadataDTO;
 import org.example.api.dto.dash.DashManifestConfigDTO;
 import org.example.api.dto.dash.SubtitleMetadataDTO;
 import org.example.api.dto.dash.VideoStreamMetadataDTO;
-import org.example.api.exception.ValidationException;
 import org.example.api.utils.ManifestXmlBuilder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -231,10 +230,10 @@ class DashManifestGeneratorServiceTest {
 
     @ParameterizedTest(name = "Rejects {0}")
     @MethodSource("invalidConfigs")
-    @DisplayName("Rejects malformed configurations with ValidationException")
+    @DisplayName("Rejects malformed configurations with IllegalStateException: they're internal bugs, not bad requests")
     void rejectsInvalidConfigs(String name, Supplier<DashManifestConfigDTO> configSupplier) {
         assertThatThrownBy(() -> service.generateManifestXml(configSupplier.get()))
-                .isInstanceOf(ValidationException.class);
+                .isInstanceOf(IllegalStateException.class);
     }
 
     static Stream<Arguments> contractViolations() {

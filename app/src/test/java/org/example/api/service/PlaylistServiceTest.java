@@ -1,5 +1,6 @@
 package org.example.api.service;
 
+import org.example.api.exception.ErrorCode;
 import org.example.api.exception.ExtractionException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -9,10 +10,14 @@ import org.mockito.MockedStatic;
 import org.schabi.newpipe.extractor.ListExtractor.InfoItemsPage;
 import org.schabi.newpipe.extractor.NewPipe;
 import org.schabi.newpipe.extractor.Page;
+import org.schabi.newpipe.extractor.exceptions.ContentNotAvailableException;
+import org.schabi.newpipe.extractor.exceptions.ParsingException;
 import org.schabi.newpipe.extractor.StreamingService;
 import org.schabi.newpipe.extractor.playlist.PlaylistInfo;
 import org.schabi.newpipe.extractor.stream.StreamInfoItem;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -60,9 +65,9 @@ class PlaylistServiceTest {
         }
 
         @Test
-        @DisplayName("Wraps failures in ExtractionException, preserving message and cause")
-        void wrapsFailures() {
-            RuntimeException thrown = new RuntimeException("Playlist unavailable");
+        @DisplayName("Translates NewPipe failures, keeping the cause and its text out of the message")
+        void translatesFailures() {
+            ContentNotAvailableException thrown = new ContentNotAvailableException("The playlist does not exist");
 
             try (MockedStatic<PlaylistInfo> playlistInfoMock = mockStatic(PlaylistInfo.class)) {
                 playlistInfoMock.when(() -> PlaylistInfo.getInfo(PLAYLIST_URL)).thenThrow(thrown);
@@ -70,7 +75,8 @@ class PlaylistServiceTest {
                 ExtractionException ex = assertThrows(ExtractionException.class,
                         () -> playlistService.getPlaylistInfo(PLAYLIST_URL));
 
-                assertTrue(ex.getMessage().contains("Playlist unavailable"));
+                assertEquals(ErrorCode.CONTENT_UNAVAILABLE, ex.getCode());
+                assertFalse(ex.getMessage().contains("does not exist"));
                 assertSame(thrown, ex.getCause());
             }
         }
@@ -108,9 +114,9 @@ class PlaylistServiceTest {
         }
 
         @Test
-        @DisplayName("Wraps failures in ExtractionException, preserving message and cause")
-        void wrapsFailures() {
-            RuntimeException thrown = new RuntimeException("Page failure");
+        @DisplayName("Translates NewPipe failures, keeping the cause and its text out of the message")
+        void translatesFailures() {
+            ParsingException thrown = new ParsingException("Page failure");
 
             try (MockedStatic<NewPipe> newPipeMock = mockStatic(NewPipe.class)) {
                 newPipeMock.when(() -> NewPipe.getServiceByUrl(PLAYLIST_URL)).thenThrow(thrown);
@@ -118,9 +124,9 @@ class PlaylistServiceTest {
                 ExtractionException ex = assertThrows(ExtractionException.class,
                         () -> playlistService.getPlaylistPage(PLAYLIST_URL, PAGE_URL));
 
-                assertTrue(ex.getMessage().contains("Page failure"));
+                assertEquals(ErrorCode.UPSTREAM_CHANGED, ex.getCode());
+                assertFalse(ex.getMessage().contains("Page failure"));
                 assertSame(thrown, ex.getCause());
-                assertNotNull(ex.getCause());
             }
         }
     }

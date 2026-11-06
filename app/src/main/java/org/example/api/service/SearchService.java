@@ -4,6 +4,7 @@ import org.example.api.dto.search.SearchPageDTO;
 import org.example.api.dto.search.SearchResultDTO;
 import org.example.api.dto.search.SearchItemDTO;
 import org.example.api.exception.ExtractionException;
+import org.example.api.exception.NewPipeExceptionMapper;
 import org.schabi.newpipe.extractor.ListExtractor;
 import org.schabi.newpipe.extractor.NewPipe;
 import org.schabi.newpipe.extractor.Page;
@@ -56,7 +57,7 @@ public class SearchService {
 
             return dto;
         } catch (Exception e) {
-            throw new ExtractionException(e.getMessage(), e);
+            throw NewPipeExceptionMapper.translate(e);
         }
     }
 
@@ -106,7 +107,7 @@ public class SearchService {
 
             return dto;
         } catch (Exception e) {
-            throw new ExtractionException(e.getMessage(), e);
+            throw NewPipeExceptionMapper.translate(e);
         }
     }
 

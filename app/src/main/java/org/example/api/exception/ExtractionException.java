@@ -1,14 +1,25 @@
 package org.example.api.exception;
 
 /**
- * Exception thrown when resource extraction fails.
+ * A NewPipeExtractor call failed.
+ *
+ * <p>Pass the exception to {@link NewPipeExceptionMapper#translate(Throwable)}, which
+ * picks the code and keeps the library's wording out of the response.</p>
  */
 public class ExtractionException extends ApiException {
+
+    /** {@code EXTRACTION_ERROR} with a message the API wrote. */
     public ExtractionException(String message) {
-        super(message, "EXTRACTION_ERROR", 500);
+        super(ErrorCode.EXTRACTION_ERROR, message);
     }
 
+    /** {@code EXTRACTION_ERROR} with a message the API wrote. */
     public ExtractionException(String message, Throwable cause) {
-        super(message, "EXTRACTION_ERROR", 500, cause);
+        super(ErrorCode.EXTRACTION_ERROR, message, cause);
+    }
+
+    /** The given code with its default message. Used by {@link NewPipeExceptionMapper}. */
+    public ExtractionException(ErrorCode code, Throwable cause) {
+        super(code, cause);
     }
 }

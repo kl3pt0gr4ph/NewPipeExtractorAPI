@@ -156,7 +156,8 @@ class StreamingControllerIT extends BaseIntegrationTest {
         ResponseEntity<String> response = restTemplate.getForEntity(urlWithBadId, String.class);
 
         assertThat(response.getStatusCode())
-                .isIn(HttpStatus.BAD_REQUEST, HttpStatus.NOT_FOUND, HttpStatus.INTERNAL_SERVER_ERROR);
+                .isIn(HttpStatus.BAD_REQUEST, HttpStatus.NOT_FOUND, HttpStatus.INTERNAL_SERVER_ERROR,
+                        HttpStatus.BAD_GATEWAY);
     }
 
     // ── Concurrency smoke test ───────────────────────────────────────────

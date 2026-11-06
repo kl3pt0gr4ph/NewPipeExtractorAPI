@@ -1,12 +1,14 @@
 package org.example.api.service;
 
 import org.example.api.dto.CommentsDTO;
+import org.example.api.exception.ErrorCode;
 import org.example.api.exception.ExtractionException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
+import org.schabi.newpipe.extractor.exceptions.ParsingException;
 import org.schabi.newpipe.extractor.Image;
 import org.schabi.newpipe.extractor.ListExtractor;
 import org.schabi.newpipe.extractor.Page;
@@ -15,11 +17,13 @@ import org.schabi.newpipe.extractor.comments.CommentsInfoItem;
 import org.schabi.newpipe.extractor.localization.DateWrapper;
 import org.schabi.newpipe.extractor.stream.Description;
 
+import java.io.IOException;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -64,16 +68,17 @@ class CommentServiceTest {
         }
 
         @Test
-        @DisplayName("Wraps failures in ExtractionException preserving message and cause")
-        void wrapsFailures() {
+        @DisplayName("Translates failures, keeping the cause and its text out of the message")
+        void translatesFailures() {
             try (MockedStatic<CommentsInfo> commentsInfoMock = mockStatic(CommentsInfo.class)) {
                 commentsInfoMock.when(() -> CommentsInfo.getInfo(TEST_URL))
-                        .thenThrow(new RuntimeException("Extraction error"));
+                        .thenThrow(new IOException("Connection reset"));
 
                 ExtractionException exception = assertThrows(ExtractionException.class,
                         () -> commentService.getCommentsInfo(TEST_URL));
 
-                assertTrue(exception.getMessage().contains("Extraction error"));
+                assertEquals(ErrorCode.UPSTREAM_UNREACHABLE, exception.getCode());
+                assertFalse(exception.getMessage().contains("Connection reset"));
                 assertNotNull(exception.getCause());
             }
         }
@@ -111,16 +116,17 @@ class CommentServiceTest {
         }
 
         @Test
-        @DisplayName("Wraps failures in ExtractionException preserving message and cause")
-        void wrapsFailures() {
+        @DisplayName("Translates failures, keeping the cause and its text out of the message")
+        void translatesFailures() {
             try (MockedStatic<CommentsInfo> commentsInfoMock = mockStatic(CommentsInfo.class)) {
                 commentsInfoMock.when(() -> CommentsInfo.getInfo(TEST_URL))
-                        .thenThrow(new RuntimeException("Page failure"));
+                        .thenThrow(new ParsingException("Page failure"));
 
                 ExtractionException exception = assertThrows(ExtractionException.class,
                         () -> commentService.getCommentsPage(TEST_URL, "https://page.url"));
 
-                assertTrue(exception.getMessage().contains("Page failure"));
+                assertEquals(ErrorCode.UPSTREAM_CHANGED, exception.getCode());
+                assertFalse(exception.getMessage().contains("Page failure"));
                 assertNotNull(exception.getCause());
             }
         }

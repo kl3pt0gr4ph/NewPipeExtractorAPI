@@ -1,94 +1,79 @@
 package org.example.api.controller;
 
 import org.example.api.config.GlobalExceptionHandler;
+import org.example.api.dto.ServiceDTO;
 import org.example.api.service.RestService;
-import org.example.api.service.SearchService;
-import org.example.api.service.VideoStreamingService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-import java.util.Map;
+import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.containsString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-public class NewPipeControllerTest {
-    private MockMvc mockMvc;
-    @Mock
+@DisplayName("NewPipeController")
+class NewPipeControllerTest {
+
     private RestService restService;
-    private VideoStreamingService videoStreamingService;
-    private SearchService searchService;
-
-    @InjectMocks
-    private NewPipeController newPipeController;
-
-    private static final String TEST_VIDEO_ID = "dQw4w9WgXcQ";
-    private static final String YOUTUBE_URL = "https://www.youtube.com/watch?v=";
+    private MockMvc mockMvc;
 
     @BeforeEach
-    public void setup() {
-        MockitoAnnotations.openMocks(this);
-        mockMvc = MockMvcBuilders.standaloneSetup(newPipeController)
+    void setUp() {
+        restService = mock(RestService.class);
+        mockMvc = MockMvcBuilders.standaloneSetup(new NewPipeController(restService))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
     }
 
     @Test
-    public void testGetServiceSuccess() throws Exception {
-        // Arrange
-        String expectedJson = "{\"serviceName\":\"Example Service\"}";
-        when(restService.getServices()).thenReturn(expectedJson);
+    @DisplayName("GET /services returns the services as a JSON array")
+    void getServices_returnsServices() throws Exception {
+        when(restService.getServices()).thenReturn(List.of(
+                new ServiceDTO(0, "YouTube"), new ServiceDTO(1, "SoundCloud")));
 
-        // Act
-        ResponseEntity<?> response = newPipeController.getServices();
-
-        // Assert
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(expectedJson, response.getBody());
+        mockMvc.perform(get("/api/v1/services"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].serviceId").value(0))
+                .andExpect(jsonPath("$[0].serviceName").value("YouTube"))
+                .andExpect(jsonPath("$[1].serviceName").value("SoundCloud"));
     }
 
     @Test
-    void testGetServicesErrorResponse() throws Exception {
-        // Arrange
-        when(restService.getServices()).thenReturn("{\"message\":\"Some error occurred\"}");
+    @DisplayName("A failure in /services is a 500 ErrorResponse like every other endpoint, without the exception text")
+    void getServices_failure_returnsErrorResponse() throws Exception {
+        when(restService.getServices())
+                .thenThrow(new IllegalStateException("NewPipe services are not initialized or empty"));
 
-        // Act
-        ResponseEntity<?> response = newPipeController.getServices();
-
-        // Assert
-        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
-        assertInstanceOf(Map.class, response.getBody());
-        Map<String, String> bodyMap = (Map<String, String>) response.getBody();
-        assertEquals("Error retrieving services", bodyMap.get("message"));
+        mockMvc.perform(get("/api/v1/services"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.status").value(500))
+                .andExpect(jsonPath("$.errorCode").value("INTERNAL_ERROR"))
+                .andExpect(jsonPath("$.message").value(not(containsString("NewPipe"))))
+                .andExpect(jsonPath("$.path").value("/api/v1/services"));
     }
 
     @Test
-    void testGetServicesException() throws Exception {
-        // Arrange
-        when(restService.getServices()).thenThrow(new RuntimeException("Service failure"));
-
-        // Act
-        ResponseEntity<?> response = newPipeController.getServices();
-
-        // Assert
-        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
-        assertInstanceOf(Map.class, response.getBody());
-        Map<String, String> bodyMap = (Map<String, String>) response.getBody();
-        assertEquals("Error retrieving services: Service failure", bodyMap.get("message"));
+    @DisplayName("An unknown path is 404 NOT_FOUND")
+    void unknownPath_is404() throws Exception {
+        mockMvc.perform(get("/api/v1/does-not-exist"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.errorCode").value("NOT_FOUND"));
     }
 
-
+    @Test
+    @DisplayName("An unsupported method is 405 METHOD_NOT_ALLOWED")
+    void wrongMethod_is405() throws Exception {
+        mockMvc.perform(post("/api/v1/services"))
+                .andExpect(status().isMethodNotAllowed())
+                .andExpect(jsonPath("$.errorCode").value("METHOD_NOT_ALLOWED"));
+    }
 }

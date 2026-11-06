@@ -3,6 +3,7 @@ package org.example.api.service;
 import org.example.api.dto.search.SearchItemDTO;
 import org.example.api.dto.search.SearchPageDTO;
 import org.example.api.dto.search.SearchResultDTO;
+import org.example.api.exception.ErrorCode;
 import org.example.api.exception.ExtractionException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -10,6 +11,8 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 import org.mockito.MockedStatic;
+import org.schabi.newpipe.extractor.exceptions.ParsingException;
+import org.schabi.newpipe.extractor.exceptions.ReCaptchaException;
 import org.schabi.newpipe.extractor.InfoItem;
 import org.schabi.newpipe.extractor.ListExtractor;
 import org.schabi.newpipe.extractor.NewPipe;
@@ -26,6 +29,7 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -149,16 +153,18 @@ class SearchServiceTest {
         }
 
         @Test
-        @DisplayName("Wraps failures in ExtractionException with the original message")
-        void wrapsFailures() {
+        @DisplayName("Translates NewPipe failures, keeping their text out of the message")
+        void translatesFailures() {
             try (MockedStatic<NewPipe> newPipeMock = mockStatic(NewPipe.class)) {
                 newPipeMock.when(() -> NewPipe.getService(anyInt()))
-                        .thenThrow(new RuntimeException("NewPipe failure"));
+                        .thenThrow(new ReCaptchaException("reCaptcha Challenge requested", "https://www.youtube.com"));
 
                 ExtractionException exception = assertThrows(ExtractionException.class, () ->
                         searchService.getSearchInfo("test", Collections.emptyList(), null));
 
-                assertTrue(exception.getMessage().contains("NewPipe failure"));
+                assertEquals(ErrorCode.UPSTREAM_BLOCKED, exception.getCode());
+                assertFalse(exception.getMessage().contains("reCaptcha"));
+                assertNotNull(exception.getCause());
             }
         }
     }
@@ -219,18 +225,19 @@ class SearchServiceTest {
         }
 
         @Test
-        @DisplayName("Wraps failures in ExtractionException with the original message")
-        void wrapsFailures() {
+        @DisplayName("Translates NewPipe failures, keeping their text out of the message")
+        void translatesFailures() {
             try (MockedStatic<NewPipe> newPipeMock = mockStatic(NewPipe.class)) {
                 newPipeMock.when(() -> NewPipe.getService(anyInt()))
-                        .thenThrow(new RuntimeException("Pagination failure"));
+                        .thenThrow(new ParsingException("Pagination failure"));
 
                 ExtractionException exception = assertThrows(ExtractionException.class, () ->
                         searchService.getSearchPage(
                                 "test", Collections.emptyList(), null,
                                 "https://youtube.com/next", "someToken"));
 
-                assertTrue(exception.getMessage().contains("Pagination failure"));
+                assertEquals(ErrorCode.UPSTREAM_CHANGED, exception.getCode());
+                assertFalse(exception.getMessage().contains("Pagination failure"));
             }
         }
     }

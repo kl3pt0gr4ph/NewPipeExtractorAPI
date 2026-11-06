@@ -1,74 +1,35 @@
 package org.example.api.service;
 
-import org.example.api.model.Error;
-import org.example.api.utils.SerializationUtils;
+import org.example.api.dto.ServiceDTO;
 import org.schabi.newpipe.extractor.NewPipe;
 import org.schabi.newpipe.extractor.StreamingService;
-import org.schabi.newpipe.extractor.search.SearchInfo;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import tools.jackson.databind.DeserializationFeature;
-import tools.jackson.databind.SerializationFeature;
-import tools.jackson.databind.json.JsonMapper;
-import tools.jackson.databind.module.SimpleModule;
 
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @Service
 public class RestService {
-    private final JsonMapper objectMapper;
+    private static final Logger logger = LoggerFactory.getLogger(RestService.class);
 
-    public RestService() {
-        this.objectMapper = createCustomObjectMapper();
-    }
-
-    private JsonMapper createCustomObjectMapper() {
-        return JsonMapper.builder()
-                .disable(SerializationFeature.FAIL_ON_EMPTY_BEANS)
-                .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
-                .addModule(new SimpleModule()
-                        .addSerializer(SearchInfo.class, new SerializationUtils.CustomSearchInfoSerializer())
-                        .addSerializer(StreamingService.class, new SerializationUtils.CustomStreamingServiceSerializer())
-                )
-                .build();
-    }
-
-    public String getServices() {
-        try {
-            // Verify NewPipe initialization
-            if (NewPipe.getServices() == null || NewPipe.getServices().isEmpty()) {
-                throw new IllegalStateException("NewPipe services are not initialized or empty");
-            }
-
-            List<StreamingService> services = NewPipe.getServices();
-            System.out.printf("Found %d services%n", services.size());
-
-            // Create a simplified list of services
-            List<Map<String, Object>> serviceList = new ArrayList<>();
-            for (StreamingService service : services) {
-                Map<String, Object> serviceMap = new HashMap<>();
-                serviceMap.put("serviceId", service.getServiceId());
-                serviceMap.put("serviceName", service.getServiceInfo().getName());
-                serviceList.add(serviceMap);
-            }
-
-            return objectMapper.writeValueAsString(serviceList);
-        } catch (Exception e) {
-            System.err.println("Services Extraction Error:");
-            e.printStackTrace();
-            return getError(e);
+    /**
+     * Lists the streaming services NewPipeExtractor supports.
+     *
+     * @throws IllegalStateException if NewPipe has no services, which means it wasn't
+     *                               initialised: reported as {@code 500 INTERNAL_ERROR}
+     */
+    public List<ServiceDTO> getServices() {
+        List<StreamingService> services = NewPipe.getServices();
+        if (services == null || services.isEmpty()) {
+            throw new IllegalStateException("NewPipe services are not initialized or empty");
         }
-    }
 
-    public String getError(Exception e) {
-        String message = e.getMessage() != null ? e.getMessage() : "An error occurred";
-        Error errorResponse = new Error(message);
-        try {
-            return objectMapper.writeValueAsString(errorResponse);
-        } catch (Exception ex) {
-            return "{\"message\":\"Error serializing error response\"}";
-        }
+        List<ServiceDTO> result = services.stream()
+                .map(service -> new ServiceDTO(service.getServiceId(), service.getServiceInfo().getName()))
+                .toList();
+
+        logger.info("Listed {} service(s)", result.size());
+        return result;
     }
 }

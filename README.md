@@ -56,7 +56,7 @@ Each controller turns the request's `id` into a YouTube URL, a service extracts 
 2. **Generate.** `DashManifestGeneratorService` groups what's left into AdaptationSets:
 
    | Content   | One AdaptationSet per         | Labelled with                                                       |
-         | --------- | ----------------------------- | ------------------------------------------------------------------- |
+            | --------- | ----------------------------- | ------------------------------------------------------------------- |
    | Video     | Container and codec family    | Representations sorted by height, highest first                     |
    | Audio     | Track, then container and codec | `lang`, a `Role` and a `<Label>`; representations by bandwidth   |
    | Subtitles | Track                         | `lang`, a `subtitle` or `caption` Role and a `<Label>`              |
@@ -208,26 +208,43 @@ Kiosks are a single page; there is no `/page` endpoint. The category kiosks (`tr
 
 ### Errors
 
-Errors share one shape:
+Every error, from every endpoint including `/services`, has the same shape:
 
 ```json
 {
    "timestamp": "2026-10-29T10:30:00.123Z",
-   "status": 400,
-   "error": "Bad Request",
-   "message": "Required parameter 'id' is missing",
-   "errorCode": "MISSING_PARAMETER",
+   "status": 403,
+   "error": "Forbidden",
+   "message": "This content is private.",
+   "errorCode": "CONTENT_PRIVATE",
    "path": "/api/v1/streams/details"
 }
 ```
 
-| `errorCode`            | Status | Cause                                                           |
-| ---------------------- | ------ | --------------------------------------------------------------- |
-| `MISSING_PARAMETER`    | `400`  | A required parameter is absent                                  |
-| `VALIDATION_ERROR`     | `400`  | A parameter is empty or doesn't form a valid YouTube URL        |
-| `EXTRACTION_ERROR`     | `500`  | NewPipeExtractor failed: video unavailable, YouTube changed, network error |
-| `NO_STREAMS_AVAILABLE` | `503`  | `/streams/dash` found nothing playable, not even a muxed stream |
-| `INTERNAL_ERROR`       | `500`  | Anything unexpected                                             |
+`message` is written by the API and is safe to show to users, but its wording can change, so branch on `errorCode`. NewPipeExtractor's own exception text never appears in it: that goes to the log, and to an extra `detail` field when `OPENTUBE_ERRORS_INCLUDEDETAIL=true` (see [Configuration](#configuration)).
+
+| `errorCode`            | Status | Cause                                                                                   |
+| ---------------------- | ------ | --------------------------------------------------------------------------------------- |
+| `MISSING_PARAMETER`    | `400`  | A required parameter is absent                                                          |
+| `VALIDATION_ERROR`     | `400`  | A parameter is empty, malformed, of the wrong type, or names a channel tab the channel doesn't have |
+| `NOT_FOUND`            | `404`  | No endpoint at this path, or no kiosk with this ID                                      |
+| `METHOD_NOT_ALLOWED`   | `405`  | The path doesn't accept this HTTP method; `Allow` lists the ones it does                |
+| `CONTENT_UNAVAILABLE`  | `404`  | The video, channel or playlist was removed or never existed                             |
+| `CONTENT_PRIVATE`      | `403`  | The content is private                                                                  |
+| `AGE_RESTRICTED`       | `403`  | The content needs a signed-in account                                                   |
+| `PAID_CONTENT`         | `403`  | Members-only, paid, or YouTube Music Premium content                                    |
+| `GEO_RESTRICTED`       | `451`  | Not available in the country the server is in (not the user's)                          |
+| `ACCOUNT_TERMINATED`   | `410`  | The account the content belonged to was terminated                                      |
+| `UPSTREAM_BLOCKED`     | `503`  | YouTube is rate-limiting or bot-checking the server's IP ("Sign in to confirm you're not a bot", reCAPTCHA) |
+| `UPSTREAM_CHANGED`     | `502`  | YouTube's response couldn't be parsed, usually because YouTube changed and NewPipeExtractor needs an update |
+| `UPSTREAM_UNREACHABLE` | `502`  | YouTube couldn't be reached: network error or timeout                                   |
+| `NO_STREAMS_AVAILABLE` | `503`  | `/streams/dash` found nothing playable, not even a muxed stream                         |
+| `EXTRACTION_ERROR`     | `500`  | Extraction failed for a reason with no more specific code                               |
+| `INTERNAL_ERROR`       | `500`  | A bug in the API                                                                        |
+
+The list of codes is part of the API. A new code is a minor release; renaming or removing a code, or moving it to another status, is a major one. Clients should treat a code they don't recognise by its status.
+
+NewPipeExtractor's exceptions are mapped to these codes in one place, `NewPipeExceptionMapper`. Its restriction exceptions all extend `ContentNotAvailableException`, so the most specific match wins, wherever it is in the cause chain.
 
 ## Configuration
 
@@ -247,6 +264,7 @@ Any Spring Boot property can be set as an environment variable. These are the on
 | `SPRINGDOC_APIDOCS_ENABLED`                 | `true`  | Serve the OpenAPI spec. `false` turns off the spec **and** Swagger UI.                            |
 | `SPRINGDOC_SWAGGERUI_ENABLED`               | `true`  | Serve Swagger UI. `false` keeps the spec but drops the UI.                                        |
 | `OPENTUBE_OPENAPI_SERVERURL`                | –       | Base URL listed under `servers` in the spec, for when the API sits behind a proxy. Unset, the spec uses the URL it was requested on. |
+| `OPENTUBE_ERRORS_INCLUDEDETAIL`             | `false` | Add a `detail` field to error responses with the underlying exception chain, e.g. NewPipeExtractor's own message. On in the `local` profile. Development only: it exposes internals. |
 
 Durations use Spring's format: `30s`, `10m`, `6h`. In `application.properties` the cache settings are `opentube.cache.streaminfo.max-entries`, `safety-margin` and so on.
 
@@ -333,7 +351,8 @@ docker build -t opentube-backend .   # from the repository root
 The [OpenAPI spec](#openapi-spec-and-swagger-ui) is generated by springdoc from the controllers and DTOs, so a new endpoint is documented once it has a few annotations:
 
 - **Controllers:** one `@Tag` per controller, an `@Operation` with a `summary` on each endpoint, and `@Parameter` on each parameter. Reuse the shared text in `OpenApiDocs` (`VIDEO_ID`, `CHANNEL_ID`, `FROM_NEXT_PAGE` and so on) rather than rewording it.
-- **Responses:** the `400` and `500` error responses come from `GlobalExceptionHandler` and apply everywhere. Declare an `@ApiResponse` only for what's specific to the endpoint: a non-JSON body, or a status like `503`.
+- **Responses:** the error responses (`400`, `403`, `404`, `410`, `451`, `500`, `502`, `503`) come from `GlobalExceptionHandler` and apply everywhere. Declare an `@ApiResponse` only for what's specific to the endpoint: a non-JSON body, or a code only it returns, like `503 NO_STREAMS_AVAILABLE` on `/streams/dash`. An endpoint-level `@ApiResponse` replaces the global one for that status, so list the global codes in its description too.
+- **Errors:** wrap NewPipeExtractor calls in `try { … } catch (Exception e) { throw NewPipeExceptionMapper.translate(e); }`. Throw `ValidationException` only for something the client sent, and `IllegalStateException` for a broken internal invariant. A new `errorCode` goes in `ErrorCode`, the [error table](#errors), and the table and `allowableValues` on `ErrorResponseDTO.errorCode`.
 - **DTOs:** give each class and nested record a `@Schema(name = …)`. Nested records are otherwise named after their simple class name, so two `ImageDto`s in different DTOs overwrite each other in the spec. Add `@Schema(description = …)` where a field's meaning isn't obvious from its name: units, `-1` for unknown, formats.
 
 ### Logging

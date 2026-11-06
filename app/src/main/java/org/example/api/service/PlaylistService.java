@@ -1,6 +1,7 @@
 package org.example.api.service;
 
 import org.example.api.exception.ExtractionException;
+import org.example.api.exception.NewPipeExceptionMapper;
 import org.schabi.newpipe.extractor.ListExtractor.InfoItemsPage;
 import org.schabi.newpipe.extractor.NewPipe;
 import org.schabi.newpipe.extractor.Page;
@@ -21,7 +22,7 @@ public class PlaylistService {
             logger.info("Extracted playlist '{}' with {} item(s)", info.getName(), info.getRelatedItems().size());
             return info;
         } catch (Exception e) {
-            throw new ExtractionException(e.getMessage(), e);
+            throw NewPipeExceptionMapper.translate(e);
         }
     }
 
@@ -34,10 +35,10 @@ public class PlaylistService {
             InfoItemsPage<StreamInfoItem> page = PlaylistInfo.getMoreItems(service, url, pageInstance);
 
             logger.info("Extracted playlist page with {} item(s) (hasNextPage={})",
-                    page.getItems().size(), page.getNextPage());
-            return PlaylistInfo.getMoreItems(service, url, pageInstance);
+                    page.getItems().size(), page.hasNextPage());
+            return page;
         } catch (Exception e) {
-            throw new ExtractionException(e.getMessage(), e);
+            throw NewPipeExceptionMapper.translate(e);
         }
     }
 
