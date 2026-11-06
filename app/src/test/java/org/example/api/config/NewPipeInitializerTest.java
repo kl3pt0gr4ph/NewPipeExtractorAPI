@@ -5,7 +5,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.schabi.newpipe.extractor.NewPipe;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.boot.http.client.autoconfigure.HttpClientProperties;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -21,7 +20,7 @@ class NewPipeInitializerTest {
     private final ApplicationContextRunner runner = new ApplicationContextRunner()
             .withUserConfiguration(DownloaderConfig.class, NewPipeInitializer.class, Config.class);
 
-    @EnableConfigurationProperties(NewPipeProperties.class)
+    @EnableConfigurationProperties({NewPipeProperties.class, HttpClientProperties.class})
     static class Config {}
 
     @Test
