@@ -101,7 +101,7 @@ An entry lives until shortly before the signed stream URLs inside it stop workin
 - **No `expire` found:** 5 minutes.
 - **Degraded** (no video-only or audio streams at all): 30 seconds, so a bad extraction isn't pinned for hours.
 
-If YouTube returns a valid video with no adaptive streams, extraction is retried once before caching. The cache holds 300 entries by default, is per instance, and is empty after a restart. All of these values can be changed; see [Configuration](#configuration).
+If YouTube returns a valid video with no adaptive streams, extraction is retried once before caching (`OPENTUBE_EXTRACTION_ATTEMPTS`). The cache holds 300 entries by default, is per instance, and is empty after a restart. All of these values can be changed; see [Configuration](#configuration).
 
 ## Quick start
 
@@ -248,29 +248,86 @@ NewPipeExtractor's exceptions are mapped to these codes in one place, `NewPipeEx
 
 ## Configuration
 
-Any Spring Boot property can be set as an environment variable. These are the ones that matter:
+Every setting is a Spring Boot property, so it can also be set as an environment variable: upper-case it, turn dots into underscores and drop dashes (`opentube.http.read-timeout` → `OPENTUBE_HTTP_READTIMEOUT`). [`application.properties`](app/src/main/resources/application.properties) lists the same settings with their property names.
 
-| Variable                                    | Default | Description                                                                                       |
-| ------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------- |
-| `SERVER_PORT`                               | `8080`  | Port the API listens on. The image's `HEALTHCHECK` follows it.                                    |
-| `SPRING_PROFILES_ACTIVE`                    | –       | `local` turns on `DEBUG` logging for the API's own packages. It's the only profile.               |
-| `LOGGING_LEVEL_ORG_EXAMPLE_API`             | `INFO`  | Log level for the API's packages, without switching profile. NewPipe itself logs at `WARN`.       |
-| `OPENTUBE_CACHE_STREAMINFO_MAXENTRIES`      | `300`   | Maximum cached videos.                                                                            |
-| `OPENTUBE_CACHE_STREAMINFO_SAFETYMARGIN`    | `10m`   | How long before the stream URLs expire an entry is dropped.                                       |
-| `OPENTUBE_CACHE_STREAMINFO_FALLBACKTTL`     | `5m`    | Lifetime when no `expire` timestamp is found.                                                     |
-| `OPENTUBE_CACHE_STREAMINFO_DEGRADEDTTL`     | `30s`   | Lifetime of an extraction with no adaptive streams.                                               |
-| `OPENTUBE_CACHE_STREAMINFO_MAXTTL`          | `6h`    | Upper bound on any entry's lifetime.                                                              |
-| `JDK_JAVA_OPTIONS`                          | –       | Extra JVM flags. They take precedence over the image's defaults (see [Memory](#memory)).          |
-| `SPRINGDOC_APIDOCS_ENABLED`                 | `true`  | Serve the OpenAPI spec. `false` turns off the spec **and** Swagger UI.                            |
-| `SPRINGDOC_SWAGGERUI_ENABLED`               | `true`  | Serve Swagger UI. `false` keeps the spec but drops the UI.                                        |
-| `OPENTUBE_OPENAPI_SERVERURL`                | –       | Base URL listed under `servers` in the spec, for when the API sits behind a proxy. Unset, the spec uses the URL it was requested on. |
-| `OPENTUBE_ERRORS_INCLUDEDETAIL`             | `false` | Add a `detail` field to error responses with the underlying exception chain, e.g. NewPipeExtractor's own message. On in the `local` profile. Development only: it exposes internals. |
+Durations use Spring's format: `500ms`, `30s`, `10m`, `6h`. Lists are comma-separated. The extraction, NewPipeExtractor, HTTP client and CORS settings are checked at startup: an invalid value, such as a zero timeout or a lower-case country code, stops the API from starting, and the log names the setting.
 
-Durations use Spring's format: `30s`, `10m`, `6h`. In `application.properties` the cache settings are `opentube.cache.streaminfo.max-entries`, `safety-margin` and so on.
+**Server**
+
+| Variable                 | Default | Description                                                                                                                       |
+| ------------------------ | ------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `SERVER_PORT`            | `8080`  | Port the API listens on. The image's `HEALTHCHECK` follows it.                                                                    |
+| `SPRING_PROFILES_ACTIVE` | –       | `dev` for development: `DEBUG` logging, pretty-printed JSON, full health details and error `detail`. It's the only profile.     |
+
+**Logging**
+
+| Variable                           | Default           | Description                                                                         |
+| ---------------------------------- | ----------------- | ----------------------------------------------------------------------------------- |
+| `LOGGING_LEVEL_ROOT`               | `INFO`            | Log level for everything not set below.                                             |
+| `LOGGING_LEVEL_ORG_EXAMPLE_API`    | `INFO`            | Log level for the API's packages, without switching profile. Follows the root level unless set. |
+| `LOGGING_LEVEL_ORG_SCHABI_NEWPIPE` | `WARN`            | Log level for NewPipeExtractor.                                                     |
+| `LOGGING_PATTERN_CONSOLE`          | see `application.properties` | Console log format. Keep `%X{requestId:-}` and `%X{resourceId:-}` to keep the request IDs (see [Logging](#logging)). |
+
+**Stream info cache**
+
+| Variable                                 | Default | Description                                                    |
+| ---------------------------------------- | ------- | -------------------------------------------------------------- |
+| `OPENTUBE_CACHE_STREAMINFO_MAXENTRIES`   | `300`   | Maximum cached videos.                                         |
+| `OPENTUBE_CACHE_STREAMINFO_SAFETYMARGIN` | `10m`   | How long before the stream URLs expire an entry is dropped.    |
+| `OPENTUBE_CACHE_STREAMINFO_FALLBACKTTL`  | `5m`    | Lifetime when no `expire` timestamp is found.                  |
+| `OPENTUBE_CACHE_STREAMINFO_DEGRADEDTTL`  | `30s`   | Lifetime of an extraction with no adaptive streams.            |
+| `OPENTUBE_CACHE_STREAMINFO_MAXTTL`       | `6h`    | Upper bound on any entry's lifetime.                           |
+
+**Extraction and NewPipeExtractor**
+
+| Variable                       | Default | Description                                                                                                       |
+| ------------------------------ | ------- | ----------------------------------------------------------------------------------------------------------------- |
+| `OPENTUBE_EXTRACTION_ATTEMPTS` | `2`     | Total extractions of a video when YouTube returns no adaptive streams. `1` turns retrying off. `1` to `5`.        |
+| `OPENTUBE_NEWPIPE_LANGUAGE`    | `en`    | Language of titles, descriptions, dates and counts. A lower-case ISO 639 code, e.g. `de`.                         |
+| `OPENTUBE_NEWPIPE_COUNTRY`     | `GB`    | Region for kiosks and search, and the regional variant of the language. An upper-case ISO 3166 code, e.g. `US`.   |
+
+**HTTP client**
+
+These apply to NewPipeExtractor's requests to YouTube.
+
+| Variable                       | Default         | Description                                                                                                                       |
+| ------------------------------ | --------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `OPENTUBE_HTTP_CONNECTTIMEOUT` | `30s`           | How long to wait for a connection. Must be positive.                                                                              |
+| `OPENTUBE_HTTP_READTIMEOUT`    | `30s`           | How long to wait for data once connected. Must be positive.                                                                       |
+| `OPENTUBE_HTTP_USERAGENT`      | Firefox 140 ESR | Sent unless NewPipeExtractor sets its own, as it does for the mobile clients. YouTube can serve old browsers a page NewPipeExtractor can't parse, so only change it to another current browser. |
+
+**CORS**
+
+These apply to `/api/**`. Any request header is allowed and credentials never are.
+
+| Variable                       | Default       | Description                                                                                    |
+| ------------------------------ | ------------- | ---------------------------------------------------------------------------------------------- |
+| `OPENTUBE_CORS_ALLOWEDORIGINS` | `*`           | Origins a browser may call the API from, e.g. `https://opentube.example,http://localhost:5173`. |
+| `OPENTUBE_CORS_ALLOWEDMETHODS` | `GET,OPTIONS` | HTTP methods allowed cross-origin. Every endpoint is a `GET`; `OPTIONS` is the preflight.        |
+
+**Responses and health**
+
+| Variable                                    | Default | Description                                                                                                                                         |
+| ------------------------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SPRING_JACKSON_SERIALIZATION_INDENTOUTPUT` | `false` | Pretty-print JSON responses. On in the `dev` profile.                                                                                             |
+| `OPENTUBE_ERRORS_INCLUDEDETAIL`             | `false` | Add a `detail` field to error responses with the underlying exception chain, e.g. NewPipeExtractor's own message. On in the `dev` profile. Development only: it exposes internals. |
+| `MANAGEMENT_ENDPOINT_HEALTH_SHOWDETAILS`    | `never` | What `/actuator/health` shows besides its status: `never`, `when-authorized` or `always`. `always` in the `dev` profile.                         |
+
+**API docs**
+
+| Variable                      | Default | Description                                                                                                                          |
+| ----------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `SPRINGDOC_APIDOCS_ENABLED`   | `true`  | Serve the OpenAPI spec. `false` turns off the spec **and** Swagger UI.                                                               |
+| `SPRINGDOC_SWAGGERUI_ENABLED` | `true`  | Serve Swagger UI. `false` keeps the spec but drops the UI.                                                                           |
+| `OPENTUBE_OPENAPI_SERVERURL`  | –       | Base URL listed under `servers` in the spec, for when the API sits behind a proxy. Unset, the spec uses the URL it was requested on. |
 
 Any other [springdoc property](https://springdoc.org/#properties) works the same way, e.g. `SPRINGDOC_SWAGGERUI_PATH=/docs` to move Swagger UI.
 
-CORS (any origin on `/api/**`) and the HTTP client timeouts (30 s connect and read) are fixed in code.
+**JVM**
+
+| Variable           | Default | Description                                                                              |
+| ------------------ | ------- | ---------------------------------------------------------------------------------------- |
+| `JDK_JAVA_OPTIONS` | –       | Extra JVM flags. They take precedence over the image's defaults (see [Memory](#memory)). |
 
 ## Deployment
 
@@ -308,9 +365,9 @@ Don't add a `healthcheck:` block unless you need different timings: the one in t
 
 ### Keep it private
 
-Don't publish the backend's port. CORS allows any origin, and the health endpoint shows details, because the backend is designed to be reached only by the frontend on a private network.
+Don't publish the backend's port. It's designed to be reached only by the frontend on a private network, so CORS allows any origin and the OpenAPI spec and Swagger UI are on by default.
 
-The OpenAPI spec and Swagger UI are on by default for the same reason. If you do expose the backend, set `SPRINGDOC_APIDOCS_ENABLED=false`.
+If you do expose the backend, set `OPENTUBE_CORS_ALLOWEDORIGINS` to the origins that need it and `SPRINGDOC_APIDOCS_ENABLED=false`, and don't use the `dev` profile: it shows health details and exception text.
 
 ### Run the frontend and backend from the same network
 
@@ -331,10 +388,10 @@ cd NewPipeExtractorAPI/app
 mvn spring-boot:run
 ```
 
-The API is at <http://localhost:8080>. To log at `DEBUG`, run with the `local` profile:
+The API is at <http://localhost:8080>. For `DEBUG` logging, pretty-printed JSON, full health details and the error `detail` field, run with the `dev` profile:
 
 ```bash
-mvn spring-boot:run -Dspring-boot.run.profiles=local
+mvn spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
 NewPipeExtractor comes from JitPack, which the POM already lists as a repository.

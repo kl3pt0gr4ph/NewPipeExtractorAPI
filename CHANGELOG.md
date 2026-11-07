@@ -15,6 +15,12 @@ The format is based on [keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `NOT_FOUND` (404) for unknown paths and kiosk IDs, and `METHOD_NOT_ALLOWED` (405, with an `Allow` header)
 - `OPENTUBE_ERRORS_INCLUDEDETAIL`: adds a `detail` field with the underlying exception chain to error responses. Off by default; on in the `local` profile
 - Every `errorCode` documented in the README and the OpenAPI spec
+- Settings for what was fixed in code, each checked at startup:
+    - `OPENTUBE_EXTRACTION_ATTEMPTS` (default `2`): total extractions of a video when YouTube returns no adaptive streams
+    - `OPENTUBE_NEWPIPE_LANGUAGE` and `OPENTUBE_NEWPIPE_COUNTRY` (default `en` / `GB`): the language and region NewPipeExtractor asks YouTube for
+    - `OPENTUBE_HTTP_CONNECTTIMEOUT`, `OPENTUBE_HTTP_READTIMEOUT` (default `30s` each) and `OPENTUBE_HTTP_USERAGENT`
+    - `OPENTUBE_CORS_ALLOWEDORIGINS` (default `*`) and `OPENTUBE_CORS_ALLOWEDMETHODS` (default `GET,OPTIONS`)
+- `application.properties` lists every setting with its default and env var
 
 ### Changed
 
@@ -24,7 +30,8 @@ The format is based on [keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `/services` errors use the standard `ErrorResponse` body instead of `{ "message": … }`
 - Asking a channel for a tab it doesn't have, or passing `nextPage.ids` without the channel URL, is `400 VALIDATION_ERROR` instead of `500 EXTRACTION_ERROR`
 - `/services` items are documented as a `Service` schema
-
+- JSON responses are no longer pretty-printed, and `/actuator/health` no longer shows details. Both are on in the `dev` profile, or set `SPRING_JACKSON_SERIALIZATION_INDENTOUTPUT=true` and `MANAGEMENT_ENDPOINT_HEALTH_SHOWDETAILS=always`
+- CORS allows only `GET` and `OPTIONS`, instead of also `POST`, `PUT` and `DELETE`, which no endpoint accepts
 
 ### Fixed
 
@@ -35,6 +42,7 @@ The format is based on [keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - An unknown kiosk ID returned `500 EXTRACTION_ERROR` instead of `404 NOT_FOUND`
 - Internal faults while building a DASH manifest returned `400 VALIDATION_ERROR`, blaming the client; they're now `500 INTERNAL_ERROR`
 - `/playlists/page` fetched each page from YouTube twice
+- NewPipeExtractor's requests used OkHttp's 10-second connect timeout instead of the documented 30 seconds: `main()` gave it a different HTTP client from the configured one
 
 
 ## [0.5.0] - 2026-11-02
@@ -94,7 +102,7 @@ The format is based on [keep a Changelog](https://keepachangelog.com/en/1.1.0/),
  - `StreamInfo` caching keyed on video URL. Repeated requests for the same video now share one extraction instead of re-extracting per endpoint.
  - Configurable cache settings under `opentube.cache.streaminfo`: `max-entries`, `safety-margin`, `fallback-ttl`, `degraded-ttl`, `max-ttl`
  - Request scoped logging context: every log line has a request ID and a resource ID from the request to better identify logs from concurrent requests.
- - `local` Spring profile (`application-local.properties`) enabling DEBUG for the application package during local development.
+ - `local` Spring profile (`application-dev.properties`) enabling DEBUG for the application package during local development.
 
 ### Changed
 
