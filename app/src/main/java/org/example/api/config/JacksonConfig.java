@@ -7,7 +7,10 @@ import org.springframework.context.annotation.Configuration;
 import tools.jackson.databind.DeserializationFeature;
 import tools.jackson.databind.SerializationFeature;
 
-
+/**
+ * Serialisation settings the API depends on. Pretty-printing isn't one of them: it's
+ * {@code spring.jackson.serialization.indent-output}, on in the {@code dev} profile.
+ */
 @Configuration
 public class JacksonConfig {
 
@@ -15,7 +18,6 @@ public class JacksonConfig {
     public JsonMapperBuilderCustomizer jsonMapperCustomizer() {
         return builder -> builder
                 .disable(SerializationFeature.FAIL_ON_EMPTY_BEANS)
-                .enable(SerializationFeature.INDENT_OUTPUT)
                 .disable(SerializationFeature.FAIL_ON_SELF_REFERENCES)
                 .disable(SerializationFeature.WRITE_SELF_REFERENCES_AS_NULL)
                 .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
