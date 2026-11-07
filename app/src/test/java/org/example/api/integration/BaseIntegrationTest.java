@@ -1,36 +1,20 @@
 package org.example.api.integration;
 
-import org.example.api.downloader.DownloaderImpl;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
-import org.schabi.newpipe.extractor.NewPipe;
-import org.schabi.newpipe.extractor.localization.Localization;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 
 /**
- * Base class for integration tests
+ * Base class for integration tests. The application context initialises NewPipeExtractor
+ * itself (see {@link org.example.api.config.NewPipeInitializer}), from the same
+ * {@code opentube.newpipe} and {@code opentube.http} settings as production.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
 @TestPropertySource(locations = "classpath:application-test.properties")
 @Tag("integration")
 public abstract class BaseIntegrationTest {
-    private static final Logger logger = LoggerFactory.getLogger(BaseIntegrationTest.class);
-    private static boolean initialized = false;
-
-    @BeforeAll
-    static void init() {
-        if (!initialized) {
-            DownloaderImpl downloader = DownloaderImpl.init(null);
-            NewPipe.init(downloader, new Localization("en", "GB"));
-            logger.info("Initialized integration test environment");
-            initialized = true;
-        }
-    }
 
     /**
      * Wait for a condition with timeout.

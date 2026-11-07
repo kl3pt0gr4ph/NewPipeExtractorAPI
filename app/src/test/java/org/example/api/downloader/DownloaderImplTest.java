@@ -38,6 +38,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @DisplayName("DownloaderImpl Tests")
 class DownloaderImplTest {
 
+    private static final String USER_AGENT = "NewPipeExtractorAPI-test/1.0";
+
     private MockWebServer mockWebServer;
     private DownloaderImpl downloader;
     private String baseUrl;
@@ -48,9 +50,8 @@ class DownloaderImplTest {
         mockWebServer.start();
         baseUrl = mockWebServer.url("/").toString();
 
-        // NOTE: init() mutates a static singleton — keep this suite
-        // single-threaded (no JUnit parallel execution for this class).
-        downloader = DownloaderImpl.init(null);
+        // NOTE: init() mutates a static singleton
+        downloader = DownloaderImpl.init(null, USER_AGENT);
     }
 
     @AfterEach
@@ -67,13 +68,13 @@ class DownloaderImplTest {
     @Test
     @DisplayName("init registers the singleton for null and custom builders")
     void init_registersSingleton() {
-        DownloaderImpl fromNull = DownloaderImpl.init(null);
+        DownloaderImpl fromNull = DownloaderImpl.init(null, USER_AGENT);
         assertNotNull(fromNull);
         assertSame(fromNull, DownloaderImpl.getInstance());
 
         OkHttpClient.Builder customBuilder = new OkHttpClient.Builder()
                 .connectTimeout(10, TimeUnit.SECONDS);
-        DownloaderImpl fromCustom = DownloaderImpl.init(customBuilder);
+        DownloaderImpl fromCustom = DownloaderImpl.init(customBuilder, USER_AGENT);
         assertNotNull(fromCustom);
         assertSame(fromCustom, DownloaderImpl.getInstance());
     }
@@ -165,7 +166,6 @@ class DownloaderImplTest {
         @Test
         @DisplayName("Throws IOException when the header is missing")
         void getContentLength_missingHeader_throwsIOException() {
-            // Chunked transfer encoding means no Content-Length header.
             mockWebServer.enqueue(new MockResponse.Builder()
                     .chunkedBody(new Buffer().writeUtf8("test content"), 4)
                     .build());
@@ -177,9 +177,6 @@ class DownloaderImplTest {
         @Test
         @DisplayName("Throws IOException when the header is not a number")
         void getContentLength_invalidNumber_throwsIOException() {
-            // Chunked body avoids an auto Content-Length so the bogus one wins.
-            // (Previously this test accepted IOException OR NullPointerException;
-            // the contract is IOException("Invalid content length") — assert that.)
             mockWebServer.enqueue(new MockResponse.Builder()
                     .code(200)
                     .chunkedBody(new Buffer().writeUtf8(""), 1)
@@ -199,7 +196,7 @@ class DownloaderImplTest {
     class StreamTests {
 
         @Test
-        @DisplayName("Streams body content via GET with the default User-Agent")
+        @DisplayName("Streams body content via GET with the configured User-Agent")
         void stream_returnsContent_viaGetWithUserAgent() throws Exception {
             // Content round-trip, method, and UA in one request — these were
             // three tests each firing an identical request.
@@ -213,7 +210,7 @@ class DownloaderImplTest {
 
             RecordedRequest request = mockWebServer.takeRequest();
             assertEquals("GET", request.getMethod());
-            assertEquals(DownloaderImpl.USER_AGENT, request.getHeaders().get("User-Agent"));
+            assertEquals(USER_AGENT, request.getHeaders().get("User-Agent"));
         }
 
         @Test
@@ -261,7 +258,7 @@ class DownloaderImplTest {
     class ExecuteRequestTests {
 
         @Test
-        @DisplayName("Executes GET returning code and body, with the default User-Agent")
+        @DisplayName("Executes GET returning code and body, with the configured User-Agent")
         void execute_getRequest_returnsCodeAndBody() throws Exception {
             String responseBody = "Success response";
             mockWebServer.enqueue(new MockResponse.Builder()
@@ -277,7 +274,7 @@ class DownloaderImplTest {
 
             RecordedRequest recordedRequest = mockWebServer.takeRequest();
             assertEquals("GET", recordedRequest.getMethod());
-            assertEquals(DownloaderImpl.USER_AGENT, recordedRequest.getHeaders().get("User-Agent"));
+            assertEquals(USER_AGENT, recordedRequest.getHeaders().get("User-Agent"));
         }
 
         @Test
@@ -335,7 +332,7 @@ class DownloaderImplTest {
         }
 
         @Test
-        @DisplayName("Lets a request's own User-Agent replace the default")
+        @DisplayName("Lets a request's own User-Agent replace the configured one")
         void execute_requestUserAgentReplacesDefault() throws Exception {
             // NewPipe sets its own User-Agent for the mobile InnerTube clients
             mockWebServer.enqueue(okBody("OK"));
@@ -435,6 +432,28 @@ class DownloaderImplTest {
             Request request = new Request.Builder().get(baseUrl + "api/data").build();
 
             assertThrows(IOException.class, () -> downloader.execute(request));
+        }
+    }
+
+    // ── Timeouts ─────────────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("Timeout Tests")
+    class TimeoutTests {
+
+        @Test
+        @DisplayName("Uses the builder's read timeout instead of overriding it")
+        void execute_usesBuilderReadTimeout() {
+            mockWebServer.enqueue(new MockResponse.Builder()
+                    .headersDelay(2, TimeUnit.SECONDS)
+                    .body("late")
+                    .build());
+            DownloaderImpl shortTimeout = DownloaderImpl.init(
+                    new OkHttpClient.Builder().readTimeout(200, TimeUnit.MILLISECONDS), USER_AGENT);
+
+            Request request = new Request.Builder().get(baseUrl + "slow").build();
+
+            assertThrows(IOException.class, () -> shortTimeout.execute(request));
         }
     }
 }

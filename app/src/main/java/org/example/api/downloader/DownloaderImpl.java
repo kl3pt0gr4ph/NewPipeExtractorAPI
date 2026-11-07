@@ -12,33 +12,33 @@ import org.schabi.newpipe.extractor.downloader.Response;
 import org.schabi.newpipe.extractor.exceptions.ReCaptchaException;
 
 import java.io.IOException;
-import java.util.concurrent.TimeUnit;
 import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
 
 public class DownloaderImpl extends Downloader {
-    /**
-     * Default User-Agent, sent unless NewPipe sets its own for a request (it does for the
-     * mobile InnerTube clients). Matches NewPipeExtractor's own test downloader: the latest
-     * Firefox ESR. YouTube can serve old browsers a different page layout, which NewPipe
-     * then can't parse, so keep this current when bumping NewPipeExtractor.
-     */
-    public static final String USER_AGENT =
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0) Gecko/20100101 Firefox/140.0";
-
     private static DownloaderImpl instance;
     private String mCookies;
     private final OkHttpClient client;
+    private final String userAgent;
 
-    private DownloaderImpl(OkHttpClient.Builder builder) {
-        this.client = builder
-                .readTimeout(30, TimeUnit.SECONDS)
-                .build();
+    private DownloaderImpl(OkHttpClient.Builder builder, String userAgent) {
+        this.client = builder.build();
+        this.userAgent = userAgent;
     }
 
-    public static DownloaderImpl init(@Nullable OkHttpClient.Builder builder) {
-        return instance = new DownloaderImpl(builder != null ? builder : new OkHttpClient.Builder());
+    /**
+     * Creates the downloader and makes it the one {@link #getInstance()} returns.
+     *
+     * @param builder   the client to use, with timeouts already set; {@code null} for
+     *                  OkHttp's defaults
+     * @param userAgent sent with every request unless NewPipe sets its own for a request
+     *                  (it does for the mobile InnerTube clients)
+     * @return the new downloader
+     */
+    public static DownloaderImpl init(@Nullable OkHttpClient.Builder builder, String userAgent) {
+        return instance = new DownloaderImpl(
+                builder != null ? builder : new OkHttpClient.Builder(), userAgent);
     }
 
     public static DownloaderImpl getInstance() {
@@ -76,7 +76,7 @@ public class DownloaderImpl extends Downloader {
         try {
             final okhttp3.Request.Builder requestBuilder = new okhttp3.Request.Builder()
                     .method("GET", null).url(siteUrl)
-                    .addHeader("User-Agent", USER_AGENT);
+                    .addHeader("User-Agent", userAgent);
 
             if (!isEmpty(mCookies)) {
                 requestBuilder.addHeader("Cookie", mCookies);
@@ -113,7 +113,7 @@ public class DownloaderImpl extends Downloader {
 
             final okhttp3.Request.Builder requestBuilder = new okhttp3.Request.Builder()
                     .method(httpMethod, requestBody).url(url)
-                    .addHeader("User-Agent", USER_AGENT);
+                    .addHeader("User-Agent", userAgent);
 
             if (!isEmpty(mCookies)) {
                 requestBuilder.addHeader("Cookie", mCookies);
