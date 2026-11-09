@@ -1,6 +1,7 @@
 package org.example.api.service;
 
 import org.example.api.cache.StreamInfoCache;
+import org.example.api.config.ExtractionProperties;
 import org.example.api.exception.ExtractionException;
 import org.example.api.exception.NewPipeExceptionMapper;
 import org.schabi.newpipe.extractor.Image;
@@ -19,22 +20,24 @@ import java.util.List;
 @Service
 public class VideoStreamingService {
     private final StreamInfoCache cache;
+    private final int attempts;
     private static final Logger logger = LoggerFactory.getLogger(VideoStreamingService.class);
 
-    public VideoStreamingService(StreamInfoCache cache) {
+    public VideoStreamingService(StreamInfoCache cache, ExtractionProperties extraction) {
         this.cache = cache;
+        this.attempts = extraction.attempts();
     }
 
     /**
      * Retrieves comprehensive information about a specific stream.
      */
     public StreamInfo getStreamInfo(String url) throws ExtractionException {
-        return cache.get(url, key -> extractWithRetry(key, 2));
+        return cache.get(url, key -> extractWithRetry(key, attempts));
     }
 
     /**
-     * Performs the YouTube extraction, retrying once when YouTube returns an
-     * incomplete response.
+     * Performs the YouTube extraction, retrying while YouTube returns an incomplete
+     * response, up to {@code opentube.extraction.attempts} attempts in total.
      *
      * <p>This is the loader for {@link StreamInfoCache} and must only be called from
      * {@link #getStreamInfo(String)}. Calling it directly bypasses the cache.</p>

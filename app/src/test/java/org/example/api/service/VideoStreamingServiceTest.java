@@ -2,6 +2,7 @@ package org.example.api.service;
 
 import org.example.api.cache.StreamInfoCache;
 import org.example.api.cache.StreamInfoCacheProperties;
+import org.example.api.config.ExtractionProperties;
 import org.example.api.exception.ApiException;
 import org.example.api.exception.ErrorCode;
 import org.example.api.exception.ExtractionException;
@@ -51,7 +52,12 @@ class VideoStreamingServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new VideoStreamingService(new StreamInfoCache(cacheProperties()));
+        service = serviceWithAttempts(2);
+    }
+
+    private static VideoStreamingService serviceWithAttempts(int attempts) {
+        return new VideoStreamingService(
+                new StreamInfoCache(cacheProperties()), new ExtractionProperties(attempts));
     }
 
     private static StreamInfoCacheProperties cacheProperties() {
@@ -146,6 +152,42 @@ class VideoStreamingServiceTest {
 
                 assertThat(result).isSameAs(secondIncomplete);
                 extractor.verify(() -> StreamInfo.getInfo(TEST_URL), times(2));
+            }
+        }
+
+        @Test
+        @DisplayName("Does not retry when attempts is 1")
+        void doesNotRetry_whenAttemptsIsOne() throws Exception {
+            VideoStreamingService noRetry = serviceWithAttempts(1);
+            StreamInfo incomplete = incompleteStreamInfo();
+
+            try (MockedStatic<StreamInfo> extractor = mockStatic(StreamInfo.class)) {
+                extractor.when(() -> StreamInfo.getInfo(TEST_URL)).thenReturn(incomplete);
+
+                StreamInfo result = noRetry.getStreamInfo(TEST_URL);
+
+                assertThat(result).isSameAs(incomplete);
+                extractor.verify(() -> StreamInfo.getInfo(TEST_URL), times(1));
+            }
+        }
+
+        @Test
+        @DisplayName("Retries up to the configured number of attempts")
+        void retriesUpToConfiguredAttempts() throws Exception {
+            VideoStreamingService threeAttempts = serviceWithAttempts(3);
+            // Built before stubbing: creating a mock inside thenReturn() breaks Mockito
+            StreamInfo first = incompleteStreamInfo();
+            StreamInfo second = incompleteStreamInfo();
+            StreamInfo third = incompleteStreamInfo();
+            StreamInfo fourth = completeStreamInfo();
+
+            try (MockedStatic<StreamInfo> extractor = mockStatic(StreamInfo.class)) {
+                extractor.when(() -> StreamInfo.getInfo(TEST_URL)).thenReturn(first, second, third, fourth);
+
+                StreamInfo result = threeAttempts.getStreamInfo(TEST_URL);
+
+                assertThat(result).isSameAs(third);
+                extractor.verify(() -> StreamInfo.getInfo(TEST_URL), times(3));
             }
         }
 
