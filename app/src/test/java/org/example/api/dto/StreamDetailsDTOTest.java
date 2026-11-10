@@ -51,17 +51,17 @@ class StreamDetailsDTOTest {
 
         StreamDetailsDTO dto = StreamDetailsDTO.from(streamInfo);
 
-        assertThat(dto.getVideoTitle()).isEqualTo("Test Video Title");
-        assertThat(dto.getDescription()).isSameAs(description);
-        assertThat(dto.getUploaderAvatars())
+        assertThat(dto.videoTitle()).isEqualTo("Test Video Title");
+        assertThat(dto.description()).isSameAs(description);
+        assertThat(dto.uploaderAvatars())
                 .extracting(Image::getUrl)
                 .containsExactly("https://yt3.ggpht.com/avatar-small.jpg", "https://yt3.ggpht.com/avatar-large.jpg");
-        assertThat(dto.getViewCount()).isEqualTo(1_000_000L);
-        assertThat(dto.getLikeCount()).isEqualTo(50_000L);
-        assertThat(dto.getDislikeCount()).isEqualTo(500L);
-        assertThat(dto.getChannelName()).isEqualTo("Channel Name");
-        assertThat(dto.getChannelSubscriberCount()).isEqualTo(500_000L);
-        assertThat(dto.getUploadDate()).isEqualTo("2025-12-01");
+        assertThat(dto.viewCount()).isEqualTo(1_000_000L);
+        assertThat(dto.likeCount()).isEqualTo(50_000L);
+        assertThat(dto.dislikeCount()).isEqualTo(500L);
+        assertThat(dto.channelName()).isEqualTo("Channel Name");
+        assertThat(dto.channelSubscriberCount()).isEqualTo(500_000L);
+        assertThat(dto.uploadDate()).isEqualTo("2025-12-01");
     }
 
     @Test
@@ -79,35 +79,21 @@ class StreamDetailsDTOTest {
 
         StreamDetailsDTO dto = StreamDetailsDTO.from(streamInfo);
 
-        assertThat(dto.getDescription()).isNull();
-        assertThat(dto.getUploaderAvatars()).isEmpty();
-        assertThat(dto.getDislikeCount()).isEqualTo(-1L);
-        assertThat(dto.getChannelName()).isNull();
-        assertThat(dto.getChannelSubscriberCount()).isEqualTo(-1L);
-        assertThat(dto.getUploadDate()).isNull();
+        assertThat(dto.description()).isNull();
+        assertThat(dto.uploaderAvatars()).isEmpty();
+        assertThat(dto.dislikeCount()).isEqualTo(-1L);
+        assertThat(dto.channelName()).isNull();
+        assertThat(dto.channelSubscriberCount()).isEqualTo(-1L);
+        assertThat(dto.uploadDate()).isNull();
     }
 
     @Test
     @DisplayName("Round-trips every scalar field through serialize/deserialize unchanged")
     void roundTripPreservesScalarFields() throws Exception {
-        StreamDetailsDTO original = new StreamDetailsDTO();
-        original.setVideoTitle("Test Video");
-        original.setViewCount(1_000_000L);
-        original.setLikeCount(50_000L);
-        original.setDislikeCount(500L);
-        original.setChannelName("Channel Name");
-        original.setChannelSubscriberCount(500_000L);
-        original.setUploadDate("2025-12-01");
+        StreamDetailsDTO original = new StreamDetailsDTO("Test Video", null, List.of(),
+                1_000_000L, 50_000L, 500L, "Channel Name", 500_000L, "2025-12-01");
 
-        StreamDetailsDTO restored = objectMapper.readValue(
-                objectMapper.writeValueAsString(original), StreamDetailsDTO.class);
-
-        assertThat(restored.getVideoTitle()).isEqualTo(original.getVideoTitle());
-        assertThat(restored.getViewCount()).isEqualTo(original.getViewCount());
-        assertThat(restored.getLikeCount()).isEqualTo(original.getLikeCount());
-        assertThat(restored.getDislikeCount()).isEqualTo(original.getDislikeCount());
-        assertThat(restored.getChannelName()).isEqualTo(original.getChannelName());
-        assertThat(restored.getChannelSubscriberCount()).isEqualTo(original.getChannelSubscriberCount());
-        assertThat(restored.getUploadDate()).isEqualTo(original.getUploadDate());
+        assertThat(objectMapper.readValue(objectMapper.writeValueAsString(original), StreamDetailsDTO.class))
+                .isEqualTo(original);
     }
 }
