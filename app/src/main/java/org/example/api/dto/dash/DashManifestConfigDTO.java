@@ -1,19 +1,18 @@
 package org.example.api.dto.dash;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import org.schabi.newpipe.extractor.services.youtube.ItagItem;
 import org.schabi.newpipe.extractor.stream.AudioStream;
+import org.schabi.newpipe.extractor.stream.Stream;
 import org.schabi.newpipe.extractor.stream.StreamInfo;
+import org.schabi.newpipe.extractor.stream.SubtitlesStream;
+import org.schabi.newpipe.extractor.stream.VideoStream;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import org.schabi.newpipe.extractor.stream.SubtitlesStream;
-import org.schabi.newpipe.extractor.stream.VideoStream;
-import org.schabi.newpipe.extractor.services.youtube.ItagItem;
-import org.schabi.newpipe.extractor.stream.Stream;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -25,77 +24,37 @@ import java.util.concurrent.TimeUnit;
  * Data Transfer Object representing the complete DASH manifest configuration.
  * Contains all video, audio, and subtitle streams with manifest metadata.
  * This is the root DTO that holds all streams without filtering.
+ *
+ * <p>The stream lists are copied on construction and can't be modified afterwards;
+ * a {@code null} list becomes an empty one.</p>
+ *
+ * @param type                      Type of DASH manifest (typically "static" for VOD content)
+ * @param mediaPresentationDuration Total duration of the media presentation in ISO 8601 format
+ *                                  (e.g., "PT1M59.702S")
+ * @param minBufferTime             Minimum buffer time required for playback in ISO 8601 format (e.g., "PT2S")
+ * @param profiles                  DASH profile identifier specifying which DASH features are used
+ * @param videoStreams              All available video streams with different qualities/resolutions
+ * @param audioStreams              All available audio streams with different qualities/languages
+ * @param subtitleStreams           All available subtitle tracks
+ * @param durationSeconds           Duration in seconds (for convenience, not part of XML manifest)
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class DashManifestConfigDTO {
+public record DashManifestConfigDTO(
+        @NotBlank(message = "Manifest type cannot be blank") String type,
+        @NotBlank(message = "Media presentation duration cannot be blank") String mediaPresentationDuration,
+        @NotBlank(message = "Min buffer time cannot be blank") String minBufferTime,
+        @NotBlank(message = "Profiles cannot be blank") String profiles,
+        @NotNull(message = "Video streams list cannot be null") List<VideoStreamMetadataDTO> videoStreams,
+        @NotNull(message = "Audio streams list cannot be null") List<AudioStreamMetadataDTO> audioStreams,
+        @NotNull(message = "Subtitle streams list cannot be null") List<SubtitleMetadataDTO> subtitleStreams,
+        @Min(value = 1, message = "Duration must be at least 1 second") long durationSeconds) {
 
     private static final Logger logger = LoggerFactory.getLogger(DashManifestConfigDTO.class);
 
-    /** Type of DASH manifest (typically "static" for VOD content) */
-    @NotBlank(message = "Manifest type cannot be blank")
-    @JsonProperty("type")
-    private String type;
-
-    /** Total duration of the media presentation in ISO 8601 format (e.g., "PT1M59.702S"). */
-    @NotBlank(message = "Media presentation duration cannot be blank")
-    @JsonProperty("mediaPresentationDuration")
-    private String mediaPresentationDuration;
-
-    /** Minimum buffer time required for playback in ISO 8601 format (e.g., "PT2S"). */
-    @NotBlank(message = "Min buffer time cannot be blank")
-    @JsonProperty("minBufferTime")
-    private String minBufferTime;
-
-    /** DASH profile identifier specifying which DASH features are used. */
-    @NotBlank(message = "Profiles cannot be blank")
-    @JsonProperty("profiles")
-    private String profiles;
-
-    /** List of all available video streams with different qualities/resolutions. */
-    @NotNull(message = "Video streams list cannot be null")
-    @JsonProperty("videoStreams")
-    private List<VideoStreamMetadataDTO> videoStreams;
-
-    /** List of all available audio streams with different qualities/languages. */
-    @NotNull(message = "Audio streams list cannot be null")
-    @JsonProperty("audioStreams")
-    private List<AudioStreamMetadataDTO> audioStreams;
-
-    /** List of all available subtitle tracks. */
-    @NotNull(message = "Subtitle streams list cannot be null")
-    @JsonProperty("subtitleStreams")
-    private List<SubtitleMetadataDTO> subtitleStreams;
-
-    /** Duration in seconds (for convenience, not part of XML manifest). */
-    @Min(value = 1, message = "Duration must be at least 1 second")
-    @JsonProperty("durationSeconds")
-    private long durationSeconds;
-
-    // Constructors
-
-    /** Default constructor for Jackson deserialization. */
-    public DashManifestConfigDTO() {
-        this.type = "static";
-        this.minBufferTime = "PT2S";
-        this.profiles = "urn:mpeg:dash:profile:isoff-on-demand:2011";
-        this.videoStreams = new ArrayList<>();
-        this.audioStreams = new ArrayList<>();
-        this.subtitleStreams = new ArrayList<>();
-    }
-
-    /** Full constructor for creating a DashManifestConfigDTO with all fields. */
-    public DashManifestConfigDTO(String type, String mediaPresentationDuration, String minBufferTime,
-                                 String profiles, List<VideoStreamMetadataDTO> videoStreams,
-                                 List<AudioStreamMetadataDTO> audioStreams,
-                                 List<SubtitleMetadataDTO> subtitleStreams, long durationSeconds) {
-        this.type = type;
-        this.mediaPresentationDuration = mediaPresentationDuration;
-        this.minBufferTime = minBufferTime;
-        this.profiles = profiles;
-        this.videoStreams = videoStreams != null ? videoStreams : new ArrayList<>();
-        this.audioStreams = audioStreams != null ? audioStreams : new ArrayList<>();
-        this.subtitleStreams = subtitleStreams != null ? subtitleStreams : new ArrayList<>();
-        this.durationSeconds = durationSeconds;
+    public DashManifestConfigDTO {
+        videoStreams = videoStreams == null ? List.of() : List.copyOf(videoStreams);
+        audioStreams = audioStreams == null ? List.of() : List.copyOf(audioStreams);
+        subtitleStreams = subtitleStreams == null ? List.of() : List.copyOf(subtitleStreams);
     }
 
     // Static Factory Method
@@ -114,16 +73,14 @@ public class DashManifestConfigDTO {
         Objects.requireNonNull(audioStreams, "audioStreams");
         Objects.requireNonNull(subtitleStreams, "subtitleStreams");
 
-        DashManifestConfigDTO dto = new DashManifestConfigDTO();
-        dto.setDurationSeconds(streamInfo.getDuration());
-        dto.setMediaPresentationDuration(formatDuration(
-                presentationDurationMs(streamInfo, videoStreams, audioStreams)));
-
-        dto.setVideoStreams(convertAll(videoStreams, "video", VideoStreamMetadataDTO::from));
-        dto.setAudioStreams(convertAll(audioStreams, "audio", AudioStreamMetadataDTO::from));
-        dto.setSubtitleStreams(convertAll(subtitleStreams, "subtitle", SubtitleMetadataDTO::from));
-
-        return dto;
+        return builder()
+                .durationSeconds(streamInfo.getDuration())
+                .mediaPresentationDuration(formatDuration(
+                        presentationDurationMs(streamInfo, videoStreams, audioStreams)))
+                .videoStreams(convertAll(videoStreams, "video", VideoStreamMetadataDTO::from))
+                .audioStreams(convertAll(audioStreams, "audio", AudioStreamMetadataDTO::from))
+                .subtitleStreams(convertAll(subtitleStreams, "subtitle", SubtitleMetadataDTO::from))
+                .build();
     }
 
     @FunctionalInterface
@@ -188,15 +145,18 @@ public class DashManifestConfigDTO {
         return new Builder();
     }
 
-    /** Builder class for fluent construction of DashManifestConfigDTO instances. */
+    /**
+     * Builder class for fluent construction of DashManifestConfigDTO instances.
+     * Starts with the on-demand defaults: static type, PT2S buffer, isoff-on-demand profile.
+     */
     public static class Builder {
         private String type = "static";
         private String mediaPresentationDuration;
         private String minBufferTime = "PT2S";
         private String profiles = "urn:mpeg:dash:profile:isoff-on-demand:2011";
-        private List<VideoStreamMetadataDTO> videoStreams = new ArrayList<>();
-        private List<AudioStreamMetadataDTO> audioStreams = new ArrayList<>();
-        private List<SubtitleMetadataDTO> subtitleStreams = new ArrayList<>();
+        private List<VideoStreamMetadataDTO> videoStreams = List.of();
+        private List<AudioStreamMetadataDTO> audioStreams = List.of();
+        private List<SubtitleMetadataDTO> subtitleStreams = List.of();
         private long durationSeconds;
 
         public Builder type(String type) {
@@ -245,74 +205,11 @@ public class DashManifestConfigDTO {
         }
     }
 
-    // Getters and Setters
-
-    public String getType() {
-        return type;
-    }
-
-    public void setType(String type) {
-        this.type = type;
-    }
-
-    public String getMediaPresentationDuration() {
-        return mediaPresentationDuration;
-    }
-
-    public void setMediaPresentationDuration(String mediaPresentationDuration) {
-        this.mediaPresentationDuration = mediaPresentationDuration;
-    }
-
-    public String getMinBufferTime() {
-        return minBufferTime;
-    }
-
-    public void setMinBufferTime(String minBufferTime) {
-        this.minBufferTime = minBufferTime;
-    }
-
-    public String getProfiles() {
-        return profiles;
-    }
-
-    public void setProfiles(String profiles) {
-        this.profiles = profiles;
-    }
-
-    public List<VideoStreamMetadataDTO> getVideoStreams() {
-        return videoStreams;
-    }
-
-    public void setVideoStreams(List<VideoStreamMetadataDTO> videoStreams) {
-        this.videoStreams = videoStreams;
-    }
-
-    public List<AudioStreamMetadataDTO> getAudioStreams() {
-        return audioStreams;
-    }
-
-    public void setAudioStreams(List<AudioStreamMetadataDTO> audioStreams) {
-        this.audioStreams = audioStreams;
-    }
-
-    public List<SubtitleMetadataDTO> getSubtitleStreams() {
-        return subtitleStreams;
-    }
-
-    public void setSubtitleStreams(List<SubtitleMetadataDTO> subtitleStreams) {
-        this.subtitleStreams = subtitleStreams;
-    }
-
-    public long getDurationSeconds() {
-        return durationSeconds;
-    }
-
-    public void setDurationSeconds(long durationSeconds) {
-        this.durationSeconds = durationSeconds;
-    }
-
+    /** Prints stream counts rather than the streams themselves. */
     @Override
     public String toString() {
-        return "DashManifestConfigDTO{type='%s', mediaPresentationDuration='%s', durationSeconds=%d, videoStreams=%d, audioStreams=%d, subtitleStreams=%d}".formatted(type, mediaPresentationDuration, durationSeconds, videoStreams.size(), audioStreams.size(), subtitleStreams.size());
+        return "DashManifestConfigDTO{type='%s', mediaPresentationDuration='%s', durationSeconds=%d, videoStreams=%d, audioStreams=%d, subtitleStreams=%d}"
+                .formatted(type, mediaPresentationDuration, durationSeconds,
+                        videoStreams.size(), audioStreams.size(), subtitleStreams.size());
     }
 }

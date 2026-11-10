@@ -136,27 +136,27 @@ class DashManifestConfigDTOTest {
                 .subtitleStreams(List.of(SubtitleMetadataDTO.builder().id("s").build()))
                 .build();
 
-        assertThat(dto.getType()).isEqualTo("static");
-        assertThat(dto.getMediaPresentationDuration()).isEqualTo("PT1M59S");
-        assertThat(dto.getMinBufferTime()).isEqualTo("PT2S");
-        assertThat(dto.getProfiles()).isEqualTo("urn:mpeg:dash:profile:isoff-on-demand:2011");
-        assertThat(dto.getDurationSeconds()).isEqualTo(119);
-        assertThat(dto.getVideoStreams()).hasSize(1);
-        assertThat(dto.getAudioStreams()).hasSize(1);
-        assertThat(dto.getSubtitleStreams()).hasSize(1);
+        assertThat(dto.type()).isEqualTo("static");
+        assertThat(dto.mediaPresentationDuration()).isEqualTo("PT1M59S");
+        assertThat(dto.minBufferTime()).isEqualTo("PT2S");
+        assertThat(dto.profiles()).isEqualTo("urn:mpeg:dash:profile:isoff-on-demand:2011");
+        assertThat(dto.durationSeconds()).isEqualTo(119);
+        assertThat(dto.videoStreams()).hasSize(1);
+        assertThat(dto.audioStreams()).hasSize(1);
+        assertThat(dto.subtitleStreams()).hasSize(1);
     }
 
     @Test
-    @DisplayName("The no-args constructor sets static/PT2S/on-demand-profile defaults with empty, non-null lists")
-    void defaultConstructorUsesSensibleDefaults() {
-        DashManifestConfigDTO dto = new DashManifestConfigDTO();
+    @DisplayName("An untouched builder gives static/PT2S/on-demand-profile defaults with empty, non-null lists")
+    void builderUsesSensibleDefaults() {
+        DashManifestConfigDTO dto = DashManifestConfigDTO.builder().build();
 
-        assertThat(dto.getType()).isEqualTo("static");
-        assertThat(dto.getMinBufferTime()).isEqualTo("PT2S");
-        assertThat(dto.getProfiles()).isEqualTo("urn:mpeg:dash:profile:isoff-on-demand:2011");
-        assertThat(dto.getVideoStreams()).isNotNull().isEmpty();
-        assertThat(dto.getAudioStreams()).isNotNull().isEmpty();
-        assertThat(dto.getSubtitleStreams()).isNotNull().isEmpty();
+        assertThat(dto.type()).isEqualTo("static");
+        assertThat(dto.minBufferTime()).isEqualTo("PT2S");
+        assertThat(dto.profiles()).isEqualTo("urn:mpeg:dash:profile:isoff-on-demand:2011");
+        assertThat(dto.videoStreams()).isNotNull().isEmpty();
+        assertThat(dto.audioStreams()).isNotNull().isEmpty();
+        assertThat(dto.subtitleStreams()).isNotNull().isEmpty();
     }
 
     @Test
@@ -167,9 +167,22 @@ class DashManifestConfigDTOTest {
                 "urn:mpeg:dash:profile:isoff-on-demand:2011",
                 null, null, null, 119);
 
-        assertThat(dto.getVideoStreams()).isNotNull().isEmpty();
-        assertThat(dto.getAudioStreams()).isNotNull().isEmpty();
-        assertThat(dto.getSubtitleStreams()).isNotNull().isEmpty();
+        assertThat(dto.videoStreams()).isNotNull().isEmpty();
+        assertThat(dto.audioStreams()).isNotNull().isEmpty();
+        assertThat(dto.subtitleStreams()).isNotNull().isEmpty();
+    }
+
+    @Test
+    @DisplayName("Copies the stream lists, so later changes to the source list don't leak in")
+    void copiesStreamListsDefensively() {
+        List<VideoStreamMetadataDTO> source = new ArrayList<>();
+        DashManifestConfigDTO dto = validBuilder().videoStreams(source).build();
+
+        source.add(VideoStreamMetadataDTO.builder().id("v").build());
+
+        assertThat(dto.videoStreams()).isEmpty();
+        assertThatThrownBy(() -> dto.videoStreams().add(VideoStreamMetadataDTO.builder().id("w").build()))
+                .isInstanceOf(UnsupportedOperationException.class);
     }
 
     // ── Validation ───────────────────────────────────────────────────────
@@ -212,14 +225,14 @@ class DashManifestConfigDTOTest {
         DashManifestConfigDTO dto = DashManifestConfigDTO.from(streamInfo(119L),
                 List.of(videoStream()), List.of(audioStream()), List.of(subtitlesStream()));
 
-        assertThat(dto.getType()).isEqualTo("static");
-        assertThat(dto.getMinBufferTime()).isEqualTo("PT2S");
-        assertThat(dto.getProfiles()).isEqualTo("urn:mpeg:dash:profile:isoff-on-demand:2011");
-        assertThat(dto.getDurationSeconds()).isEqualTo(119);
-        assertThat(dto.getMediaPresentationDuration()).isEqualTo("PT1M59S");
-        assertThat(dto.getVideoStreams()).hasSize(1);
-        assertThat(dto.getAudioStreams()).hasSize(1);
-        assertThat(dto.getSubtitleStreams()).hasSize(1);
+        assertThat(dto.type()).isEqualTo("static");
+        assertThat(dto.minBufferTime()).isEqualTo("PT2S");
+        assertThat(dto.profiles()).isEqualTo("urn:mpeg:dash:profile:isoff-on-demand:2011");
+        assertThat(dto.durationSeconds()).isEqualTo(119);
+        assertThat(dto.mediaPresentationDuration()).isEqualTo("PT1M59S");
+        assertThat(dto.videoStreams()).hasSize(1);
+        assertThat(dto.audioStreams()).hasSize(1);
+        assertThat(dto.subtitleStreams()).hasSize(1);
     }
 
     @Test
@@ -230,9 +243,9 @@ class DashManifestConfigDTOTest {
         DashManifestConfigDTO dto = DashManifestConfigDTO.from(info,
                 List.of(videoStream()), List.of(audioStream()), List.of());
 
-        assertThat(dto.getVideoStreams()).hasSize(1);
-        assertThat(dto.getAudioStreams()).hasSize(1);
-        assertThat(dto.getSubtitleStreams()).isEmpty();
+        assertThat(dto.videoStreams()).hasSize(1);
+        assertThat(dto.audioStreams()).hasSize(1);
+        assertThat(dto.subtitleStreams()).isEmpty();
         // Reading these would bypass DashPlayabilityFilter
         verify(info, never()).getVideoOnlyStreams();
         verify(info, never()).getAudioStreams();
@@ -245,9 +258,9 @@ class DashManifestConfigDTOTest {
         DashManifestConfigDTO dto = DashManifestConfigDTO.from(
                 streamInfo(120L), List.of(), List.of(), List.of());
 
-        assertThat(dto.getVideoStreams()).isEmpty();
-        assertThat(dto.getAudioStreams()).isEmpty();
-        assertThat(dto.getSubtitleStreams()).isEmpty();
+        assertThat(dto.videoStreams()).isEmpty();
+        assertThat(dto.audioStreams()).isEmpty();
+        assertThat(dto.subtitleStreams()).isEmpty();
     }
 
     @Test
@@ -258,9 +271,9 @@ class DashManifestConfigDTOTest {
                 List.of(audioStream(), audioStream()),
                 List.of(subtitlesStream(), subtitlesStream(), subtitlesStream(), subtitlesStream()));
 
-        assertThat(dto.getVideoStreams()).hasSize(3);
-        assertThat(dto.getAudioStreams()).hasSize(2);
-        assertThat(dto.getSubtitleStreams()).hasSize(4);
+        assertThat(dto.videoStreams()).hasSize(3);
+        assertThat(dto.audioStreams()).hasSize(2);
+        assertThat(dto.subtitleStreams()).hasSize(4);
     }
 
     @Test
@@ -269,11 +282,11 @@ class DashManifestConfigDTOTest {
         DashManifestConfigDTO dto = DashManifestConfigDTO.from(streamInfo(119L),
                 List.of(videoStream(), videoStream()), List.of(audioStream()), List.of(subtitlesStream()));
 
-        assertThat(dto.getVideoStreams()).extracting(VideoStreamMetadataDTO::id)
+        assertThat(dto.videoStreams()).extracting(VideoStreamMetadataDTO::id)
                 .containsExactly("video-1", "video-2");
-        assertThat(dto.getAudioStreams()).extracting(AudioStreamMetadataDTO::id)
+        assertThat(dto.audioStreams()).extracting(AudioStreamMetadataDTO::id)
                 .containsExactly("audio-1");
-        assertThat(dto.getSubtitleStreams()).extracting(SubtitleMetadataDTO::id)
+        assertThat(dto.subtitleStreams()).extracting(SubtitleMetadataDTO::id)
                 .containsExactly("subtitle-1");
     }
 
@@ -310,7 +323,7 @@ class DashManifestConfigDTOTest {
         DashManifestConfigDTO dto = DashManifestConfigDTO.from(streamInfo(120L),
                 List.of(invalid, videoStream()), List.of(), List.of());
 
-        assertThat(dto.getVideoStreams()).hasSize(1);
+        assertThat(dto.videoStreams()).hasSize(1);
     }
 
     @Test
@@ -322,7 +335,7 @@ class DashManifestConfigDTOTest {
         DashManifestConfigDTO dto = DashManifestConfigDTO.from(streamInfo(120L),
                 List.of(invalid, videoStream()), List.of(), List.of());
 
-        assertThat(dto.getVideoStreams()).extracting(VideoStreamMetadataDTO::id)
+        assertThat(dto.videoStreams()).extracting(VideoStreamMetadataDTO::id)
                 .containsExactly("video-2");
     }
 
@@ -341,7 +354,7 @@ class DashManifestConfigDTOTest {
         DashManifestConfigDTO dto = DashManifestConfigDTO.from(
                 streamInfo(durationSeconds), List.of(), List.of(), List.of());
 
-        assertThat(dto.getMediaPresentationDuration()).isEqualTo(expected);
+        assertThat(dto.mediaPresentationDuration()).isEqualTo(expected);
     }
 
     @Test
@@ -350,8 +363,8 @@ class DashManifestConfigDTOTest {
         DashManifestConfigDTO dto = DashManifestConfigDTO.from(streamInfo(119L),
                 List.of(videoStream(119_702L)), List.of(), List.of());
 
-        assertThat(dto.getMediaPresentationDuration()).isEqualTo("PT1M59.702S");
-        assertThat(dto.getDurationSeconds()).isEqualTo(119);
+        assertThat(dto.mediaPresentationDuration()).isEqualTo("PT1M59.702S");
+        assertThat(dto.durationSeconds()).isEqualTo(119);
     }
 
     @Test
@@ -360,7 +373,7 @@ class DashManifestConfigDTOTest {
         DashManifestConfigDTO dto = DashManifestConfigDTO.from(streamInfo(119L),
                 List.of(videoStream(119_702L)), List.of(audioStream(119_741L)), List.of());
 
-        assertThat(dto.getMediaPresentationDuration()).isEqualTo("PT1M59.741S");
+        assertThat(dto.mediaPresentationDuration()).isEqualTo("PT1M59.741S");
     }
 
     @Test
@@ -372,7 +385,7 @@ class DashManifestConfigDTOTest {
         DashManifestConfigDTO dto = DashManifestConfigDTO.from(streamInfo(119L),
                 List.of(withoutItag), List.of(audioStream(APPROX_UNKNOWN)), List.of());
 
-        assertThat(dto.getMediaPresentationDuration()).isEqualTo("PT1M59S");
+        assertThat(dto.mediaPresentationDuration()).isEqualTo("PT1M59S");
     }
 
     // ── JSON ─────────────────────────────────────────────────────────────
@@ -386,12 +399,12 @@ class DashManifestConfigDTOTest {
         DashManifestConfigDTO restored = objectMapper.readValue(
                 objectMapper.writeValueAsString(original), DashManifestConfigDTO.class);
 
-        assertThat(restored.getType()).isEqualTo(original.getType());
-        assertThat(restored.getMediaPresentationDuration()).isEqualTo(original.getMediaPresentationDuration());
-        assertThat(restored.getDurationSeconds()).isEqualTo(original.getDurationSeconds());
-        assertThat(restored.getVideoStreams()).hasSize(original.getVideoStreams().size());
-        assertThat(restored.getAudioStreams()).hasSize(original.getAudioStreams().size());
-        assertThat(restored.getSubtitleStreams()).hasSize(original.getSubtitleStreams().size());
+        assertThat(restored.type()).isEqualTo(original.type());
+        assertThat(restored.mediaPresentationDuration()).isEqualTo(original.mediaPresentationDuration());
+        assertThat(restored.durationSeconds()).isEqualTo(original.durationSeconds());
+        assertThat(restored.videoStreams()).hasSize(original.videoStreams().size());
+        assertThat(restored.audioStreams()).hasSize(original.audioStreams().size());
+        assertThat(restored.subtitleStreams()).hasSize(original.subtitleStreams().size());
     }
 
     // ── toString ─────────────────────────────────────────────────────────

@@ -78,28 +78,24 @@ public class DashManifestGeneratorService {
         if (config == null) {
             throw new IllegalStateException("Manifest configuration cannot be null");
         }
-        if (config.getDurationSeconds() <= 0) {
+        if (config.durationSeconds() <= 0) {
             throw new IllegalStateException("Duration must be greater than 0");
-        }
-        if (config.getVideoStreams() == null || config.getAudioStreams() == null
-                || config.getSubtitleStreams() == null) {
-            throw new IllegalStateException("Stream lists cannot be null");
         }
 
         // Past this point a failure is a bug in the filter or the DTO conversion,
-        if (config.getVideoStreams().isEmpty() || config.getAudioStreams().isEmpty()) {
+        if (config.videoStreams().isEmpty() || config.audioStreams().isEmpty()) {
             throw new IllegalStateException("A manifest needs at least one video and one audio "
                     + "representation; the caller should have used the muxed fallback");
         }
-        for (VideoStreamMetadataDTO v : config.getVideoStreams()) {
+        for (VideoStreamMetadataDTO v : config.videoStreams()) {
             requireNonBlank("video", v.id(), v.url(), v.mimeType(), v.codec(),
                     v.initRange(), v.indexRange());
         }
-        for (AudioStreamMetadataDTO a : config.getAudioStreams()) {
+        for (AudioStreamMetadataDTO a : config.audioStreams()) {
             requireNonBlank("audio", a.id(), a.url(), a.mimeType(), a.codec(),
                     a.initRange(), a.indexRange());
         }
-        for (SubtitleMetadataDTO s : config.getSubtitleStreams()) {
+        for (SubtitleMetadataDTO s : config.subtitleStreams()) {
             requireNonBlank("subtitle", s.id(), s.url(), s.mimeType());
         }
     }
@@ -120,26 +116,26 @@ public class DashManifestGeneratorService {
     private void writeMpd(XMLStreamWriter xml, DashManifestConfigDTO config) throws XMLStreamException {
         xml.writeStartElement("MPD");
         xml.writeDefaultNamespace(DASH_NAMESPACE);
-        xml.writeAttribute("type", config.getType());
-        xml.writeAttribute("mediaPresentationDuration", config.getMediaPresentationDuration());
-        xml.writeAttribute("minBufferTime", config.getMinBufferTime());
-        xml.writeAttribute("profiles", config.getProfiles());
+        xml.writeAttribute("type", config.type());
+        xml.writeAttribute("mediaPresentationDuration", config.mediaPresentationDuration());
+        xml.writeAttribute("minBufferTime", config.minBufferTime());
+        xml.writeAttribute("profiles", config.profiles());
 
         xml.writeStartElement("Period");
-        xml.writeAttribute("duration", config.getMediaPresentationDuration());
+        xml.writeAttribute("duration", config.mediaPresentationDuration());
 
         // One counter across all AdaptationSets
         int nextId = 0;
-        nextId = writeVideoAdaptationSets(xml, config.getVideoStreams(), nextId);
-        nextId = writeAudioAdaptationSets(xml, config.getAudioStreams(), nextId);
-        nextId = writeSubtitleAdaptationSets(xml, config.getSubtitleStreams(), nextId);
+        nextId = writeVideoAdaptationSets(xml, config.videoStreams(), nextId);
+        nextId = writeAudioAdaptationSets(xml, config.audioStreams(), nextId);
+        nextId = writeSubtitleAdaptationSets(xml, config.subtitleStreams(), nextId);
 
         xml.writeEndElement(); // Period
         xml.writeEndElement(); // MPD
 
         logger.debug("Wrote {} AdaptationSet(s) for {} video, {} audio, {} subtitle representation(s)",
-                nextId, config.getVideoStreams().size(), config.getAudioStreams().size(),
-                config.getSubtitleStreams().size());
+                nextId, config.videoStreams().size(), config.audioStreams().size(),
+                config.subtitleStreams().size());
     }
 
     // --- Video -----------------------------------------------------------------
