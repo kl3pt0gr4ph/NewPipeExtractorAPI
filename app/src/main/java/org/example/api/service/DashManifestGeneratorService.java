@@ -92,15 +92,15 @@ public class DashManifestGeneratorService {
                     + "representation; the caller should have used the muxed fallback");
         }
         for (VideoStreamMetadataDTO v : config.getVideoStreams()) {
-            requireNonBlank("video", v.getId(), v.getUrl(), v.getMimeType(), v.getCodec(),
-                    v.getInitRange(), v.getIndexRange());
+            requireNonBlank("video", v.id(), v.url(), v.mimeType(), v.codec(),
+                    v.initRange(), v.indexRange());
         }
         for (AudioStreamMetadataDTO a : config.getAudioStreams()) {
-            requireNonBlank("audio", a.getId(), a.getUrl(), a.getMimeType(), a.getCodec(),
-                    a.getInitRange(), a.getIndexRange());
+            requireNonBlank("audio", a.id(), a.url(), a.mimeType(), a.codec(),
+                    a.initRange(), a.indexRange());
         }
         for (SubtitleMetadataDTO s : config.getSubtitleStreams()) {
-            requireNonBlank("subtitle", s.getId(), s.getUrl(), s.getMimeType());
+            requireNonBlank("subtitle", s.id(), s.url(), s.mimeType());
         }
     }
 
@@ -148,18 +148,18 @@ public class DashManifestGeneratorService {
     private int writeVideoAdaptationSets(XMLStreamWriter xml, List<VideoStreamMetadataDTO> videos,
                                          int nextId) throws XMLStreamException {
         Map<String, List<VideoStreamMetadataDTO>> byCodec =
-                groupBy(videos, v -> v.getMimeType() + "|" + codecFamily(v.getCodec()));
+                groupBy(videos, v -> v.mimeType() + "|" + codecFamily(v.codec()));
 
         for (List<VideoStreamMetadataDTO> group : byCodec.values()) {
             xml.writeStartElement("AdaptationSet");
             xml.writeAttribute("id", String.valueOf(nextId++));
             xml.writeAttribute("contentType", "video");
-            xml.writeAttribute("mimeType", group.getFirst().getMimeType());
+            xml.writeAttribute("mimeType", group.getFirst().mimeType());
             xml.writeAttribute("subsegmentAlignment", "true");
             xml.writeAttribute("startWithSAP", "1");
 
             List<VideoStreamMetadataDTO> sorted = group.stream()
-                    .sorted(Comparator.comparingInt(VideoStreamMetadataDTO::getHeight).reversed())
+                    .sorted(Comparator.comparingInt(VideoStreamMetadataDTO::height).reversed())
                     .toList();
             for (VideoStreamMetadataDTO video : sorted) {
                 writeVideoRepresentation(xml, video);
@@ -173,16 +173,16 @@ public class DashManifestGeneratorService {
     private void writeVideoRepresentation(XMLStreamWriter xml, VideoStreamMetadataDTO video)
             throws XMLStreamException {
         xml.writeStartElement("Representation");
-        xml.writeAttribute("id", video.getId());
-        xml.writeAttribute("bandwidth", String.valueOf(video.getBandwidth()));
-        xml.writeAttribute("codecs", video.getCodec());
-        xml.writeAttribute("width", String.valueOf(video.getWidth()));
-        xml.writeAttribute("height", String.valueOf(video.getHeight()));
-        if (!isBlank(video.getFrameRate())) {
-            xml.writeAttribute("frameRate", video.getFrameRate());
+        xml.writeAttribute("id", video.id());
+        xml.writeAttribute("bandwidth", String.valueOf(video.bandwidth()));
+        xml.writeAttribute("codecs", video.codec());
+        xml.writeAttribute("width", String.valueOf(video.width()));
+        xml.writeAttribute("height", String.valueOf(video.height()));
+        if (!isBlank(video.frameRate())) {
+            xml.writeAttribute("frameRate", video.frameRate());
         }
-        writeBaseUrl(xml, video.getUrl());
-        writeSegmentBase(xml, video.getInitRange(), video.getIndexRange());
+        writeBaseUrl(xml, video.url());
+        writeSegmentBase(xml, video.initRange(), video.indexRange());
         xml.writeEndElement(); // Representation
     }
 
@@ -201,18 +201,18 @@ public class DashManifestGeneratorService {
 
         for (List<AudioStreamMetadataDTO> track : byTrack.values()) {
             AudioStreamMetadataDTO first = track.getFirst();
-            String language = languageOrUnd(first.getLanguage());
-            String role = audioRole(first.getAudioTrackType(), singleTrack);
+            String language = languageOrUnd(first.language());
+            String role = audioRole(first.audioTrackType(), singleTrack);
             String label = audioLabel(first, language, role);
 
             Map<String, List<AudioStreamMetadataDTO>> byCodec =
-                    groupBy(track, a -> a.getMimeType() + "|" + codecFamily(a.getCodec()));
+                    groupBy(track, a -> a.mimeType() + "|" + codecFamily(a.codec()));
 
             for (List<AudioStreamMetadataDTO> group : byCodec.values()) {
                 xml.writeStartElement("AdaptationSet");
                 xml.writeAttribute("id", String.valueOf(nextId++));
                 xml.writeAttribute("contentType", "audio");
-                xml.writeAttribute("mimeType", group.getFirst().getMimeType());
+                xml.writeAttribute("mimeType", group.getFirst().mimeType());
                 xml.writeAttribute("lang", language);
                 xml.writeAttribute("subsegmentAlignment", "true");
                 xml.writeAttribute("startWithSAP", "1");
@@ -220,7 +220,7 @@ public class DashManifestGeneratorService {
                 writeLabel(xml, label);
 
                 List<AudioStreamMetadataDTO> sorted = group.stream()
-                        .sorted(Comparator.comparingInt(AudioStreamMetadataDTO::getBandwidth).reversed())
+                        .sorted(Comparator.comparingInt(AudioStreamMetadataDTO::bandwidth).reversed())
                         .toList();
                 for (AudioStreamMetadataDTO audio : sorted) {
                     writeAudioRepresentation(xml, audio);
@@ -235,26 +235,26 @@ public class DashManifestGeneratorService {
     private void writeAudioRepresentation(XMLStreamWriter xml, AudioStreamMetadataDTO audio)
             throws XMLStreamException {
         xml.writeStartElement("Representation");
-        xml.writeAttribute("id", audio.getId());
-        xml.writeAttribute("bandwidth", String.valueOf(audio.getBandwidth()));
-        xml.writeAttribute("codecs", audio.getCodec());
-        if (!isBlank(audio.getAudioSamplingRate())) {
-            xml.writeAttribute("audioSamplingRate", audio.getAudioSamplingRate());
+        xml.writeAttribute("id", audio.id());
+        xml.writeAttribute("bandwidth", String.valueOf(audio.bandwidth()));
+        xml.writeAttribute("codecs", audio.codec());
+        if (!isBlank(audio.audioSamplingRate())) {
+            xml.writeAttribute("audioSamplingRate", audio.audioSamplingRate());
         }
         xml.writeEmptyElement("AudioChannelConfiguration");
         xml.writeAttribute("schemeIdUri", AUDIO_CHANNEL_SCHEME);
-        xml.writeAttribute("value", String.valueOf(audio.getAudioChannels()));
+        xml.writeAttribute("value", String.valueOf(audio.audioChannels()));
 
-        writeBaseUrl(xml, audio.getUrl());
-        writeSegmentBase(xml, audio.getInitRange(), audio.getIndexRange());
+        writeBaseUrl(xml, audio.url());
+        writeSegmentBase(xml, audio.initRange(), audio.indexRange());
         xml.writeEndElement(); // Representation
     }
 
     /** Track id when YouTube provides one (multi-track videos), otherwise the language. */
     private static String audioTrackKey(AudioStreamMetadataDTO audio) {
-        String trackId = audio.getAudioTrackId();
+        String trackId = audio.audioTrackId();
         return isBlank(trackId)
-                ? "lang:" + languageOrUnd(audio.getLanguage())
+                ? "lang:" + languageOrUnd(audio.language())
                 : "track:" + trackId;
     }
 
@@ -279,14 +279,14 @@ public class DashManifestGeneratorService {
      * is the video's own audio, so it reads "Original"; any other such track is "Unknown".
      */
     private static String audioLabel(AudioStreamMetadataDTO audio, String language, String role) {
-        if (!isBlank(audio.getAudioTrackName())) {
-            return audio.getAudioTrackName();
+        if (!isBlank(audio.audioTrackName())) {
+            return audio.audioTrackName();
         }
         if (UNDETERMINED_LANGUAGE.equals(language)) {
             return ROLE_MAIN.equals(role) ? "Original" : "Unknown";
         }
-        if (!isBlank(audio.getLanguageName())) {
-            return audio.getLanguageName();
+        if (!isBlank(audio.languageName())) {
+            return audio.languageName();
         }
         return ManifestXmlBuilder.getLanguageName(language);
     }
@@ -297,20 +297,20 @@ public class DashManifestGeneratorService {
     private int writeSubtitleAdaptationSets(XMLStreamWriter xml, List<SubtitleMetadataDTO> subtitles,
                                             int nextId) throws XMLStreamException {
         for (SubtitleMetadataDTO subtitle : subtitles) {
-            String language = languageOrUnd(subtitle.getLanguage());
+            String language = languageOrUnd(subtitle.language());
 
             xml.writeStartElement("AdaptationSet");
             xml.writeAttribute("id", String.valueOf(nextId++));
             xml.writeAttribute("contentType", "text");
-            xml.writeAttribute("mimeType", subtitle.getMimeType());
+            xml.writeAttribute("mimeType", subtitle.mimeType());
             xml.writeAttribute("lang", language);
-            writeRole(xml, textRole(subtitle.getKind()));
+            writeRole(xml, textRole(subtitle.kind()));
             writeLabel(xml, subtitleLabel(subtitle, language));
 
             xml.writeStartElement("Representation");
-            xml.writeAttribute("id", subtitle.getId());
-            xml.writeAttribute("bandwidth", String.valueOf(subtitle.getBandwidth()));
-            writeBaseUrl(xml, subtitle.getUrl());
+            xml.writeAttribute("id", subtitle.id());
+            xml.writeAttribute("bandwidth", String.valueOf(subtitle.bandwidth()));
+            writeBaseUrl(xml, subtitle.url());
             xml.writeEndElement(); // Representation
 
             xml.writeEndElement(); // AdaptationSet
@@ -327,10 +327,10 @@ public class DashManifestGeneratorService {
 
     /** Auto-generated tracks get a suffix so the picker can tell them from manual ones. */
     private static String subtitleLabel(SubtitleMetadataDTO subtitle, String language) {
-        String name = !isBlank(subtitle.getLanguageName())
-                ? subtitle.getLanguageName()
+        String name = !isBlank(subtitle.languageName())
+                ? subtitle.languageName()
                 : ManifestXmlBuilder.getLanguageName(language);
-        return "asr".equalsIgnoreCase(subtitle.getKind()) ? name + " (auto-generated)" : name;
+        return "asr".equalsIgnoreCase(subtitle.kind()) ? name + " (auto-generated)" : name;
     }
 
     // --- Shared elements -------------------------------------------------------

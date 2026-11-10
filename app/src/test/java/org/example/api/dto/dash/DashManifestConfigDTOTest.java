@@ -269,11 +269,11 @@ class DashManifestConfigDTOTest {
         DashManifestConfigDTO dto = DashManifestConfigDTO.from(streamInfo(119L),
                 List.of(videoStream(), videoStream()), List.of(audioStream()), List.of(subtitlesStream()));
 
-        assertThat(dto.getVideoStreams()).extracting(VideoStreamMetadataDTO::getId)
+        assertThat(dto.getVideoStreams()).extracting(VideoStreamMetadataDTO::id)
                 .containsExactly("video-1", "video-2");
-        assertThat(dto.getAudioStreams()).extracting(AudioStreamMetadataDTO::getId)
+        assertThat(dto.getAudioStreams()).extracting(AudioStreamMetadataDTO::id)
                 .containsExactly("audio-1");
-        assertThat(dto.getSubtitleStreams()).extracting(SubtitleMetadataDTO::getId)
+        assertThat(dto.getSubtitleStreams()).extracting(SubtitleMetadataDTO::id)
                 .containsExactly("subtitle-1");
     }
 
@@ -322,7 +322,7 @@ class DashManifestConfigDTOTest {
         DashManifestConfigDTO dto = DashManifestConfigDTO.from(streamInfo(120L),
                 List.of(invalid, videoStream()), List.of(), List.of());
 
-        assertThat(dto.getVideoStreams()).extracting(VideoStreamMetadataDTO::getId)
+        assertThat(dto.getVideoStreams()).extracting(VideoStreamMetadataDTO::id)
                 .containsExactly("video-2");
     }
 
