@@ -60,11 +60,11 @@ class SearchPageDTOTest {
 
         SearchPageDTO dto = SearchPageDTO.from(infoItemsPage(items, nextPage));
 
-        assertThat(dto.getItemCount()).isEqualTo(2);
-        assertThat(dto.getItems()).extracting(SearchItemDTO::getType).containsExactly("stream", "stream");
-        assertThat(dto.isHasNextPage()).isTrue();
-        assertThat(dto.getNextPage().url()).isEqualTo("https://youtube.com/search?q=test&page=2");
-        assertThat(dto.getNextPage().id()).isEqualTo("4qmFsgJcEBIYdmlkZW8continuation");
+        assertThat(dto.itemCount()).isEqualTo(2);
+        assertThat(dto.items()).extracting(SearchItemDTO::type).containsExactly("stream", "stream");
+        assertThat(dto.hasNextPage()).isTrue();
+        assertThat(dto.nextPage().url()).isEqualTo("https://youtube.com/search?q=test&page=2");
+        assertThat(dto.nextPage().id()).isEqualTo("4qmFsgJcEBIYdmlkZW8continuation");
     }
 
     @Test
@@ -72,10 +72,10 @@ class SearchPageDTOTest {
     void mapsEmptyPageWithoutNextPage() {
         SearchPageDTO dto = SearchPageDTO.from(infoItemsPage(List.of(), null));
 
-        assertThat(dto.getItemCount()).isZero();
-        assertThat(dto.getItems()).isEmpty();
-        assertThat(dto.isHasNextPage()).isFalse();
-        assertThat(dto.getNextPage()).isNull();
+        assertThat(dto.itemCount()).isZero();
+        assertThat(dto.items()).isEmpty();
+        assertThat(dto.hasNextPage()).isFalse();
+        assertThat(dto.nextPage()).isNull();
     }
 
     @Test
@@ -85,9 +85,9 @@ class SearchPageDTOTest {
 
         SearchPageDTO dto = SearchPageDTO.from(infoItemsPage(List.of(), nextPage));
 
-        assertThat(dto.getNextPage()).isNotNull();
-        assertThat(dto.getNextPage().url()).isEqualTo("https://youtube.com/browse");
-        assertThat(dto.getNextPage().id()).isNull();
+        assertThat(dto.nextPage()).isNotNull();
+        assertThat(dto.nextPage().url()).isEqualTo("https://youtube.com/browse");
+        assertThat(dto.nextPage().id()).isNull();
     }
 
     // ── JSON ─────────────────────────────────────────────────────────────
@@ -114,8 +114,8 @@ class SearchPageDTOTest {
         SearchPageDTO restored = objectMapper.readValue(
                 objectMapper.writeValueAsString(original), SearchPageDTO.class);
 
-        assertThat(restored.getItemCount()).isEqualTo(original.getItemCount());
-        assertThat(restored.isHasNextPage()).isEqualTo(original.isHasNextPage());
-        assertThat(restored.getNextPage()).isNull();
+        assertThat(restored.itemCount()).isEqualTo(original.itemCount());
+        assertThat(restored.hasNextPage()).isEqualTo(original.hasNextPage());
+        assertThat(restored.nextPage()).isNull();
     }
 }

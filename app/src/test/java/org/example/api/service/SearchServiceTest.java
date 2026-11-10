@@ -128,7 +128,7 @@ class SearchServiceTest {
                 assertEquals("java tutorial", result.getSearchString());
                 assertEquals(
                         List.of("Video A", "Video B"),
-                        result.getItems().stream().map(SearchItemDTO::getName).toList());
+                        result.getItems().stream().map(SearchItemDTO::name).toList());
             }
         }
 
@@ -202,9 +202,9 @@ class SearchServiceTest {
                 callOrder.verify(mockSearchExtractor).getPage(argThat(p ->
                         PAGE_URL.equals(p.getUrl()) && PAGE_ID.equals(p.getId())));
 
-                assertEquals(1, result.getItems().size());
-                assertEquals("First Video", result.getItems().get(0).getName());
-                assertEquals(1, result.getItemCount());
+                assertEquals(1, result.items().size());
+                assertEquals("First Video", result.items().getFirst().name());
+                assertEquals(1, result.itemCount());
             }
         }
 

@@ -63,9 +63,9 @@ class SearchControllerIT extends BaseIntegrationTest {
         assertThat(result.getSearchString()).isEqualTo("java tutorial");
         assertThat(result.getItems()).isNotEmpty();
         assertThat(result.getItems()).allSatisfy(item -> {
-            assertThat(item.getName()).isNotBlank();
-            assertThat(item.getUrl()).isNotBlank().contains("youtube.com");
-            assertThat(item.getType()).isIn("stream", "channel", "playlist");
+            assertThat(item.name()).isNotBlank();
+            assertThat(item.url()).isNotBlank().contains("youtube.com");
+            assertThat(item.type()).isIn("stream", "channel", "playlist");
         });
     }
 
@@ -76,7 +76,7 @@ class SearchControllerIT extends BaseIntegrationTest {
 
         assertThat(result).isNotNull();
         List<SearchItemDTO> items = result.getItems();
-        long uniqueUrls = items.stream().map(SearchItemDTO::getUrl).distinct().count();
+        long uniqueUrls = items.stream().map(SearchItemDTO::url).distinct().count();
 
         assertThat(uniqueUrls).isEqualTo(items.size());
     }
@@ -168,8 +168,8 @@ class SearchControllerIT extends BaseIntegrationTest {
         assertThat(pageResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
         SearchPageDTO page = pageResponse.getBody();
         assertThat(page).isNotNull();
-        assertThat(page.getItems()).isNotEmpty();
-        assertThat(page.getItemCount()).isEqualTo(page.getItems().size());
+        assertThat(page.items()).isNotEmpty();
+        assertThat(page.itemCount()).isEqualTo(page.items().size());
     }
 
     // ── Concurrency smoke test ───────────────────────────────────────────
