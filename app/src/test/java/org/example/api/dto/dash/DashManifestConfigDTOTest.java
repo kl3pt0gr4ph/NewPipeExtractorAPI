@@ -1,9 +1,20 @@
 package org.example.api.dto.dash;
 
-import tools.jackson.databind.ObjectMapper;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.function.UnaryOperator;
+import java.util.stream.Stream;
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -18,19 +29,7 @@ import org.schabi.newpipe.extractor.stream.AudioStream;
 import org.schabi.newpipe.extractor.stream.StreamInfo;
 import org.schabi.newpipe.extractor.stream.SubtitlesStream;
 import org.schabi.newpipe.extractor.stream.VideoStream;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
-import java.util.function.UnaryOperator;
-import java.util.stream.Stream;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Unit tests for DashManifestConfigDTO.
@@ -163,9 +162,7 @@ class DashManifestConfigDTOTest {
     @DisplayName("The full constructor coalesces null stream lists to empty lists rather than storing null")
     void fullConstructorCoalescesNullListsToEmpty() {
         DashManifestConfigDTO dto = new DashManifestConfigDTO(
-                "static", "PT1M59S", "PT2S",
-                "urn:mpeg:dash:profile:isoff-on-demand:2011",
-                null, null, null, 119);
+                "static", "PT1M59S", "PT2S", "urn:mpeg:dash:profile:isoff-on-demand:2011", null, null, null, 119);
 
         assertThat(dto.videoStreams()).isNotNull().isEmpty();
         assertThat(dto.audioStreams()).isNotNull().isEmpty();
@@ -181,7 +178,8 @@ class DashManifestConfigDTOTest {
         source.add(VideoStreamMetadataDTO.builder().id("v").build());
 
         assertThat(dto.videoStreams()).isEmpty();
-        assertThatThrownBy(() -> dto.videoStreams().add(VideoStreamMetadataDTO.builder().id("w").build()))
+        assertThatThrownBy(() -> dto.videoStreams()
+                        .add(VideoStreamMetadataDTO.builder().id("w").build()))
                 .isInstanceOf(UnsupportedOperationException.class);
     }
 
@@ -195,12 +193,16 @@ class DashManifestConfigDTOTest {
 
     static Stream<Arguments> invalidFieldCases() {
         return Stream.of(
-                Arguments.of("blank type", (UnaryOperator<DashManifestConfigDTO.Builder>) b -> b.type(""),
+                Arguments.of(
+                        "blank type",
+                        (UnaryOperator<DashManifestConfigDTO.Builder>) b -> b.type(""),
                         "Manifest type cannot be blank"),
-                Arguments.of("blank mediaPresentationDuration",
+                Arguments.of(
+                        "blank mediaPresentationDuration",
                         (UnaryOperator<DashManifestConfigDTO.Builder>) b -> b.mediaPresentationDuration(""),
                         "Media presentation duration cannot be blank"),
-                Arguments.of("zero durationSeconds",
+                Arguments.of(
+                        "zero durationSeconds",
                         (UnaryOperator<DashManifestConfigDTO.Builder>) b -> b.durationSeconds(0),
                         "Duration must be at least 1 second"));
     }
@@ -208,8 +210,8 @@ class DashManifestConfigDTOTest {
     @ParameterizedTest(name = "Rejects {0}")
     @MethodSource("invalidFieldCases")
     @DisplayName("Rejects DTOs violating a single constraint, with the matching message")
-    void rejectsInvalidField(String name, UnaryOperator<DashManifestConfigDTO.Builder> mutator,
-                             String expectedMessage) {
+    void rejectsInvalidField(
+            String name, UnaryOperator<DashManifestConfigDTO.Builder> mutator, String expectedMessage) {
         Set<ConstraintViolation<DashManifestConfigDTO>> violations =
                 validator.validate(mutator.apply(validBuilder()).build());
 
@@ -222,8 +224,8 @@ class DashManifestConfigDTOTest {
     @Test
     @DisplayName("Maps duration and one stream of each type, with the on-demand defaults")
     void mapsDurationAndEveryGivenStream() {
-        DashManifestConfigDTO dto = DashManifestConfigDTO.from(streamInfo(119L),
-                List.of(videoStream()), List.of(audioStream()), List.of(subtitlesStream()));
+        DashManifestConfigDTO dto = DashManifestConfigDTO.from(
+                streamInfo(119L), List.of(videoStream()), List.of(audioStream()), List.of(subtitlesStream()));
 
         assertThat(dto.type()).isEqualTo("static");
         assertThat(dto.minBufferTime()).isEqualTo("PT2S");
@@ -240,8 +242,8 @@ class DashManifestConfigDTOTest {
     void convertsOnlyTheGivenLists() {
         StreamInfo info = streamInfo(119L);
 
-        DashManifestConfigDTO dto = DashManifestConfigDTO.from(info,
-                List.of(videoStream()), List.of(audioStream()), List.of());
+        DashManifestConfigDTO dto =
+                DashManifestConfigDTO.from(info, List.of(videoStream()), List.of(audioStream()), List.of());
 
         assertThat(dto.videoStreams()).hasSize(1);
         assertThat(dto.audioStreams()).hasSize(1);
@@ -255,8 +257,7 @@ class DashManifestConfigDTOTest {
     @Test
     @DisplayName("Maps empty lists to three empty lists")
     void mapsEmptyListsToEmptyLists() {
-        DashManifestConfigDTO dto = DashManifestConfigDTO.from(
-                streamInfo(120L), List.of(), List.of(), List.of());
+        DashManifestConfigDTO dto = DashManifestConfigDTO.from(streamInfo(120L), List.of(), List.of(), List.of());
 
         assertThat(dto.videoStreams()).isEmpty();
         assertThat(dto.audioStreams()).isEmpty();
@@ -266,7 +267,8 @@ class DashManifestConfigDTOTest {
     @Test
     @DisplayName("Maps multiple streams of each type, preserving counts")
     void mapsMultipleStreamsOfEachType() {
-        DashManifestConfigDTO dto = DashManifestConfigDTO.from(streamInfo(180L),
+        DashManifestConfigDTO dto = DashManifestConfigDTO.from(
+                streamInfo(180L),
                 List.of(videoStream(), videoStream(), videoStream()),
                 List.of(audioStream(), audioStream()),
                 List.of(subtitlesStream(), subtitlesStream(), subtitlesStream(), subtitlesStream()));
@@ -279,37 +281,35 @@ class DashManifestConfigDTOTest {
     @Test
     @DisplayName("Assigns 1-based ids per stream type, so ids are unique across the manifest")
     void assignsOneBasedIdsPerType() {
-        DashManifestConfigDTO dto = DashManifestConfigDTO.from(streamInfo(119L),
-                List.of(videoStream(), videoStream()), List.of(audioStream()), List.of(subtitlesStream()));
+        DashManifestConfigDTO dto = DashManifestConfigDTO.from(
+                streamInfo(119L),
+                List.of(videoStream(), videoStream()),
+                List.of(audioStream()),
+                List.of(subtitlesStream()));
 
-        assertThat(dto.videoStreams()).extracting(VideoStreamMetadataDTO::id)
-                .containsExactly("video-1", "video-2");
-        assertThat(dto.audioStreams()).extracting(AudioStreamMetadataDTO::id)
-                .containsExactly("audio-1");
-        assertThat(dto.subtitleStreams()).extracting(SubtitleMetadataDTO::id)
-                .containsExactly("subtitle-1");
+        assertThat(dto.videoStreams()).extracting(VideoStreamMetadataDTO::id).containsExactly("video-1", "video-2");
+        assertThat(dto.audioStreams()).extracting(AudioStreamMetadataDTO::id).containsExactly("audio-1");
+        assertThat(dto.subtitleStreams()).extracting(SubtitleMetadataDTO::id).containsExactly("subtitle-1");
     }
 
     static Stream<Arguments> nullArguments() {
         StreamInfo info = streamInfo(119L);
         return Stream.of(
-                Arguments.of("streamInfo", (ThrowingCallable) () ->
-                        DashManifestConfigDTO.from(null, List.of(), List.of(), List.of())),
-                Arguments.of("videoStreams", (ThrowingCallable) () ->
-                        DashManifestConfigDTO.from(info, null, List.of(), List.of())),
-                Arguments.of("audioStreams", (ThrowingCallable) () ->
-                        DashManifestConfigDTO.from(info, List.of(), null, List.of())),
-                Arguments.of("subtitleStreams", (ThrowingCallable) () ->
-                        DashManifestConfigDTO.from(info, List.of(), List.of(), null)));
+                Arguments.of("streamInfo", (ThrowingCallable)
+                        () -> DashManifestConfigDTO.from(null, List.of(), List.of(), List.of())),
+                Arguments.of("videoStreams", (ThrowingCallable)
+                        () -> DashManifestConfigDTO.from(info, null, List.of(), List.of())),
+                Arguments.of("audioStreams", (ThrowingCallable)
+                        () -> DashManifestConfigDTO.from(info, List.of(), null, List.of())),
+                Arguments.of("subtitleStreams", (ThrowingCallable)
+                        () -> DashManifestConfigDTO.from(info, List.of(), List.of(), null)));
     }
 
     @ParameterizedTest(name = "Rejects null {0}")
     @MethodSource("nullArguments")
     @DisplayName("Rejects a null argument with NullPointerException naming the parameter")
     void rejectsNullArguments(String parameter, ThrowingCallable call) {
-        assertThatThrownBy(call)
-                .isInstanceOf(NullPointerException.class)
-                .hasMessage(parameter);
+        assertThatThrownBy(call).isInstanceOf(NullPointerException.class).hasMessage(parameter);
     }
 
     // ── Conversion failures ──────────────────────────────────────────────
@@ -320,8 +320,8 @@ class DashManifestConfigDTOTest {
         VideoStream invalid = mock(VideoStream.class);
         when(invalid.getContent()).thenThrow(new RuntimeException("Invalid stream"));
 
-        DashManifestConfigDTO dto = DashManifestConfigDTO.from(streamInfo(120L),
-                List.of(invalid, videoStream()), List.of(), List.of());
+        DashManifestConfigDTO dto =
+                DashManifestConfigDTO.from(streamInfo(120L), List.of(invalid, videoStream()), List.of(), List.of());
 
         assertThat(dto.videoStreams()).hasSize(1);
     }
@@ -332,36 +332,36 @@ class DashManifestConfigDTOTest {
         VideoStream invalid = mock(VideoStream.class);
         when(invalid.getContent()).thenThrow(new RuntimeException("Invalid stream"));
 
-        DashManifestConfigDTO dto = DashManifestConfigDTO.from(streamInfo(120L),
-                List.of(invalid, videoStream()), List.of(), List.of());
+        DashManifestConfigDTO dto =
+                DashManifestConfigDTO.from(streamInfo(120L), List.of(invalid, videoStream()), List.of(), List.of());
 
-        assertThat(dto.videoStreams()).extracting(VideoStreamMetadataDTO::id)
-                .containsExactly("video-2");
+        assertThat(dto.videoStreams()).extracting(VideoStreamMetadataDTO::id).containsExactly("video-2");
     }
 
     // ── Duration ─────────────────────────────────────────────────────────
 
     @ParameterizedTest(name = "{0}s -> {1}")
     @CsvSource({
-            "7385, PT2H3M5S",   // hours + minutes + seconds
-            "125,  PT2M5S",     // minutes + seconds only
-            "45,   PT45S",      // seconds only
-            "0,    PT0S",       // zero
-            "3600, PT1H"        // exact hour, no trailing 0M0S
+        "7385, PT2H3M5S", // hours + minutes + seconds
+        "125,  PT2M5S", // minutes + seconds only
+        "45,   PT45S", // seconds only
+        "0,    PT0S", // zero
+        "3600, PT1H" // exact hour, no trailing 0M0S
     })
     @DisplayName("Without itag durations, formats StreamInfo seconds as ISO 8601 at each component boundary")
     void formatsWholeSecondFallback(long durationSeconds, String expected) {
-        DashManifestConfigDTO dto = DashManifestConfigDTO.from(
-                streamInfo(durationSeconds), List.of(), List.of(), List.of());
+        DashManifestConfigDTO dto =
+                DashManifestConfigDTO.from(streamInfo(durationSeconds), List.of(), List.of(), List.of());
 
         assertThat(dto.mediaPresentationDuration()).isEqualTo(expected);
     }
 
     @Test
-    @DisplayName("Uses the itag's approxDurationMs for millisecond precision; durationSeconds still comes from StreamInfo")
+    @DisplayName(
+            "Uses the itag's approxDurationMs for millisecond precision; durationSeconds still comes from StreamInfo")
     void usesApproxDurationMs() {
-        DashManifestConfigDTO dto = DashManifestConfigDTO.from(streamInfo(119L),
-                List.of(videoStream(119_702L)), List.of(), List.of());
+        DashManifestConfigDTO dto =
+                DashManifestConfigDTO.from(streamInfo(119L), List.of(videoStream(119_702L)), List.of(), List.of());
 
         assertThat(dto.mediaPresentationDuration()).isEqualTo("PT1M59.702S");
         assertThat(dto.durationSeconds()).isEqualTo(119);
@@ -370,8 +370,8 @@ class DashManifestConfigDTOTest {
     @Test
     @DisplayName("Takes the longest approxDurationMs across video and audio")
     void takesLongestTrackDuration() {
-        DashManifestConfigDTO dto = DashManifestConfigDTO.from(streamInfo(119L),
-                List.of(videoStream(119_702L)), List.of(audioStream(119_741L)), List.of());
+        DashManifestConfigDTO dto = DashManifestConfigDTO.from(
+                streamInfo(119L), List.of(videoStream(119_702L)), List.of(audioStream(119_741L)), List.of());
 
         assertThat(dto.mediaPresentationDuration()).isEqualTo("PT1M59.741S");
     }
@@ -382,8 +382,8 @@ class DashManifestConfigDTOTest {
         VideoStream withoutItag = videoStream();
         when(withoutItag.getItagItem()).thenReturn(null);
 
-        DashManifestConfigDTO dto = DashManifestConfigDTO.from(streamInfo(119L),
-                List.of(withoutItag), List.of(audioStream(APPROX_UNKNOWN)), List.of());
+        DashManifestConfigDTO dto = DashManifestConfigDTO.from(
+                streamInfo(119L), List.of(withoutItag), List.of(audioStream(APPROX_UNKNOWN)), List.of());
 
         assertThat(dto.mediaPresentationDuration()).isEqualTo("PT1M59S");
     }
@@ -393,18 +393,19 @@ class DashManifestConfigDTOTest {
     @Test
     @DisplayName("Round-trips scalar fields and stream-list sizes through serialize/deserialize")
     void roundTripPreservesFieldsAndStreamCounts() throws Exception {
-        DashManifestConfigDTO original = DashManifestConfigDTO.from(streamInfo(119L),
-                List.of(videoStream()), List.of(audioStream()), List.of(subtitlesStream()));
+        DashManifestConfigDTO original = DashManifestConfigDTO.from(
+                streamInfo(119L), List.of(videoStream()), List.of(audioStream()), List.of(subtitlesStream()));
 
-        DashManifestConfigDTO restored = objectMapper.readValue(
-                objectMapper.writeValueAsString(original), DashManifestConfigDTO.class);
+        DashManifestConfigDTO restored =
+                objectMapper.readValue(objectMapper.writeValueAsString(original), DashManifestConfigDTO.class);
 
         assertThat(restored.type()).isEqualTo(original.type());
         assertThat(restored.mediaPresentationDuration()).isEqualTo(original.mediaPresentationDuration());
         assertThat(restored.durationSeconds()).isEqualTo(original.durationSeconds());
         assertThat(restored.videoStreams()).hasSize(original.videoStreams().size());
         assertThat(restored.audioStreams()).hasSize(original.audioStreams().size());
-        assertThat(restored.subtitleStreams()).hasSize(original.subtitleStreams().size());
+        assertThat(restored.subtitleStreams())
+                .hasSize(original.subtitleStreams().size());
     }
 
     // ── toString ─────────────────────────────────────────────────────────
@@ -414,7 +415,7 @@ class DashManifestConfigDTOTest {
     void toStringIncludesKeyFieldsAndStreamCounts() {
         String result = validBuilder().build().toString();
 
-        assertThat(result).contains("static", "PT1M59S", "119",
-                "videoStreams=0", "audioStreams=0", "subtitleStreams=0");
+        assertThat(result)
+                .contains("static", "PT1M59S", "119", "videoStreams=0", "audioStreams=0", "subtitleStreams=0");
     }
 }

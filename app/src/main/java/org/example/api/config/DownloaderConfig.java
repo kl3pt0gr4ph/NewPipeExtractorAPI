@@ -14,9 +14,8 @@ public class DownloaderConfig {
      */
     @Bean
     public DownloaderImpl downloader(HttpClientProperties http) {
-        OkHttpClient.Builder builder = new OkHttpClient.Builder()
-                .connectTimeout(http.connectTimeout())
-                .readTimeout(http.readTimeout());
+        OkHttpClient.Builder builder =
+                new OkHttpClient.Builder().connectTimeout(http.connectTimeout()).readTimeout(http.readTimeout());
 
         return DownloaderImpl.init(builder, http.userAgent());
     }

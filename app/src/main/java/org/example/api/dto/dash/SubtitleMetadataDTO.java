@@ -1,11 +1,10 @@
 package org.example.api.dto.dash;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import org.schabi.newpipe.extractor.MediaFormat;
-import org.schabi.newpipe.extractor.stream.SubtitlesStream;
-
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import org.schabi.newpipe.extractor.MediaFormat;
+import org.schabi.newpipe.extractor.stream.SubtitlesStream;
 
 /**
  * Data Transfer Object representing metadata for a subtitle track in a DASH manifest.
@@ -24,11 +23,17 @@ import jakarta.validation.constraints.NotBlank;
 public record SubtitleMetadataDTO(
         @NotBlank(message = "Subtitle ID cannot be blank") String id,
         @NotBlank(message = "Subtitle URL cannot be blank") String url,
+
         @NotBlank(message = "Subtitle language cannot be blank") String language,
+
         String languageName,
+
         @NotBlank(message = "Subtitle MIME type cannot be blank") String mimeType,
+
         String kind,
+
         @Min(value = 1, message = "Bandwidth must be at least 1") int bandwidth,
+
         String format) {
 
     /** Standard bandwidth for text streams. */
@@ -144,8 +149,7 @@ public record SubtitleMetadataDTO(
         }
 
         public SubtitleMetadataDTO build() {
-            return new SubtitleMetadataDTO(id, url, language, languageName,
-                    mimeType, kind, bandwidth, format);
+            return new SubtitleMetadataDTO(id, url, language, languageName, mimeType, kind, bandwidth, format);
         }
     }
 

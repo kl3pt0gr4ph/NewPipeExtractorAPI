@@ -1,11 +1,10 @@
 package org.example.api.dto.dash;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import org.schabi.newpipe.extractor.MediaFormat;
-import org.schabi.newpipe.extractor.stream.VideoStream;
-
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import org.schabi.newpipe.extractor.MediaFormat;
+import org.schabi.newpipe.extractor.stream.VideoStream;
 
 /**
  * Data Transfer Object representing metadata for a video stream in a DASH manifest.
@@ -26,13 +25,21 @@ import jakarta.validation.constraints.NotBlank;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record VideoStreamMetadataDTO(
         @NotBlank(message = "Video stream ID cannot be blank") String id,
+
         @NotBlank(message = "Video stream URL cannot be blank") String url,
+
         @NotBlank(message = "Video codec cannot be blank") String codec,
+
         @NotBlank(message = "Video MIME type cannot be blank") String mimeType,
+
         @Min(value = 1, message = "Video width must be at least 1") int width,
+
         @Min(value = 1, message = "Video height must be at least 1") int height,
+
         @NotBlank(message = "Frame rate cannot be blank") String frameRate,
+
         @Min(value = 1, message = "Bandwidth must be at least 1") int bandwidth,
+
         String initRange,
         String indexRange,
         String format) {
@@ -151,8 +158,8 @@ public record VideoStreamMetadataDTO(
         }
 
         public VideoStreamMetadataDTO build() {
-            return new VideoStreamMetadataDTO(id, url, codec, mimeType, width, height,
-                    frameRate, bandwidth, initRange, indexRange, format);
+            return new VideoStreamMetadataDTO(
+                    id, url, codec, mimeType, width, height, frameRate, bandwidth, initRange, indexRange, format);
         }
     }
 

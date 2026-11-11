@@ -1,5 +1,21 @@
 package org.example.api.controller;
 
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.hasSize;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Stream;
 import org.example.api.config.GlobalExceptionHandler;
 import org.example.api.dto.search.SearchItemDTO;
 import org.example.api.dto.search.SearchPageDTO;
@@ -20,23 +36,6 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-
-import java.util.Collections;
-import java.util.List;
-import java.util.stream.Stream;
-
-import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.hasSize;
-import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * Unit tests for SearchController.
@@ -75,7 +74,8 @@ class SearchControllerTest {
     }
 
     private SearchPageDTO searchPageDTO(int itemCount) {
-        List<SearchItemDTO> items = Collections.nCopies(itemCount, SearchItemDTO.builder().build());
+        List<SearchItemDTO> items =
+                Collections.nCopies(itemCount, SearchItemDTO.builder().build());
         return new SearchPageDTO(items, null, false, itemCount);
     }
 
@@ -98,8 +98,7 @@ class SearchControllerTest {
                 .andExpect(jsonPath("$.nextPage.url").isNotEmpty())
                 .andExpect(jsonPath("$.nextPage.id").isNotEmpty());
 
-        verify(searchService).getSearchInfo(
-                eq("java tutorial"), eq(Collections.emptyList()), eq("upload_date"));
+        verify(searchService).getSearchInfo(eq("java tutorial"), eq(Collections.emptyList()), eq("upload_date"));
     }
 
     static Stream<Arguments> contentFilterCases() {
@@ -113,14 +112,12 @@ class SearchControllerTest {
     @ParameterizedTest(name = "Parses {0} content filters")
     @MethodSource("contentFilterCases")
     @DisplayName("Parses the contentFilters parameter into the list passed to the service")
-    void search_parsesContentFilters(String name, String contentFilters,
-                                     List<String> expectedList) throws Exception {
+    void search_parsesContentFilters(String name, String contentFilters, List<String> expectedList) throws Exception {
         when(searchService.getSearchInfo(eq("test"), eq(expectedList), isNull()))
                 .thenReturn(searchResultDTO("test", 1));
 
-        MockHttpServletRequestBuilder request = get("/api/v1/search")
-                .param("searchString", "test")
-                .contentType(MediaType.APPLICATION_JSON);
+        MockHttpServletRequestBuilder request =
+                get("/api/v1/search").param("searchString", "test").contentType(MediaType.APPLICATION_JSON);
         if (contentFilters != null) {
             request.param("contentFilters", contentFilters);
         }
@@ -145,8 +142,7 @@ class SearchControllerTest {
     @Test
     @DisplayName("Returns 200 with the page, passing all parameters verbatim to the service")
     void searchPage_passesAllParametersVerbatim() throws Exception {
-        when(searchService.getSearchPage(
-                eq("java"), anyList(), isNull(), eq(PAGE_URL), eq(PAGE_ID)))
+        when(searchService.getSearchPage(eq("java"), anyList(), isNull(), eq(PAGE_URL), eq(PAGE_ID)))
                 .thenReturn(searchPageDTO(3));
 
         mockMvc.perform(get("/api/v1/search/page")
@@ -158,15 +154,14 @@ class SearchControllerTest {
                 .andExpect(jsonPath("$.items", hasSize(3)))
                 .andExpect(jsonPath("$.itemCount").value(3));
 
-        verify(searchService).getSearchPage(
-                eq("java"), eq(Collections.emptyList()), isNull(), eq(PAGE_URL), eq(PAGE_ID));
+        verify(searchService)
+                .getSearchPage(eq("java"), eq(Collections.emptyList()), isNull(), eq(PAGE_URL), eq(PAGE_ID));
     }
 
     @Test
     @DisplayName("Treats pageId as optional, passing null to the service (URL-only continuation pages)")
     void searchPage_treatsPageIdAsOptional() throws Exception {
-        when(searchService.getSearchPage(
-                eq("test"), anyList(), isNull(), eq(PAGE_URL), isNull()))
+        when(searchService.getSearchPage(eq("test"), anyList(), isNull(), eq(PAGE_URL), isNull()))
                 .thenReturn(searchPageDTO(2));
 
         mockMvc.perform(get("/api/v1/search/page")
@@ -176,8 +171,7 @@ class SearchControllerTest {
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk());
 
-        verify(searchService).getSearchPage(
-                eq("test"), anyList(), isNull(), eq(PAGE_URL), isNull());
+        verify(searchService).getSearchPage(eq("test"), anyList(), isNull(), eq(PAGE_URL), isNull());
     }
 
     // ── Exception propagation (single advice-wiring test) ────────────────
@@ -188,9 +182,7 @@ class SearchControllerTest {
         when(searchService.getSearchInfo(anyString(), anyList(), isNull()))
                 .thenThrow(new ExtractionException("NewPipe failure"));
 
-        mockMvc.perform(get("/api/v1/search")
-                        .param("searchString", "test")
-                        .contentType(MediaType.APPLICATION_JSON))
+        mockMvc.perform(get("/api/v1/search").param("searchString", "test").contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.errorCode").value("EXTRACTION_ERROR"))
                 .andExpect(jsonPath("$.message").value(containsString("NewPipe failure")));
@@ -200,24 +192,19 @@ class SearchControllerTest {
 
     static Stream<Arguments> requestsMissingARequiredParam() {
         return Stream.of(
-                Arguments.of("/search without searchString",
-                        get("/api/v1/search")),
-                Arguments.of("/search/page without searchString",
-                        get("/api/v1/search/page")
-                                .param("pageUrl", PAGE_URL)
-                                .param("pageId", PAGE_ID)),
-                Arguments.of("/search/page without pageUrl",
-                        get("/api/v1/search/page")
-                                .param("searchString", "test")
-                                .param("pageId", PAGE_ID)));
+                Arguments.of("/search without searchString", get("/api/v1/search")),
+                Arguments.of(
+                        "/search/page without searchString",
+                        get("/api/v1/search/page").param("pageUrl", PAGE_URL).param("pageId", PAGE_ID)),
+                Arguments.of(
+                        "/search/page without pageUrl",
+                        get("/api/v1/search/page").param("searchString", "test").param("pageId", PAGE_ID)));
     }
 
     @ParameterizedTest(name = "{0} returns 400")
     @MethodSource("requestsMissingARequiredParam")
     @DisplayName("Missing required parameters return 400")
-    void missingRequiredParam_returnsBadRequest(
-            String name, MockHttpServletRequestBuilder request) throws Exception {
-        mockMvc.perform(request.contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isBadRequest());
+    void missingRequiredParam_returnsBadRequest(String name, MockHttpServletRequestBuilder request) throws Exception {
+        mockMvc.perform(request.contentType(MediaType.APPLICATION_JSON)).andExpect(status().isBadRequest());
     }
 }

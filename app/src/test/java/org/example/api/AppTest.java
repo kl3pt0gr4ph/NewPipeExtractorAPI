@@ -3,11 +3,9 @@
  */
 package org.example.api;
 
-
 import org.junit.jupiter.api.Test;
 
 public class AppTest {
     @Test
-    public void appHasAGreeting() {
-    }
+    public void appHasAGreeting() {}
 }

@@ -1,5 +1,14 @@
 package org.example.api.service;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+
 import org.example.api.exception.ErrorCode;
 import org.example.api.exception.ExtractionException;
 import org.junit.jupiter.api.BeforeEach;
@@ -10,22 +19,11 @@ import org.mockito.MockedStatic;
 import org.schabi.newpipe.extractor.ListExtractor.InfoItemsPage;
 import org.schabi.newpipe.extractor.NewPipe;
 import org.schabi.newpipe.extractor.Page;
+import org.schabi.newpipe.extractor.StreamingService;
 import org.schabi.newpipe.extractor.exceptions.ContentNotAvailableException;
 import org.schabi.newpipe.extractor.exceptions.ParsingException;
-import org.schabi.newpipe.extractor.StreamingService;
 import org.schabi.newpipe.extractor.playlist.PlaylistInfo;
 import org.schabi.newpipe.extractor.stream.StreamInfoItem;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockStatic;
 
 /**
  * Unit tests for PlaylistService (previously untested).
@@ -38,8 +36,7 @@ import static org.mockito.Mockito.mockStatic;
 @DisplayName("PlaylistService Tests")
 class PlaylistServiceTest {
 
-    private static final String PLAYLIST_URL =
-            "https://www.youtube.com/playlist?list=PLtest123";
+    private static final String PLAYLIST_URL = "https://www.youtube.com/playlist?list=PLtest123";
 
     private PlaylistService playlistService;
 
@@ -72,8 +69,8 @@ class PlaylistServiceTest {
             try (MockedStatic<PlaylistInfo> playlistInfoMock = mockStatic(PlaylistInfo.class)) {
                 playlistInfoMock.when(() -> PlaylistInfo.getInfo(PLAYLIST_URL)).thenThrow(thrown);
 
-                ExtractionException ex = assertThrows(ExtractionException.class,
-                        () -> playlistService.getPlaylistInfo(PLAYLIST_URL));
+                ExtractionException ex =
+                        assertThrows(ExtractionException.class, () -> playlistService.getPlaylistInfo(PLAYLIST_URL));
 
                 assertEquals(ErrorCode.CONTENT_UNAVAILABLE, ex.getCode());
                 assertFalse(ex.getMessage().contains("does not exist"));
@@ -86,8 +83,7 @@ class PlaylistServiceTest {
     @DisplayName("getPlaylistPage")
     class GetPlaylistPageTests {
 
-        private static final String PAGE_URL =
-                "https://www.youtube.com/youtubei/v1/browse?continuation=token";
+        private static final String PAGE_URL = "https://www.youtube.com/youtubei/v1/browse?continuation=token";
 
         @Test
         @DisplayName("Resolves the service and requests more items with a Page carrying the pageUrl")
@@ -97,17 +93,15 @@ class PlaylistServiceTest {
             InfoItemsPage<StreamInfoItem> mockPage = mock(InfoItemsPage.class);
 
             try (MockedStatic<NewPipe> newPipeMock = mockStatic(NewPipe.class);
-                 MockedStatic<PlaylistInfo> playlistInfoMock = mockStatic(PlaylistInfo.class)) {
+                    MockedStatic<PlaylistInfo> playlistInfoMock = mockStatic(PlaylistInfo.class)) {
 
                 newPipeMock.when(() -> NewPipe.getServiceByUrl(PLAYLIST_URL)).thenReturn(mockService);
-                playlistInfoMock.when(() -> PlaylistInfo.getMoreItems(
-                                eq(mockService),
-                                eq(PLAYLIST_URL),
-                                argThat((Page p) -> PAGE_URL.equals(p.getUrl()))))
+                playlistInfoMock
+                        .when(() -> PlaylistInfo.getMoreItems(
+                                eq(mockService), eq(PLAYLIST_URL), argThat((Page p) -> PAGE_URL.equals(p.getUrl()))))
                         .thenReturn(mockPage);
 
-                InfoItemsPage<StreamInfoItem> result =
-                        playlistService.getPlaylistPage(PLAYLIST_URL, PAGE_URL);
+                InfoItemsPage<StreamInfoItem> result = playlistService.getPlaylistPage(PLAYLIST_URL, PAGE_URL);
 
                 assertSame(mockPage, result);
             }
@@ -121,8 +115,8 @@ class PlaylistServiceTest {
             try (MockedStatic<NewPipe> newPipeMock = mockStatic(NewPipe.class)) {
                 newPipeMock.when(() -> NewPipe.getServiceByUrl(PLAYLIST_URL)).thenThrow(thrown);
 
-                ExtractionException ex = assertThrows(ExtractionException.class,
-                        () -> playlistService.getPlaylistPage(PLAYLIST_URL, PAGE_URL));
+                ExtractionException ex = assertThrows(
+                        ExtractionException.class, () -> playlistService.getPlaylistPage(PLAYLIST_URL, PAGE_URL));
 
                 assertEquals(ErrorCode.UPSTREAM_CHANGED, ex.getCode());
                 assertFalse(ex.getMessage().contains("Page failure"));

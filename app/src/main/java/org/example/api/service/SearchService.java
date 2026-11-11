@@ -1,8 +1,12 @@
 package org.example.api.service;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.stream.Collectors;
+import org.example.api.dto.search.SearchItemDTO;
 import org.example.api.dto.search.SearchPageDTO;
 import org.example.api.dto.search.SearchResultDTO;
-import org.example.api.dto.search.SearchItemDTO;
 import org.example.api.exception.ExtractionException;
 import org.example.api.exception.NewPipeExceptionMapper;
 import org.schabi.newpipe.extractor.ListExtractor;
@@ -14,11 +18,6 @@ import org.schabi.newpipe.extractor.search.SearchInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Service for performing and managing search operations across
@@ -32,19 +31,15 @@ public class SearchService {
     /**
      * Performs an initial search and returns deduplicated results.
      */
-    public SearchResultDTO getSearchInfo(
-            String searchString,
-            List<String> contentFilters,
-            String sortFilter
-    ) throws ExtractionException {
+    public SearchResultDTO getSearchInfo(String searchString, List<String> contentFilters, String sortFilter)
+            throws ExtractionException {
         try {
             logger.info("Performing search for: {}", searchString);
 
             StreamingService service = NewPipe.getService(YOUTUBE_SERVICE_ID);
 
             SearchExtractor extractor = service.getSearchExtractor(
-                    service.getSearchQHFactory().fromQuery(searchString, contentFilters, sortFilter)
-            );
+                    service.getSearchQHFactory().fromQuery(searchString, contentFilters, sortFilter));
             extractor.fetchPage();
 
             SearchInfo info = SearchInfo.getInfo(extractor);
@@ -77,20 +72,15 @@ public class SearchService {
      * @param pageId         from {@code nextPage.Id} in the previous response
      */
     public SearchPageDTO getSearchPage(
-            String searchString,
-            List<String> contentFilters,
-            String sortFilter,
-            String pageUrl,
-            String pageId
-    ) throws ExtractionException {
+            String searchString, List<String> contentFilters, String sortFilter, String pageUrl, String pageId)
+            throws ExtractionException {
         try {
             logger.debug("Retrieving search page for: {}", searchString);
 
             StreamingService service = NewPipe.getService(YOUTUBE_SERVICE_ID);
 
             SearchExtractor extractor = service.getSearchExtractor(
-                    service.getSearchQHFactory().fromQuery(searchString, contentFilters, sortFilter)
-            );
+                    service.getSearchQHFactory().fromQuery(searchString, contentFilters, sortFilter));
             extractor.fetchPage();
 
             Page pageInstance = new Page(pageUrl, pageId);
@@ -111,11 +101,7 @@ public class SearchService {
     private List<SearchItemDTO> deduplicateByUrl(List<SearchItemDTO> items) {
         return new ArrayList<>(items.stream()
                 .collect(Collectors.toMap(
-                        SearchItemDTO::url,
-                        item -> item,
-                        (existing, _) -> existing,
-                        LinkedHashMap::new
-                ))
+                        SearchItemDTO::url, item -> item, (existing, _) -> existing, LinkedHashMap::new))
                 .values());
     }
 }

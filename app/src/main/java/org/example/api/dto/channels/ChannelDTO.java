@@ -1,10 +1,9 @@
 package org.example.api.dto.channels;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.util.List;
 import org.schabi.newpipe.extractor.channel.ChannelInfo;
 import org.schabi.newpipe.extractor.linkhandler.ListLinkHandler;
-
-import java.util.List;
 
 /**
  * Data Transfer Object representing a YouTube channel extracted via NewPipe.
@@ -21,13 +20,18 @@ public class ChannelDTO {
     @Schema(name = "ChannelImage")
     public record ImageDto(
             String url,
-            @Schema(description = "Height in pixels, or -1 when unknown") int height,
-            @Schema(description = "Width in pixels, or -1 when unknown") int width,
-            @Schema(description = "NewPipe's rough size class, for picking an image when the "
-                    + "dimensions are unknown",
+
+            @Schema(description = "Height in pixels, or -1 when unknown")
+            int height,
+
+            @Schema(description = "Width in pixels, or -1 when unknown")
+            int width,
+
+            @Schema(
+                    description =
+                            "NewPipe's rough size class, for picking an image when the " + "dimensions are unknown",
                     allowableValues = {"LOW", "MEDIUM", "HIGH", "UNKNOWN"})
-            String estimatedResolutionLevel
-    ) {}
+            String estimatedResolutionLevel) {}
 
     /**
      * A navigable tab on the channel page (Videos, Shorts, Live, Playlists, etc.).
@@ -36,36 +40,49 @@ public class ChannelDTO {
     public record TabDto(
             String originalUrl,
             String url,
-            @Schema(description = "Channel ID the tab belongs to") String id,
-            @Schema(description = "Identifies the tab. Pass the single entry as `tab` to "
-                    + "`/channels/tab`, e.g. `videos`.")
+
+            @Schema(description = "Channel ID the tab belongs to")
+            String id,
+
+            @Schema(
+                    description = "Identifies the tab. Pass the single entry as `tab` to "
+                            + "`/channels/tab`, e.g. `videos`.")
             List<String> contentFilters,
+
             String sortFilter,
+
             @Schema(description = "Scheme and host of `url`", example = "https://www.youtube.com")
-            String baseUrl
-    ) {}
+            String baseUrl) {}
 
     // ── Main DTO ────────────────────────────────────────────────────────────────
 
     private int serviceId;
+
     @Schema(description = "Channel ID, e.g. `UC…`")
     private String id;
+
     private String url;
     private String originalUrl;
     private String name;
-    @Schema(description = "Always empty; kept for response-shape compatibility. "
-            + "Extraction failures surface as an error response instead.")
+
+    @Schema(
+            description = "Always empty; kept for response-shape compatibility. "
+                    + "Extraction failures surface as an error response instead.")
     private List<Object> errors;
 
     @Schema(description = "Parent channel, for channels that have one; usually empty on YouTube")
     private String parentChannelName;
+
     private String parentChannelUrl;
+
     @Schema(description = "RSS feed of the channel's uploads")
     private String feedUrl;
 
     @Schema(description = "Subscribers, or -1 when hidden or unknown")
     private long subscriberCount;
+
     private String description;
+
     @Schema(description = "Whether YouTube shows a verified badge")
     private boolean verified;
 
@@ -75,6 +92,7 @@ public class ChannelDTO {
 
     @Schema(description = "Tabs the channel offers, e.g. videos, shorts, livestreams, playlists")
     private List<TabDto> tabs;
+
     private List<String> tags;
 
     // ── Constructors ────────────────────────────────────────────────────────────
@@ -97,26 +115,25 @@ public class ChannelDTO {
         ChannelDTO dto = new ChannelDTO();
 
         dto.serviceId = info.getServiceId();
-        dto.id        = info.getId();
-        dto.url       = info.getUrl();
+        dto.id = info.getId();
+        dto.url = info.getUrl();
         dto.originalUrl = info.getOriginalUrl();
-        dto.name      = info.getName();
-        dto.errors    = List.of(); // NewPipe surfaces errors via exceptions; kept for API consistency
+        dto.name = info.getName();
+        dto.errors = List.of(); // NewPipe surfaces errors via exceptions; kept for API consistency
 
-        dto.parentChannelName    = info.getParentChannelName();
-        dto.parentChannelUrl     = info.getParentChannelUrl();
-        dto.feedUrl              = info.getFeedUrl();
-        dto.subscriberCount      = info.getSubscriberCount();
-        dto.description          = info.getDescription();
-        dto.verified             = info.isVerified();
+        dto.parentChannelName = info.getParentChannelName();
+        dto.parentChannelUrl = info.getParentChannelUrl();
+        dto.feedUrl = info.getFeedUrl();
+        dto.subscriberCount = info.getSubscriberCount();
+        dto.description = info.getDescription();
+        dto.verified = info.isVerified();
 
         dto.avatars = info.getAvatars().stream()
                 .map(img -> new ImageDto(
                         img.getUrl(),
                         img.getHeight(),
                         img.getWidth(),
-                        img.getEstimatedResolutionLevel().name()
-                ))
+                        img.getEstimatedResolutionLevel().name()))
                 .toList();
 
         dto.banners = info.getBanners().stream()
@@ -124,8 +141,7 @@ public class ChannelDTO {
                         img.getUrl(),
                         img.getHeight(),
                         img.getWidth(),
-                        img.getEstimatedResolutionLevel().name()
-                ))
+                        img.getEstimatedResolutionLevel().name()))
                 .toList();
 
         dto.parentChannelAvatars = info.getParentChannelAvatars().stream()
@@ -133,8 +149,7 @@ public class ChannelDTO {
                         img.getUrl(),
                         img.getHeight(),
                         img.getWidth(),
-                        img.getEstimatedResolutionLevel().name()
-                ))
+                        img.getEstimatedResolutionLevel().name()))
                 .toList();
 
         dto.tabs = info.getTabs().stream()
@@ -144,8 +159,7 @@ public class ChannelDTO {
                         tab.getId(),
                         tab.getContentFilters(),
                         tab.getSortFilter(),
-                        extractBaseUrl(tab)
-                ))
+                        extractBaseUrl(tab)))
                 .toList();
 
         dto.tags = info.getTags();
@@ -172,56 +186,141 @@ public class ChannelDTO {
 
     // ── Getters & Setters ───────────────────────────────────────────────────────
 
-    public int getServiceId() { return serviceId; }
-    public void setServiceId(int serviceId) { this.serviceId = serviceId; }
+    public int getServiceId() {
+        return serviceId;
+    }
 
-    public String getId() { return id; }
-    public void setId(String id) { this.id = id; }
+    public void setServiceId(int serviceId) {
+        this.serviceId = serviceId;
+    }
 
-    public String getUrl() { return url; }
-    public void setUrl(String url) { this.url = url; }
+    public String getId() {
+        return id;
+    }
 
-    public String getOriginalUrl() { return originalUrl; }
-    public void setOriginalUrl(String originalUrl) { this.originalUrl = originalUrl; }
+    public void setId(String id) {
+        this.id = id;
+    }
 
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
+    public String getUrl() {
+        return url;
+    }
 
-    public List<Object> getErrors() { return errors; }
-    public void setErrors(List<Object> errors) { this.errors = errors; }
+    public void setUrl(String url) {
+        this.url = url;
+    }
 
-    public String getParentChannelName() { return parentChannelName; }
-    public void setParentChannelName(String parentChannelName) { this.parentChannelName = parentChannelName; }
+    public String getOriginalUrl() {
+        return originalUrl;
+    }
 
-    public String getParentChannelUrl() { return parentChannelUrl; }
-    public void setParentChannelUrl(String parentChannelUrl) { this.parentChannelUrl = parentChannelUrl; }
+    public void setOriginalUrl(String originalUrl) {
+        this.originalUrl = originalUrl;
+    }
 
-    public String getFeedUrl() { return feedUrl; }
-    public void setFeedUrl(String feedUrl) { this.feedUrl = feedUrl; }
+    public String getName() {
+        return name;
+    }
 
-    public long getSubscriberCount() { return subscriberCount; }
-    public void setSubscriberCount(long subscriberCount) { this.subscriberCount = subscriberCount; }
+    public void setName(String name) {
+        this.name = name;
+    }
 
-    public String getDescription() { return description; }
-    public void setDescription(String description) { this.description = description; }
+    public List<Object> getErrors() {
+        return errors;
+    }
 
-    public boolean isVerified() { return verified; }
-    public void setVerified(boolean verified) { this.verified = verified; }
+    public void setErrors(List<Object> errors) {
+        this.errors = errors;
+    }
 
-    public List<ImageDto> getAvatars() { return avatars; }
-    public void setAvatars(List<ImageDto> avatars) { this.avatars = avatars; }
+    public String getParentChannelName() {
+        return parentChannelName;
+    }
 
-    public List<ImageDto> getBanners() { return banners; }
-    public void setBanners(List<ImageDto> banners) { this.banners = banners; }
+    public void setParentChannelName(String parentChannelName) {
+        this.parentChannelName = parentChannelName;
+    }
 
-    public List<ImageDto> getParentChannelAvatars() { return parentChannelAvatars; }
-    public void setParentChannelAvatars(List<ImageDto> parentChannelAvatars) { this.parentChannelAvatars = parentChannelAvatars; }
+    public String getParentChannelUrl() {
+        return parentChannelUrl;
+    }
 
-    public List<TabDto> getTabs() { return tabs; }
-    public void setTabs(List<TabDto> tabs) { this.tabs = tabs; }
+    public void setParentChannelUrl(String parentChannelUrl) {
+        this.parentChannelUrl = parentChannelUrl;
+    }
 
-    public List<String> getTags() { return tags; }
-    public void setTags(List<String> tags) { this.tags = tags; }
+    public String getFeedUrl() {
+        return feedUrl;
+    }
+
+    public void setFeedUrl(String feedUrl) {
+        this.feedUrl = feedUrl;
+    }
+
+    public long getSubscriberCount() {
+        return subscriberCount;
+    }
+
+    public void setSubscriberCount(long subscriberCount) {
+        this.subscriberCount = subscriberCount;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public boolean isVerified() {
+        return verified;
+    }
+
+    public void setVerified(boolean verified) {
+        this.verified = verified;
+    }
+
+    public List<ImageDto> getAvatars() {
+        return avatars;
+    }
+
+    public void setAvatars(List<ImageDto> avatars) {
+        this.avatars = avatars;
+    }
+
+    public List<ImageDto> getBanners() {
+        return banners;
+    }
+
+    public void setBanners(List<ImageDto> banners) {
+        this.banners = banners;
+    }
+
+    public List<ImageDto> getParentChannelAvatars() {
+        return parentChannelAvatars;
+    }
+
+    public void setParentChannelAvatars(List<ImageDto> parentChannelAvatars) {
+        this.parentChannelAvatars = parentChannelAvatars;
+    }
+
+    public List<TabDto> getTabs() {
+        return tabs;
+    }
+
+    public void setTabs(List<TabDto> tabs) {
+        this.tabs = tabs;
+    }
+
+    public List<String> getTags() {
+        return tags;
+    }
+
+    public void setTags(List<String> tags) {
+        this.tags = tags;
+    }
 
     @Override
     public String toString() {

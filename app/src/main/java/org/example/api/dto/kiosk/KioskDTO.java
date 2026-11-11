@@ -1,13 +1,12 @@
 package org.example.api.dto.kiosk;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.util.Base64;
+import java.util.List;
 import org.schabi.newpipe.extractor.Image;
 import org.schabi.newpipe.extractor.Page;
 import org.schabi.newpipe.extractor.kiosk.KioskInfo;
 import org.schabi.newpipe.extractor.stream.StreamInfoItem;
-
-import java.util.Base64;
-import java.util.List;
 
 /**
  * API representation of a kiosk (e.g. "trending_gaming", "live") and its
@@ -15,15 +14,20 @@ import java.util.List;
  */
 @Schema(name = "Kiosk", description = "A curated YouTube feed and its items")
 public record KioskDTO(
-        @Schema(description = "NewPipe service ID; 0 is YouTube") int serviceId,
-        @Schema(description = "Kiosk ID", example = "trending_music") String id,
+        @Schema(description = "NewPipe service ID; 0 is YouTube")
+        int serviceId,
+
+        @Schema(description = "Kiosk ID", example = "trending_music")
+        String id,
+
         @Schema(description = "Display name") String name,
         String url,
         List<KioskStreamItemDTO> items,
-        @Schema(description = "Always absent in practice: YouTube kiosks are a single page, "
-                + "and there is no kiosk `/page` endpoint")
-        NextPageDTO nextPage
-) {
+
+        @Schema(
+                description = "Always absent in practice: YouTube kiosks are a single page, "
+                        + "and there is no kiosk `/page` endpoint")
+        NextPageDTO nextPage) {
     public static KioskDTO from(KioskInfo info) {
         return new KioskDTO(
                 info.getServiceId(),
@@ -31,8 +35,7 @@ public record KioskDTO(
                 info.getName(),
                 info.getUrl(),
                 info.getRelatedItems().stream().map(KioskStreamItemDTO::from).toList(),
-                NextPageDTO.from(info.getNextPage())
-        );
+                NextPageDTO.from(info.getNextPage()));
     }
 
     @Schema(name = "KioskItem")
@@ -43,19 +46,35 @@ public record KioskDTO(
             String uploaderUrl,
             boolean uploaderVerified,
             List<ImageDTO> uploaderAvatars,
-            @Schema(description = "Length in seconds, or -1 when unknown (e.g. live)") long duration,
-            @Schema(description = "Views, or -1 when unknown") long viewCount,
-            @Schema(description = "Upload time as ISO-8601 with offset. Often approximate, since YouTube "
-                    + "only gives a relative date for list items. Absent when unknown.",
+
+            @Schema(description = "Length in seconds, or -1 when unknown (e.g. live)")
+            long duration,
+
+            @Schema(description = "Views, or -1 when unknown")
+            long viewCount,
+
+            @Schema(
+                    description = "Upload time as ISO-8601 with offset. Often approximate, since YouTube "
+                            + "only gives a relative date for list items. Absent when unknown.",
                     example = "2026-10-08T12:00:00Z")
             String uploadDate,
+
             @Schema(description = "Relative upload date as YouTube words it", example = "3 weeks ago")
             String textualUploadDate,
-            @Schema(allowableValues = {"NONE", "VIDEO_STREAM", "AUDIO_STREAM", "LIVE_STREAM",
-                    "AUDIO_LIVE_STREAM", "POST_LIVE_STREAM", "POST_LIVE_AUDIO_STREAM"})
+
+            @Schema(
+                    allowableValues = {
+                        "NONE",
+                        "VIDEO_STREAM",
+                        "AUDIO_STREAM",
+                        "LIVE_STREAM",
+                        "AUDIO_LIVE_STREAM",
+                        "POST_LIVE_STREAM",
+                        "POST_LIVE_AUDIO_STREAM"
+                    })
             String streamType,
-            List<ImageDTO> thumbnails
-    ) {
+
+            List<ImageDTO> thumbnails) {
         public static KioskStreamItemDTO from(StreamInfoItem item) {
             return new KioskStreamItemDTO(
                     item.getName(),
@@ -71,25 +90,34 @@ public record KioskDTO(
                             : null,
                     item.getTextualUploadDate(),
                     item.getStreamType().name(),
-                    ImageDTO.fromAll(item.getThumbnails())
-            );
+                    ImageDTO.fromAll(item.getThumbnails()));
         }
     }
 
     @Schema(name = "KioskImage")
     public record ImageDTO(
             String url,
-            @Schema(description = "Width in pixels, or -1 when unknown") int width,
-            @Schema(description = "Height in pixels, or -1 when unknown") int height,
-            @Schema(allowableValues = {"LOW", "MEDIUM", "HIGH", "UNKNOWN"}) String estimatedResolutionLevel
-    ) {
+
+            @Schema(description = "Width in pixels, or -1 when unknown")
+            int width,
+
+            @Schema(description = "Height in pixels, or -1 when unknown")
+            int height,
+
+            @Schema(allowableValues = {"LOW", "MEDIUM", "HIGH", "UNKNOWN"})
+            String estimatedResolutionLevel) {
         public static ImageDTO from(Image image) {
-            return new ImageDTO(image.getUrl(), image.getWidth(), image.getHeight(),
+            return new ImageDTO(
+                    image.getUrl(),
+                    image.getWidth(),
+                    image.getHeight(),
                     image.getEstimatedResolutionLevel().name());
         }
 
         public static List<ImageDTO> fromAll(List<Image> images) {
-            return images == null ? List.of() : images.stream().map(ImageDTO::from).toList();
+            return images == null
+                    ? List.of()
+                    : images.stream().map(ImageDTO::from).toList();
         }
     }
 
@@ -103,8 +131,9 @@ public record KioskDTO(
             String url,
             String id,
             List<String> ids,
-            @Schema(description = "Base64-encoded continuation POST body", format = "byte") String body
-    ) {
+
+            @Schema(description = "Base64-encoded continuation POST body", format = "byte")
+            String body) {
         public static NextPageDTO from(Page page) {
             if (page == null) {
                 return null;
@@ -113,10 +142,7 @@ public record KioskDTO(
                     page.getUrl(),
                     page.getId(),
                     page.getIds(),
-                    page.getBody() != null
-                            ? Base64.getEncoder().encodeToString(page.getBody())
-                            : null
-            );
+                    page.getBody() != null ? Base64.getEncoder().encodeToString(page.getBody()) : null);
         }
     }
 }

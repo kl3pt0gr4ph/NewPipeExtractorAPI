@@ -1,5 +1,18 @@
 package org.example.api.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Stream;
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.example.api.exception.ApiException;
 import org.example.api.exception.ErrorCode;
@@ -16,20 +29,6 @@ import org.schabi.newpipe.extractor.exceptions.ParsingException;
 import org.schabi.newpipe.extractor.kiosk.KioskExtractor;
 import org.schabi.newpipe.extractor.kiosk.KioskInfo;
 import org.schabi.newpipe.extractor.kiosk.KioskList;
-
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Stream;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 /**
  * Unit tests for KioskService.
@@ -76,7 +75,7 @@ class KioskServiceTest {
         when(kioskList.getExtractorById(KIOSK_ID, null)).thenReturn(extractor);
 
         try (MockedStatic<NewPipe> newPipe = mockStatic(NewPipe.class);
-             MockedStatic<KioskInfo> kioskInfoStatic = mockStatic(KioskInfo.class)) {
+                MockedStatic<KioskInfo> kioskInfoStatic = mockStatic(KioskInfo.class)) {
             newPipe.when(() -> NewPipe.getService(SERVICE_ID)).thenReturn(service);
             kioskInfoStatic.when(() -> KioskInfo.getInfo(extractor)).thenReturn(expectedInfo);
 
@@ -113,10 +112,8 @@ class KioskServiceTest {
     static Stream<Arguments> serviceCalls() {
         KioskService service = new KioskService();
         return Stream.of(
-                Arguments.of("getKioskIds",
-                        (ThrowingCallable) () -> service.getKioskIds(SERVICE_ID)),
-                Arguments.of("getKioskInfo",
-                        (ThrowingCallable) () -> service.getKioskInfo(SERVICE_ID, KIOSK_ID)));
+                Arguments.of("getKioskIds", (ThrowingCallable) () -> service.getKioskIds(SERVICE_ID)),
+                Arguments.of("getKioskInfo", (ThrowingCallable) () -> service.getKioskInfo(SERVICE_ID, KIOSK_ID)));
     }
 
     @ParameterizedTest(name = "{0} translates NewPipe failures")

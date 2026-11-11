@@ -1,5 +1,11 @@
 package org.example.api.service;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+
 import org.example.api.exception.ErrorCode;
 import org.example.api.exception.ExtractionException;
 import org.junit.jupiter.api.BeforeEach;
@@ -8,12 +14,6 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.schabi.newpipe.extractor.channel.ChannelInfo;
 import org.schabi.newpipe.extractor.exceptions.AccountTerminatedException;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockStatic;
 
 /**
  * Unit tests for ChannelService.
@@ -53,8 +53,7 @@ class ChannelServiceTest {
         try (MockedStatic<ChannelInfo> channelInfoMock = mockStatic(ChannelInfo.class)) {
             channelInfoMock.when(() -> ChannelInfo.getInfo(url)).thenThrow(thrown);
 
-            ExtractionException ex = assertThrows(ExtractionException.class,
-                    () -> channelService.getChannelInfo(url));
+            ExtractionException ex = assertThrows(ExtractionException.class, () -> channelService.getChannelInfo(url));
 
             assertEquals(ErrorCode.ACCOUNT_TERMINATED, ex.getCode());
             assertEquals(ErrorCode.ACCOUNT_TERMINATED.defaultMessage(), ex.getMessage());
@@ -71,8 +70,8 @@ class ChannelServiceTest {
         try (MockedStatic<ChannelInfo> channelInfoMock = mockStatic(ChannelInfo.class)) {
             channelInfoMock.when(() -> ChannelInfo.getInfo(url)).thenThrow(bug);
 
-            NullPointerException ex = assertThrows(NullPointerException.class,
-                    () -> channelService.getChannelInfo(url));
+            NullPointerException ex =
+                    assertThrows(NullPointerException.class, () -> channelService.getChannelInfo(url));
 
             assertSame(bug, ex);
         }

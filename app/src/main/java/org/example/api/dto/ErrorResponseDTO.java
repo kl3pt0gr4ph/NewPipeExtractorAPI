@@ -2,7 +2,6 @@ package org.example.api.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
-
 import java.time.Instant;
 
 /**
@@ -12,15 +11,23 @@ import java.time.Instant;
 @Schema(name = "ErrorResponse", description = "Body of every error response from `/api/v1`")
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record ErrorResponseDTO(
-        @Schema(description = "When the error occurred, ISO-8601 UTC", example = "2026-10-29T10:30:00.123Z") String timestamp,
-        @Schema(description = "HTTP status code, repeated from the response", example = "400") int status,
-        @Schema(description = "HTTP reason phrase", example = "Bad Request") String error,
+        @Schema(description = "When the error occurred, ISO-8601 UTC", example = "2026-10-29T10:30:00.123Z")
+        String timestamp,
 
-        @Schema(description = "What went wrong, written by the API and safe to show to end users. "
-                + "Wording may change between releases, so don't parse it: branch on `errorCode`.",
-                example = "This content is private.") String message,
+        @Schema(description = "HTTP status code, repeated from the response", example = "400")
+        int status,
 
-        @Schema(description = """
+        @Schema(description = "HTTP reason phrase", example = "Bad Request")
+        String error,
+
+        @Schema(
+                description = "What went wrong, written by the API and safe to show to end users. "
+                        + "Wording may change between releases, so don't parse it: branch on `errorCode`.",
+                example = "This content is private.")
+        String message,
+
+        @Schema(
+                description = """
                 Machine-readable cause. Branch on this rather than on `message` or the status.
 
                 | `errorCode` | Status | Meaning |
@@ -43,16 +50,35 @@ public record ErrorResponseDTO(
                 | `INTERNAL_ERROR` | 500 | A bug in the API |
 
                 Adding a code is a minor change; renaming or removing one is a breaking change.""",
-                allowableValues = {"MISSING_PARAMETER", "VALIDATION_ERROR", "NOT_FOUND", "METHOD_NOT_ALLOWED",
-                        "CONTENT_UNAVAILABLE", "CONTENT_PRIVATE", "AGE_RESTRICTED", "PAID_CONTENT",
-                        "GEO_RESTRICTED", "ACCOUNT_TERMINATED", "UPSTREAM_BLOCKED", "UPSTREAM_CHANGED",
-                        "UPSTREAM_UNREACHABLE", "NO_STREAMS_AVAILABLE", "EXTRACTION_ERROR", "INTERNAL_ERROR"},
-                example = "CONTENT_PRIVATE") String errorCode,
+                allowableValues = {
+                    "MISSING_PARAMETER",
+                    "VALIDATION_ERROR",
+                    "NOT_FOUND",
+                    "METHOD_NOT_ALLOWED",
+                    "CONTENT_UNAVAILABLE",
+                    "CONTENT_PRIVATE",
+                    "AGE_RESTRICTED",
+                    "PAID_CONTENT",
+                    "GEO_RESTRICTED",
+                    "ACCOUNT_TERMINATED",
+                    "UPSTREAM_BLOCKED",
+                    "UPSTREAM_CHANGED",
+                    "UPSTREAM_UNREACHABLE",
+                    "NO_STREAMS_AVAILABLE",
+                    "EXTRACTION_ERROR",
+                    "INTERNAL_ERROR"
+                },
+                example = "CONTENT_PRIVATE")
+        String errorCode,
 
-        @Schema(description = "Request path that failed", example = "/api/v1/streams/details") String path,
-        @Schema(description = "The underlying exception chain, for debugging. Only present when the "
-                + "server runs with `OPENTUBE_ERRORS_INCLUDEDETAIL=true`; never show it to users.",
-                example = "PrivateContentException: This video is private") String detail) {
+        @Schema(description = "Request path that failed", example = "/api/v1/streams/details")
+        String path,
+
+        @Schema(
+                description = "The underlying exception chain, for debugging. Only present when the "
+                        + "server runs with `OPENTUBE_ERRORS_INCLUDEDETAIL=true`; never show it to users.",
+                example = "PrivateContentException: This video is private")
+        String detail) {
 
     /**
      * Creates an error stamped with the current time.

@@ -1,6 +1,10 @@
 package org.example.api.dto.search;
 
-import tools.jackson.databind.ObjectMapper;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -9,12 +13,7 @@ import org.schabi.newpipe.extractor.ListExtractor;
 import org.schabi.newpipe.extractor.Page;
 import org.schabi.newpipe.extractor.stream.StreamInfoItem;
 import org.schabi.newpipe.extractor.stream.StreamType;
-
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Unit tests for SearchPageDTO.
@@ -95,24 +94,22 @@ class SearchPageDTOTest {
     @Test
     @DisplayName("Serializes nextPage as an object when present, and as null when absent")
     void serializesNextPageAsObjectOrNull() throws Exception {
-        SearchPageDTO withPage = SearchPageDTO.from(infoItemsPage(List.of(),
-                new Page("https://next-page.com", "bodyBase64==")));
+        SearchPageDTO withPage =
+                SearchPageDTO.from(infoItemsPage(List.of(), new Page("https://next-page.com", "bodyBase64==")));
         SearchPageDTO withoutPage = SearchPageDTO.from(infoItemsPage(List.of(), null));
 
         assertThat(objectMapper.writeValueAsString(withPage))
                 .contains("\"nextPage\":{", "\"url\"", "\"id\"", "https://next-page.com");
-        assertThat(objectMapper.writeValueAsString(withoutPage))
-                .contains("\"nextPage\":null", "\"hasNextPage\":false");
+        assertThat(objectMapper.writeValueAsString(withoutPage)).contains("\"nextPage\":null", "\"hasNextPage\":false");
     }
 
     @Test
     @DisplayName("Round-trips itemCount and hasNextPage through serialize/deserialize unchanged")
     void roundTripPreservesFields() throws Exception {
-        SearchPageDTO original = SearchPageDTO.from(infoItemsPage(
-                List.of(streamItem("Video", "https://youtube.com/watch?v=1")), null));
+        SearchPageDTO original =
+                SearchPageDTO.from(infoItemsPage(List.of(streamItem("Video", "https://youtube.com/watch?v=1")), null));
 
-        SearchPageDTO restored = objectMapper.readValue(
-                objectMapper.writeValueAsString(original), SearchPageDTO.class);
+        SearchPageDTO restored = objectMapper.readValue(objectMapper.writeValueAsString(original), SearchPageDTO.class);
 
         assertThat(restored.itemCount()).isEqualTo(original.itemCount());
         assertThat(restored.hasNextPage()).isEqualTo(original.hasNextPage());

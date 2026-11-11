@@ -1,5 +1,25 @@
 package org.example.api.controller;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Stream;
 import org.example.api.component.DashPlayabilityFilter;
 import org.example.api.component.DashPlayabilityFilter.PlayableStreams;
 import org.example.api.config.GlobalExceptionHandler;
@@ -36,27 +56,6 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-import java.nio.charset.StandardCharsets;
-import java.util.List;
-import java.util.Optional;
-import java.util.stream.Stream;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.not;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
 /**
  * Unit tests for StreamingController.
  */
@@ -66,10 +65,8 @@ class StreamingControllerTest {
     private static final String TEST_VIDEO_ID = "dQw4w9WgXcQ";
     private static final String VIDEO_URL = "https://www.youtube.com/watch?v=" + TEST_VIDEO_ID;
 
-    private static final MediaType DASH_MPD =
-            new MediaType("application", "dash+xml", StandardCharsets.UTF_8);
-    private static final MediaType URI_LIST =
-            new MediaType("text", "uri-list", StandardCharsets.UTF_8);
+    private static final MediaType DASH_MPD = new MediaType("application", "dash+xml", StandardCharsets.UTF_8);
+    private static final MediaType URI_LIST = new MediaType("text", "uri-list", StandardCharsets.UTF_8);
 
     private MockMvc mockMvc;
 
@@ -85,8 +82,8 @@ class StreamingControllerTest {
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        StreamingController streamingController = new StreamingController(
-                videoStreamingService, dashManifestGeneratorService, dashPlayabilityFilter);
+        StreamingController streamingController =
+                new StreamingController(videoStreamingService, dashManifestGeneratorService, dashPlayabilityFilter);
         mockMvc = MockMvcBuilders.standaloneSetup(streamingController)
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
@@ -114,44 +111,64 @@ class StreamingControllerTest {
         List<InfoItem> related = List.of(mock(StreamInfoItem.class));
 
         return Stream.of(
-                Arguments.of("", (ServiceInteraction)
-                                s -> {
-                                    when(info.getName()).thenReturn("Test Video");
-                                    when(s.getStreamInfo(VIDEO_URL)).thenReturn(info);
-                                },
+                Arguments.of(
+                        "",
+                        (ServiceInteraction) s -> {
+                            when(info.getName()).thenReturn("Test Video");
+                            when(s.getStreamInfo(VIDEO_URL)).thenReturn(info);
+                        },
                         (ServiceInteraction) s -> verify(s).getStreamInfo(VIDEO_URL)),
-                Arguments.of("/audio", (ServiceInteraction)
+                Arguments.of(
+                        "/audio",
+                        (ServiceInteraction)
                                 s -> when(s.getAudioStreams(VIDEO_URL)).thenReturn(audio),
                         (ServiceInteraction) s -> verify(s).getAudioStreams(VIDEO_URL)),
-                Arguments.of("/video", (ServiceInteraction)
+                Arguments.of(
+                        "/video",
+                        (ServiceInteraction)
                                 s -> when(s.getVideoStreams(VIDEO_URL)).thenReturn(video),
                         (ServiceInteraction) s -> verify(s).getVideoStreams(VIDEO_URL)),
-                Arguments.of("/video/dash", (ServiceInteraction)
+                Arguments.of(
+                        "/video/dash",
+                        (ServiceInteraction)
                                 s -> when(s.getDashMpdUrl(VIDEO_URL)).thenReturn(dashUrl),
                         (ServiceInteraction) s -> verify(s).getDashMpdUrl(VIDEO_URL)),
-                Arguments.of("/thumbnails", (ServiceInteraction)
+                Arguments.of(
+                        "/thumbnails",
+                        (ServiceInteraction)
                                 s -> when(s.getStreamThumbnails(VIDEO_URL)).thenReturn(thumbnails),
                         (ServiceInteraction) s -> verify(s).getStreamThumbnails(VIDEO_URL)),
-                Arguments.of("/subtitles", (ServiceInteraction)
+                Arguments.of(
+                        "/subtitles",
+                        (ServiceInteraction)
                                 s -> when(s.getSubtitleStreams(VIDEO_URL)).thenReturn(subtitles),
                         (ServiceInteraction) s -> verify(s).getSubtitleStreams(VIDEO_URL)),
-                Arguments.of("/segments", (ServiceInteraction)
+                Arguments.of(
+                        "/segments",
+                        (ServiceInteraction)
                                 s -> when(s.getStreamSegments(VIDEO_URL)).thenReturn(segments),
                         (ServiceInteraction) s -> verify(s).getStreamSegments(VIDEO_URL)),
-                Arguments.of("/preview-frames", (ServiceInteraction)
+                Arguments.of(
+                        "/preview-frames",
+                        (ServiceInteraction)
                                 s -> when(s.getPreviewFrames(VIDEO_URL)).thenReturn(frames),
                         (ServiceInteraction) s -> verify(s).getPreviewFrames(VIDEO_URL)),
-                Arguments.of("/description", (ServiceInteraction)
+                Arguments.of(
+                        "/description",
+                        (ServiceInteraction)
                                 s -> when(s.getStreamDescription(VIDEO_URL)).thenReturn(description),
                         (ServiceInteraction) s -> verify(s).getStreamDescription(VIDEO_URL)),
-                Arguments.of("/details", (ServiceInteraction)
-                                s -> {
-                                    when(detailsInfo.getName()).thenReturn("Test Video");
-                                    when(detailsInfo.getUrl()).thenReturn(VIDEO_URL);
-                                    when(s.getStreamInfo(VIDEO_URL)).thenReturn(detailsInfo);
-                                },
+                Arguments.of(
+                        "/details",
+                        (ServiceInteraction) s -> {
+                            when(detailsInfo.getName()).thenReturn("Test Video");
+                            when(detailsInfo.getUrl()).thenReturn(VIDEO_URL);
+                            when(s.getStreamInfo(VIDEO_URL)).thenReturn(detailsInfo);
+                        },
                         (ServiceInteraction) s -> verify(s).getStreamInfo(VIDEO_URL)),
-                Arguments.of("/related", (ServiceInteraction)
+                Arguments.of(
+                        "/related",
+                        (ServiceInteraction)
                                 s -> when(s.getRelatedStreams(VIDEO_URL)).thenReturn(related),
                         (ServiceInteraction) s -> verify(s).getRelatedStreams(VIDEO_URL)));
     }
@@ -174,17 +191,26 @@ class StreamingControllerTest {
     // ── Parameter binding (all endpoints, missing and empty id) ──────────
 
     static Stream<String> allEndpointPaths() {
-        return Stream.of("", "/audio", "/video", "/video/dash", "/dash",
-                "/thumbnails", "/subtitles", "/segments", "/preview-frames",
-                "/description", "/details", "/related");
+        return Stream.of(
+                "",
+                "/audio",
+                "/video",
+                "/video/dash",
+                "/dash",
+                "/thumbnails",
+                "/subtitles",
+                "/segments",
+                "/preview-frames",
+                "/description",
+                "/details",
+                "/related");
     }
 
     @ParameterizedTest(name = "GET /api/v1/streams{0} without id returns 400")
     @MethodSource("allEndpointPaths")
     @DisplayName("A missing id parameter returns 400 on every endpoint")
     void missingId_returnsBadRequest(String path) throws Exception {
-        mockMvc.perform(get("/api/v1/streams" + path)
-                        .contentType(MediaType.APPLICATION_JSON))
+        mockMvc.perform(get("/api/v1/streams" + path).contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest());
     }
 
@@ -192,9 +218,7 @@ class StreamingControllerTest {
     @MethodSource("allEndpointPaths")
     @DisplayName("An empty id parameter returns 400 on every endpoint")
     void emptyId_returnsBadRequest(String path) throws Exception {
-        mockMvc.perform(get("/api/v1/streams" + path)
-                        .param("id", "")
-                        .contentType(MediaType.APPLICATION_JSON))
+        mockMvc.perform(get("/api/v1/streams" + path).param("id", "").contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest());
 
         verifyNoInteractions(videoStreamingService);
@@ -205,20 +229,20 @@ class StreamingControllerTest {
     /** Filter results that leave no valid on-demand manifest possible. */
     static Stream<Arguments> unplayableResults() {
         return Stream.of(
-                Arguments.of("no playable video",
+                Arguments.of(
+                        "no playable video",
                         new PlayableStreams(List.of(), List.of(mock(AudioStream.class)), List.of())),
-                Arguments.of("no playable audio",
+                Arguments.of(
+                        "no playable audio",
                         new PlayableStreams(List.of(mock(VideoStream.class)), List.of(), List.of())),
-                Arguments.of("nothing playable",
-                        new PlayableStreams(List.of(), List.of(), List.of())));
+                Arguments.of("nothing playable", new PlayableStreams(List.of(), List.of(), List.of())));
     }
 
     @Nested
     @DisplayName("GET /api/v1/streams/dash")
     class DashManifestTests {
 
-        private static final String DIRECT_URL =
-                "https://rr3---sn-example.googlevideo.com/videoplayback?muxed";
+        private static final String DIRECT_URL = "https://rr3---sn-example.googlevideo.com/videoplayback?muxed";
 
         private StreamInfo streamInfo;
 
@@ -232,8 +256,8 @@ class StreamingControllerTest {
         @Test
         @DisplayName("Builds the manifest from the filter's playable streams and serves it as application/dash+xml")
         void returnsGeneratedManifest() throws Exception {
-            PlayableStreams playable = new PlayableStreams(
-                    List.of(mock(VideoStream.class)), List.of(mock(AudioStream.class)), List.of());
+            PlayableStreams playable =
+                    new PlayableStreams(List.of(mock(VideoStream.class)), List.of(mock(AudioStream.class)), List.of());
             when(dashPlayabilityFilter.filter(streamInfo)).thenReturn(playable);
             when(dashManifestGeneratorService.generateManifestXml(any())).thenReturn("<MPD/>");
 
@@ -291,12 +315,9 @@ class StreamingControllerTest {
     @Test
     @DisplayName("Propagates service failures to the exception handler")
     void propagatesFailuresToAdvice() throws Exception {
-        when(videoStreamingService.getStreamInfo(anyString()))
-                .thenThrow(new ExtractionException("Extraction failed"));
+        when(videoStreamingService.getStreamInfo(anyString())).thenThrow(new ExtractionException("Extraction failed"));
 
-        mockMvc.perform(get("/api/v1/streams")
-                        .param("id", TEST_VIDEO_ID)
-                        .contentType(MediaType.APPLICATION_JSON))
+        mockMvc.perform(get("/api/v1/streams").param("id", TEST_VIDEO_ID).contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.errorCode").value("EXTRACTION_ERROR"))
                 .andExpect(jsonPath("$.message").value(containsString("Extraction failed")));
@@ -306,8 +327,10 @@ class StreamingControllerTest {
         return Stream.of(
                 Arguments.of(new PrivateContentException("This video is private"), 403, "CONTENT_PRIVATE"),
                 Arguments.of(new AgeRestrictedContentException("Sign in to confirm your age"), 403, "AGE_RESTRICTED"),
-                Arguments.of(new GeographicRestrictionException("Not available in your country"), 451, "GEO_RESTRICTED"),
-                Arguments.of(new ContentNotAvailableException("This video has been removed"), 404, "CONTENT_UNAVAILABLE"));
+                Arguments.of(
+                        new GeographicRestrictionException("Not available in your country"), 451, "GEO_RESTRICTED"),
+                Arguments.of(
+                        new ContentNotAvailableException("This video has been removed"), 404, "CONTENT_UNAVAILABLE"));
     }
 
     @ParameterizedTest(name = "{2}")

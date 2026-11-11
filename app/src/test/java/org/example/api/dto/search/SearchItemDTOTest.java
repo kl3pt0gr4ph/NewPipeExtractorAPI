@@ -1,6 +1,13 @@
 package org.example.api.dto.search;
 
-import tools.jackson.databind.ObjectMapper;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.function.Consumer;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -15,15 +22,7 @@ import org.schabi.newpipe.extractor.playlist.PlaylistInfo;
 import org.schabi.newpipe.extractor.playlist.PlaylistInfoItem;
 import org.schabi.newpipe.extractor.stream.StreamInfoItem;
 import org.schabi.newpipe.extractor.stream.StreamType;
-
-import java.time.OffsetDateTime;
-import java.util.List;
-import java.util.function.Consumer;
-import java.util.stream.Stream;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Unit tests for SearchItemDTO
@@ -114,16 +113,14 @@ class SearchItemDTOTest {
 
         static Stream<Arguments> specialStreamCases() {
             return Stream.of(
-                    Arguments.of("live stream (duration -1)",
-                            (Consumer<StreamInfoItem>) item -> {
-                                when(item.getStreamType()).thenReturn(StreamType.LIVE_STREAM);
-                                when(item.getDuration()).thenReturn(-1L);
-                            }),
-                    Arguments.of("short-form content",
-                            (Consumer<StreamInfoItem>) item -> {
-                                when(item.isShortFormContent()).thenReturn(true);
-                                when(item.getDuration()).thenReturn(30L);
-                            }));
+                    Arguments.of("live stream (duration -1)", (Consumer<StreamInfoItem>) item -> {
+                        when(item.getStreamType()).thenReturn(StreamType.LIVE_STREAM);
+                        when(item.getDuration()).thenReturn(-1L);
+                    }),
+                    Arguments.of("short-form content", (Consumer<StreamInfoItem>) item -> {
+                        when(item.isShortFormContent()).thenReturn(true);
+                        when(item.getDuration()).thenReturn(30L);
+                    }));
         }
 
         @ParameterizedTest(name = "Maps {0}")
@@ -254,12 +251,16 @@ class SearchItemDTOTest {
         @Test
         @DisplayName("Serializes the discriminating 'type' field correctly for all three item kinds")
         void serializesTypeDiscriminatorForEachKind() throws Exception {
-            SearchItemDTO stream = SearchItemDTO.builder().type("stream").duration(300L).build();
-            SearchItemDTO channel = SearchItemDTO.builder().type("channel").subscriberCount(1_000_000L).build();
-            SearchItemDTO playlist = SearchItemDTO.builder().type("playlist").videoCount(50L).build();
+            SearchItemDTO stream =
+                    SearchItemDTO.builder().type("stream").duration(300L).build();
+            SearchItemDTO channel = SearchItemDTO.builder()
+                    .type("channel")
+                    .subscriberCount(1_000_000L)
+                    .build();
+            SearchItemDTO playlist =
+                    SearchItemDTO.builder().type("playlist").videoCount(50L).build();
 
-            assertThat(objectMapper.writeValueAsString(stream))
-                    .contains("\"type\":\"stream\"", "\"duration\":300");
+            assertThat(objectMapper.writeValueAsString(stream)).contains("\"type\":\"stream\"", "\"duration\":300");
             assertThat(objectMapper.writeValueAsString(channel))
                     .contains("\"type\":\"channel\"", "\"subscriberCount\":1000000");
             assertThat(objectMapper.writeValueAsString(playlist))
@@ -270,14 +271,19 @@ class SearchItemDTOTest {
         @DisplayName("Round-trips every field through serialize/deserialize unchanged")
         void roundTripPreservesAllFields() throws Exception {
             SearchItemDTO original = SearchItemDTO.builder()
-                    .type("stream").name("Test Video").url("https://youtube.com/watch?v=test")
-                    .duration(300L).viewCount(1_000_000L).uploaderVerified(true).build();
+                    .type("stream")
+                    .name("Test Video")
+                    .url("https://youtube.com/watch?v=test")
+                    .duration(300L)
+                    .viewCount(1_000_000L)
+                    .uploaderVerified(true)
+                    .build();
 
             assertThat(objectMapper.readValue(objectMapper.writeValueAsString(original), SearchItemDTO.class))
                     .isEqualTo(original);
 
-            SearchItemDTO restored = objectMapper.readValue(
-                    objectMapper.writeValueAsString(original), SearchItemDTO.class);
+            SearchItemDTO restored =
+                    objectMapper.readValue(objectMapper.writeValueAsString(original), SearchItemDTO.class);
 
             assertThat(restored.type()).isEqualTo(original.type());
             assertThat(restored.name()).isEqualTo(original.name());

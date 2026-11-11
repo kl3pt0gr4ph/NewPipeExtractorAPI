@@ -19,14 +19,17 @@ public class PlaylistService {
     public PlaylistInfo getPlaylistInfo(String url) throws ExtractionException {
         try {
             PlaylistInfo info = PlaylistInfo.getInfo(url);
-            logger.info("Extracted playlist '{}' with {} item(s)", info.getName(), info.getRelatedItems().size());
+            logger.info(
+                    "Extracted playlist '{}' with {} item(s)",
+                    info.getName(),
+                    info.getRelatedItems().size());
             return info;
         } catch (Exception e) {
             throw NewPipeExceptionMapper.translate(e);
         }
     }
 
-    public InfoItemsPage<StreamInfoItem> getPlaylistPage( String url, String pageUrl) {
+    public InfoItemsPage<StreamInfoItem> getPlaylistPage(String url, String pageUrl) {
         try {
             logger.debug("Extracting playlist page for URL: {}", url);
 
@@ -34,12 +37,13 @@ public class PlaylistService {
             Page pageInstance = new Page(pageUrl);
             InfoItemsPage<StreamInfoItem> page = PlaylistInfo.getMoreItems(service, url, pageInstance);
 
-            logger.info("Extracted playlist page with {} item(s) (hasNextPage={})",
-                    page.getItems().size(), page.hasNextPage());
+            logger.info(
+                    "Extracted playlist page with {} item(s) (hasNextPage={})",
+                    page.getItems().size(),
+                    page.hasNextPage());
             return page;
         } catch (Exception e) {
             throw NewPipeExceptionMapper.translate(e);
         }
     }
-
 }

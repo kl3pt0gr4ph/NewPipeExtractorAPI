@@ -1,5 +1,16 @@
 package org.example.api.service;
 
+import java.io.StringWriter;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.TreeMap;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import javax.xml.stream.XMLOutputFactory;
+import javax.xml.stream.XMLStreamException;
+import javax.xml.stream.XMLStreamWriter;
 import org.example.api.dto.dash.AudioStreamMetadataDTO;
 import org.example.api.dto.dash.DashManifestConfigDTO;
 import org.example.api.dto.dash.SubtitleMetadataDTO;
@@ -9,18 +20,6 @@ import org.schabi.newpipe.extractor.stream.AudioTrackType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-
-import javax.xml.stream.XMLOutputFactory;
-import javax.xml.stream.XMLStreamException;
-import javax.xml.stream.XMLStreamWriter;
-import java.io.StringWriter;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.TreeMap;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 /**
  * Writes an on-demand DASH manifest describing every representation in the config.
@@ -37,8 +36,7 @@ public class DashManifestGeneratorService {
 
     private static final String DASH_NAMESPACE = "urn:mpeg:dash:schema:mpd:2011";
     private static final String ROLE_SCHEME = "urn:mpeg:dash:role:2011";
-    private static final String AUDIO_CHANNEL_SCHEME =
-            "urn:mpeg:dash:23003:3:audio_channel_configuration:2011";
+    private static final String AUDIO_CHANNEL_SCHEME = "urn:mpeg:dash:23003:3:audio_channel_configuration:2011";
     private static final String UNDETERMINED_LANGUAGE = "und";
     private static final String ROLE_MAIN = "main";
 
@@ -88,12 +86,10 @@ public class DashManifestGeneratorService {
                     + "representation; the caller should have used the muxed fallback");
         }
         for (VideoStreamMetadataDTO v : config.videoStreams()) {
-            requireNonBlank("video", v.id(), v.url(), v.mimeType(), v.codec(),
-                    v.initRange(), v.indexRange());
+            requireNonBlank("video", v.id(), v.url(), v.mimeType(), v.codec(), v.initRange(), v.indexRange());
         }
         for (AudioStreamMetadataDTO a : config.audioStreams()) {
-            requireNonBlank("audio", a.id(), a.url(), a.mimeType(), a.codec(),
-                    a.initRange(), a.indexRange());
+            requireNonBlank("audio", a.id(), a.url(), a.mimeType(), a.codec(), a.initRange(), a.indexRange());
         }
         for (SubtitleMetadataDTO s : config.subtitleStreams()) {
             requireNonBlank("subtitle", s.id(), s.url(), s.mimeType());
@@ -106,8 +102,8 @@ public class DashManifestGeneratorService {
             missing |= isBlank(field);
         }
         if (missing) {
-            throw new IllegalStateException("%s representation %s is missing a required field; "
-                    .formatted(kind, id) + "DashPlayabilityFilter should have dropped it");
+            throw new IllegalStateException("%s representation %s is missing a required field; ".formatted(kind, id)
+                    + "DashPlayabilityFilter should have dropped it");
         }
     }
 
@@ -133,16 +129,19 @@ public class DashManifestGeneratorService {
         xml.writeEndElement(); // Period
         xml.writeEndElement(); // MPD
 
-        logger.debug("Wrote {} AdaptationSet(s) for {} video, {} audio, {} subtitle representation(s)",
-                nextId, config.videoStreams().size(), config.audioStreams().size(),
+        logger.debug(
+                "Wrote {} AdaptationSet(s) for {} video, {} audio, {} subtitle representation(s)",
+                nextId,
+                config.videoStreams().size(),
+                config.audioStreams().size(),
                 config.subtitleStreams().size());
     }
 
     // --- Video -----------------------------------------------------------------
 
     /** One AdaptationSet per container and codec family; players can't switch codecs mid-set. */
-    private int writeVideoAdaptationSets(XMLStreamWriter xml, List<VideoStreamMetadataDTO> videos,
-                                         int nextId) throws XMLStreamException {
+    private int writeVideoAdaptationSets(XMLStreamWriter xml, List<VideoStreamMetadataDTO> videos, int nextId)
+            throws XMLStreamException {
         Map<String, List<VideoStreamMetadataDTO>> byCodec =
                 groupBy(videos, v -> v.mimeType() + "|" + codecFamily(v.codec()));
 
@@ -155,7 +154,8 @@ public class DashManifestGeneratorService {
             xml.writeAttribute("startWithSAP", "1");
 
             List<VideoStreamMetadataDTO> sorted = group.stream()
-                    .sorted(Comparator.comparingInt(VideoStreamMetadataDTO::height).reversed())
+                    .sorted(Comparator.comparingInt(VideoStreamMetadataDTO::height)
+                            .reversed())
                     .toList();
             for (VideoStreamMetadataDTO video : sorted) {
                 writeVideoRepresentation(xml, video);
@@ -166,8 +166,7 @@ public class DashManifestGeneratorService {
         return nextId;
     }
 
-    private void writeVideoRepresentation(XMLStreamWriter xml, VideoStreamMetadataDTO video)
-            throws XMLStreamException {
+    private void writeVideoRepresentation(XMLStreamWriter xml, VideoStreamMetadataDTO video) throws XMLStreamException {
         xml.writeStartElement("Representation");
         xml.writeAttribute("id", video.id());
         xml.writeAttribute("bandwidth", String.valueOf(video.bandwidth()));
@@ -189,8 +188,8 @@ public class DashManifestGeneratorService {
      * family inside each track. Every AdaptationSet of one track carries the same lang,
      * Role and Label, so the player sees one track offered in two codecs.
      */
-    private int writeAudioAdaptationSets(XMLStreamWriter xml, List<AudioStreamMetadataDTO> audios,
-                                         int nextId) throws XMLStreamException {
+    private int writeAudioAdaptationSets(XMLStreamWriter xml, List<AudioStreamMetadataDTO> audios, int nextId)
+            throws XMLStreamException {
         Map<String, List<AudioStreamMetadataDTO>> byTrack =
                 groupBy(audios, DashManifestGeneratorService::audioTrackKey);
         boolean singleTrack = byTrack.size() == 1;
@@ -216,7 +215,8 @@ public class DashManifestGeneratorService {
                 writeLabel(xml, label);
 
                 List<AudioStreamMetadataDTO> sorted = group.stream()
-                        .sorted(Comparator.comparingInt(AudioStreamMetadataDTO::bandwidth).reversed())
+                        .sorted(Comparator.comparingInt(AudioStreamMetadataDTO::bandwidth)
+                                .reversed())
                         .toList();
                 for (AudioStreamMetadataDTO audio : sorted) {
                     writeAudioRepresentation(xml, audio);
@@ -228,8 +228,7 @@ public class DashManifestGeneratorService {
         return nextId;
     }
 
-    private void writeAudioRepresentation(XMLStreamWriter xml, AudioStreamMetadataDTO audio)
-            throws XMLStreamException {
+    private void writeAudioRepresentation(XMLStreamWriter xml, AudioStreamMetadataDTO audio) throws XMLStreamException {
         xml.writeStartElement("Representation");
         xml.writeAttribute("id", audio.id());
         xml.writeAttribute("bandwidth", String.valueOf(audio.bandwidth()));
@@ -249,9 +248,7 @@ public class DashManifestGeneratorService {
     /** Track id when YouTube provides one (multi-track videos), otherwise the language. */
     private static String audioTrackKey(AudioStreamMetadataDTO audio) {
         String trackId = audio.audioTrackId();
-        return isBlank(trackId)
-                ? "lang:" + languageOrUnd(audio.language())
-                : "track:" + trackId;
+        return isBlank(trackId) ? "lang:" + languageOrUnd(audio.language()) : "track:" + trackId;
     }
 
     /**
@@ -290,8 +287,8 @@ public class DashManifestGeneratorService {
     // --- Subtitles -------------------------------------------------------------
 
     /** One AdaptationSet per track, in the order the filter returned them. */
-    private int writeSubtitleAdaptationSets(XMLStreamWriter xml, List<SubtitleMetadataDTO> subtitles,
-                                            int nextId) throws XMLStreamException {
+    private int writeSubtitleAdaptationSets(XMLStreamWriter xml, List<SubtitleMetadataDTO> subtitles, int nextId)
+            throws XMLStreamException {
         for (SubtitleMetadataDTO subtitle : subtitles) {
             String language = languageOrUnd(subtitle.language());
 
@@ -316,9 +313,7 @@ public class DashManifestGeneratorService {
 
     /** DASH role values are singular: "subtitle" and "caption". */
     private static String textRole(String kind) {
-        return kind != null && kind.toLowerCase(Locale.ROOT).startsWith("caption")
-                ? "caption"
-                : "subtitle";
+        return kind != null && kind.toLowerCase(Locale.ROOT).startsWith("caption") ? "caption" : "subtitle";
     }
 
     /** Auto-generated tracks get a suffix so the picker can tell them from manual ones. */

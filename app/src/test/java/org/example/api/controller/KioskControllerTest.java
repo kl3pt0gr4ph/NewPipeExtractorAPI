@@ -1,6 +1,18 @@
 package org.example.api.controller;
 
-import tools.jackson.databind.ObjectMapper;
+import static org.hamcrest.Matchers.containsString;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import java.util.List;
+import java.util.stream.Stream;
 import org.example.api.config.GlobalExceptionHandler;
 import org.example.api.dto.kiosk.KioskDTO;
 import org.example.api.exception.ExtractionException;
@@ -17,20 +29,7 @@ import org.schabi.newpipe.extractor.kiosk.KioskInfo;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-
-import java.util.List;
-import java.util.stream.Stream;
-
-import static org.hamcrest.Matchers.containsString;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import tools.jackson.databind.ObjectMapper;
 
 @DisplayName("KioskController Tests")
 class KioskControllerTest {
@@ -59,7 +58,6 @@ class KioskControllerTest {
     @DisplayName("Returns 200 with the KioskDTO mapped from the service's KioskInfo")
     void getKioskInfo_returnsMappedDto() throws Exception {
         String kioskId = "trending_gaming";
-
 
         KioskInfo kioskInfo = mock(KioskInfo.class);
         when(kioskInfo.getServiceId()).thenReturn(SERVICE_ID);
@@ -93,8 +91,7 @@ class KioskControllerTest {
         when(kioskInfo.getNextPage()).thenReturn(null);
         when(kioskService.getKioskInfo(anyInt(), anyString())).thenReturn(kioskInfo);
 
-        mockMvc.perform(get("/api/v1/kiosks/{kioskId}", kioskId))
-                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/kiosks/{kioskId}", kioskId)).andExpect(status().isOk());
 
         verify(kioskService).getKioskInfo(SERVICE_ID, "live");
     }
@@ -103,12 +100,10 @@ class KioskControllerTest {
 
     static Stream<Arguments> extractionFailures() {
         return Stream.of(
-                Arguments.of("kiosk not found upstream",
-                        new ExtractionException("Kiosk not found")),
-                Arguments.of("kiosk temporarily unavailable",
-                        new ExtractionException("Kiosk unavailable")),
-                Arguments.of("malformed response from extractor",
-                        new ExtractionException("Failed to parse kiosk page")));
+                Arguments.of("kiosk not found upstream", new ExtractionException("Kiosk not found")),
+                Arguments.of("kiosk temporarily unavailable", new ExtractionException("Kiosk unavailable")),
+                Arguments.of(
+                        "malformed response from extractor", new ExtractionException("Failed to parse kiosk page")));
     }
 
     @ParameterizedTest(name = "{0} is handled by the extraction-error advice")
@@ -119,8 +114,7 @@ class KioskControllerTest {
         String kioskId = "not_a_real_kiosk";
         when(kioskService.getKioskInfo(SERVICE_ID, kioskId)).thenThrow(thrown);
 
-        mockMvc.perform(get("/api/v1/kiosks/{kioskId}", kioskId)
-                        .contentType(MediaType.APPLICATION_JSON))
+        mockMvc.perform(get("/api/v1/kiosks/{kioskId}", kioskId).contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.errorCode").value("EXTRACTION_ERROR"))
                 .andExpect(jsonPath("$.message").value(containsString(thrown.getMessage())));
@@ -132,8 +126,7 @@ class KioskControllerTest {
     @DisplayName("Falls back to the generic handler for unexpected runtime exceptions")
     void getKioskInfo_whenServiceThrowsUnexpectedException_fallsBackToGenericHandler() throws Exception {
         String kioskId = "trending_gaming";
-        when(kioskService.getKioskInfo(SERVICE_ID, kioskId))
-                .thenThrow(new RuntimeException("something exploded"));
+        when(kioskService.getKioskInfo(SERVICE_ID, kioskId)).thenThrow(new RuntimeException("something exploded"));
 
         mockMvc.perform(get("/api/v1/kiosks/{kioskId}", kioskId))
                 .andExpect(status().isInternalServerError())

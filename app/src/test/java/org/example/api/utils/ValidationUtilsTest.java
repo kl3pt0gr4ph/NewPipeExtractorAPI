@@ -1,5 +1,10 @@
 package org.example.api.utils;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import java.util.stream.Stream;
 import org.example.api.exception.ValidationException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -7,12 +12,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
-
-import java.util.stream.Stream;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Unit tests for ValidationUtils.
@@ -26,7 +25,8 @@ class ValidationUtilsTest {
     @ValueSource(strings = {"valid value", "  content  ", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"})
     @DisplayName("Passes for non-blank values, including ones with surrounding whitespace or very long content")
     void requireNonEmpty_acceptsNonBlankValues(String value) {
-        assertThatCode(() -> ValidationUtils.requireNonEmpty(value, "testField")).doesNotThrowAnyException();
+        assertThatCode(() -> ValidationUtils.requireNonEmpty(value, "testField"))
+                .doesNotThrowAnyException();
     }
 
     static Stream<Arguments> blankValues() {
@@ -60,15 +60,16 @@ class ValidationUtilsTest {
     // ── requireValidUrl ──────────────────────────────────────────────────
 
     @ParameterizedTest(name = "Accepts {0}")
-    @ValueSource(strings = {
-            "http://example.com",
-            "https://example.com",
-            "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-            "https://example.com/path?param1=value1&param2=value2",
-            "https://example.com/path#section",
-            "https://example.com:8080/path",
-            "https://example.com/path?query=hello%20world"
-    })
+    @ValueSource(
+            strings = {
+                "http://example.com",
+                "https://example.com",
+                "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                "https://example.com/path?param1=value1&param2=value2",
+                "https://example.com/path#section",
+                "https://example.com:8080/path",
+                "https://example.com/path?query=hello%20world"
+            })
     @DisplayName("Passes for http(s) URLs with query params, fragments, ports, or encoded characters")
     void requireValidUrl_acceptsWellFormedHttpUrls(String url) {
         assertThatCode(() -> ValidationUtils.requireValidUrl(url)).doesNotThrowAnyException();

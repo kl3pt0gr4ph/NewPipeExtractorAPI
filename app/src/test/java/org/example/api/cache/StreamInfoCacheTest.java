@@ -1,6 +1,17 @@
 package org.example.api.cache;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.github.benmanes.caffeine.cache.Ticker;
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Stream;
 import org.example.api.exception.ExtractionException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -11,21 +22,6 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.schabi.newpipe.extractor.stream.StreamInfo;
 
-import java.time.Clock;
-import java.time.Duration;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZoneOffset;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Stream;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
 class StreamInfoCacheTest {
 
     private static final Instant NOW = Instant.parse("2026-08-09T12:00:00Z");
@@ -33,10 +29,10 @@ class StreamInfoCacheTest {
 
     private static final StreamInfoCacheProperties PROPS = new StreamInfoCacheProperties(
             300,
-            Duration.ofMinutes(10),   // safetyMargin
-            Duration.ofMinutes(5),    // fallbackTtl
-            Duration.ofSeconds(30),   // degradedTtl
-            Duration.ofHours(6));     // maxTtl
+            Duration.ofMinutes(10), // safetyMargin
+            Duration.ofMinutes(5), // fallbackTtl
+            Duration.ofSeconds(30), // degradedTtl
+            Duration.ofHours(6)); // maxTtl
 
     private MutableClock clock;
     private MutableTicker ticker;
@@ -57,21 +53,32 @@ class StreamInfoCacheTest {
 
     static Stream<Arguments> ttlCases() {
         return Stream.of(
-                Arguments.of("safety margin subtracted from signed expiry",
-                        StreamFixtures.healthy(NOW.plus(Duration.ofHours(1))), Duration.ofMinutes(50)),
-                Arguments.of("no expire parameter falls back",
-                        StreamFixtures.healthyWithoutExpiry(), PROPS.fallbackTtl()),
-                Arguments.of("degraded extraction gets the short TTL",
-                        StreamFixtures.degraded(NOW.plus(Duration.ofHours(1))), PROPS.degradedTtl()),
-                Arguments.of("degraded wins over a long signature",
-                        StreamFixtures.degraded(NOW.plus(Duration.ofHours(5))), PROPS.degradedTtl()),
-                Arguments.of("already expired yields zero",
-                        StreamFixtures.healthy(NOW.minus(Duration.ofHours(1))), Duration.ZERO),
-                Arguments.of("expiry inside the margin yields zero",
-                        StreamFixtures.healthy(NOW.plus(Duration.ofMinutes(5))), Duration.ZERO),
-                Arguments.of("distant expiry is clamped to maxTtl",
-                        StreamFixtures.healthy(NOW.plus(Duration.ofHours(24))), PROPS.maxTtl())
-        );
+                Arguments.of(
+                        "safety margin subtracted from signed expiry",
+                        StreamFixtures.healthy(NOW.plus(Duration.ofHours(1))),
+                        Duration.ofMinutes(50)),
+                Arguments.of(
+                        "no expire parameter falls back", StreamFixtures.healthyWithoutExpiry(), PROPS.fallbackTtl()),
+                Arguments.of(
+                        "degraded extraction gets the short TTL",
+                        StreamFixtures.degraded(NOW.plus(Duration.ofHours(1))),
+                        PROPS.degradedTtl()),
+                Arguments.of(
+                        "degraded wins over a long signature",
+                        StreamFixtures.degraded(NOW.plus(Duration.ofHours(5))),
+                        PROPS.degradedTtl()),
+                Arguments.of(
+                        "already expired yields zero",
+                        StreamFixtures.healthy(NOW.minus(Duration.ofHours(1))),
+                        Duration.ZERO),
+                Arguments.of(
+                        "expiry inside the margin yields zero",
+                        StreamFixtures.healthy(NOW.plus(Duration.ofMinutes(5))),
+                        Duration.ZERO),
+                Arguments.of(
+                        "distant expiry is clamped to maxTtl",
+                        StreamFixtures.healthy(NOW.plus(Duration.ofHours(24))),
+                        PROPS.maxTtl()));
     }
 
     @ParameterizedTest(name = "{0}")
@@ -112,9 +119,9 @@ class StreamInfoCacheTest {
             StreamInfo info = StreamFixtures.healthy(NOW.plus(Duration.ofHours(1)));
 
             assertThatThrownBy(() -> cache.get(URL, url -> {
-                calls.incrementAndGet();
-                throw new ExtractionException("upstream blew up");
-            }))
+                        calls.incrementAndGet();
+                        throw new ExtractionException("upstream blew up");
+                    }))
                     .isInstanceOf(ExtractionException.class)
                     .hasMessage("upstream blew up");
 
@@ -134,9 +141,15 @@ class StreamInfoCacheTest {
             StreamInfo info = StreamFixtures.healthy(NOW.plus(Duration.ofHours(1)));
             AtomicInteger calls = new AtomicInteger();
 
-            cache.get(URL, url -> { calls.incrementAndGet(); return info; });
+            cache.get(URL, url -> {
+                calls.incrementAndGet();
+                return info;
+            });
             advance(Duration.ofMinutes(51));
-            cache.get(URL, url -> { calls.incrementAndGet(); return info; });
+            cache.get(URL, url -> {
+                calls.incrementAndGet();
+                return info;
+            });
 
             assertThat(calls).hasValue(2);
         }
@@ -147,14 +160,23 @@ class StreamInfoCacheTest {
             StreamInfo info = StreamFixtures.healthyWithoutExpiry();
             AtomicInteger calls = new AtomicInteger();
 
-            cache.get(URL, url -> { calls.incrementAndGet(); return info; });
+            cache.get(URL, url -> {
+                calls.incrementAndGet();
+                return info;
+            });
 
             advance(Duration.ofMinutes(3));
-            cache.get(URL, url -> { calls.incrementAndGet(); return info; });
+            cache.get(URL, url -> {
+                calls.incrementAndGet();
+                return info;
+            });
             assertThat(calls).as("still within the 5 minute lease").hasValue(1);
 
             advance(Duration.ofMinutes(3));
-            cache.get(URL, url -> { calls.incrementAndGet(); return info; });
+            cache.get(URL, url -> {
+                calls.incrementAndGet();
+                return info;
+            });
 
             assertThat(calls).as("lease is set at write, not by demand").hasValue(2);
         }

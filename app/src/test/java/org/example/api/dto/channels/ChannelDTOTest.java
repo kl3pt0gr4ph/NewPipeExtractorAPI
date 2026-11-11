@@ -1,17 +1,16 @@
 package org.example.api.dto.channels;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.schabi.newpipe.extractor.Image;
 import org.schabi.newpipe.extractor.channel.ChannelInfo;
 import org.schabi.newpipe.extractor.linkhandler.ListLinkHandler;
-
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 /**
  * Unit tests for ChannelDTO
@@ -21,8 +20,8 @@ class ChannelDTOTest {
 
     // ── Helpers ──────────────────────────────────────────────────────────
 
-    private ListLinkHandler tab(String url, String originalUrl, String id,
-                                List<String> contentFilters, String sortFilter) {
+    private ListLinkHandler tab(
+            String url, String originalUrl, String id, List<String> contentFilters, String sortFilter) {
         ListLinkHandler handler = mock(ListLinkHandler.class);
         when(handler.getUrl()).thenReturn(url);
         when(handler.getOriginalUrl()).thenReturn(originalUrl);
@@ -59,13 +58,14 @@ class ChannelDTOTest {
     @DisplayName("Maps all scalar fields, tags, and images (order-preserving), with errors always empty")
     void mapsAllFieldsFromFullChannelInfo() {
         ChannelInfo info = channelInfo();
-        when(info.getAvatars()).thenReturn(List.of(
-                new Image("https://img/avatar-low.jpg", 48, 48, Image.ResolutionLevel.LOW),
-                new Image("https://img/avatar-high.jpg", 176, 176, Image.ResolutionLevel.HIGH)));
-        when(info.getBanners()).thenReturn(List.of(
-                new Image("https://img/banner.jpg", 424, 1060, Image.ResolutionLevel.MEDIUM)));
-        when(info.getParentChannelAvatars()).thenReturn(List.of(
-                new Image("https://img/parent.jpg", 48, 48, Image.ResolutionLevel.LOW)));
+        when(info.getAvatars())
+                .thenReturn(List.of(
+                        new Image("https://img/avatar-low.jpg", 48, 48, Image.ResolutionLevel.LOW),
+                        new Image("https://img/avatar-high.jpg", 176, 176, Image.ResolutionLevel.HIGH)));
+        when(info.getBanners())
+                .thenReturn(List.of(new Image("https://img/banner.jpg", 424, 1060, Image.ResolutionLevel.MEDIUM)));
+        when(info.getParentChannelAvatars())
+                .thenReturn(List.of(new Image("https://img/parent.jpg", 48, 48, Image.ResolutionLevel.LOW)));
         when(info.getTags()).thenReturn(List.of("tech", "reviews"));
 
         ChannelDTO dto = ChannelDTO.from(info);
@@ -84,13 +84,14 @@ class ChannelDTOTest {
         assertThat(dto.getTags()).containsExactly("tech", "reviews");
         assertThat(dto.getErrors()).isEmpty();
 
-        assertThat(dto.getAvatars()).containsExactly(
-                new ChannelDTO.ImageDto("https://img/avatar-low.jpg", 48, 48, "LOW"),
-                new ChannelDTO.ImageDto("https://img/avatar-high.jpg", 176, 176, "HIGH"));
-        assertThat(dto.getBanners()).containsExactly(
-                new ChannelDTO.ImageDto("https://img/banner.jpg", 424, 1060, "MEDIUM"));
-        assertThat(dto.getParentChannelAvatars()).containsExactly(
-                new ChannelDTO.ImageDto("https://img/parent.jpg", 48, 48, "LOW"));
+        assertThat(dto.getAvatars())
+                .containsExactly(
+                        new ChannelDTO.ImageDto("https://img/avatar-low.jpg", 48, 48, "LOW"),
+                        new ChannelDTO.ImageDto("https://img/avatar-high.jpg", 176, 176, "HIGH"));
+        assertThat(dto.getBanners())
+                .containsExactly(new ChannelDTO.ImageDto("https://img/banner.jpg", 424, 1060, "MEDIUM"));
+        assertThat(dto.getParentChannelAvatars())
+                .containsExactly(new ChannelDTO.ImageDto("https://img/parent.jpg", 48, 48, "LOW"));
     }
 
     @Test
@@ -100,26 +101,35 @@ class ChannelDTOTest {
         ListLinkHandler videosTab = tab(
                 "https://www.youtube.com/@LinusTechTips/videos",
                 "https://www.youtube.com/@LinusTechTips/videos",
-                "UCXuq", List.of("videos"), "");
+                "UCXuq",
+                List.of("videos"),
+                "");
         ListLinkHandler shortsTab = tab(
                 "https://www.youtube.com/@LinusTechTips/shorts",
                 "https://www.youtube.com/@LinusTechTips/shorts",
-                "UCXuq", List.of("shorts"), "");
+                "UCXuq",
+                List.of("shorts"),
+                "");
         when(info.getTabs()).thenReturn(List.of(videosTab, shortsTab));
 
         ChannelDTO dto = ChannelDTO.from(info);
 
-        assertThat(dto.getTabs()).containsExactly(
-                new ChannelDTO.TabDto(
-                        "https://www.youtube.com/@LinusTechTips/videos",
-                        "https://www.youtube.com/@LinusTechTips/videos",
-                        "UCXuq", List.of("videos"), "",
-                        "https://www.youtube.com"),
-                new ChannelDTO.TabDto(
-                        "https://www.youtube.com/@LinusTechTips/shorts",
-                        "https://www.youtube.com/@LinusTechTips/shorts",
-                        "UCXuq", List.of("shorts"), "",
-                        "https://www.youtube.com"));
+        assertThat(dto.getTabs())
+                .containsExactly(
+                        new ChannelDTO.TabDto(
+                                "https://www.youtube.com/@LinusTechTips/videos",
+                                "https://www.youtube.com/@LinusTechTips/videos",
+                                "UCXuq",
+                                List.of("videos"),
+                                "",
+                                "https://www.youtube.com"),
+                        new ChannelDTO.TabDto(
+                                "https://www.youtube.com/@LinusTechTips/shorts",
+                                "https://www.youtube.com/@LinusTechTips/shorts",
+                                "UCXuq",
+                                List.of("shorts"),
+                                "",
+                                "https://www.youtube.com"));
     }
 
     @Test
@@ -130,8 +140,7 @@ class ChannelDTOTest {
         ListLinkHandler blankUrlTab = tab("   ", null, "t2", List.of("videos"), "");
         ListLinkHandler unparseableTab = tab("not-a-url", null, "t3", List.of("videos"), "");
         ListLinkHandler brokenHostTab = tab("ht tp://broken host", null, "t4", List.of("videos"), "");
-        when(info.getTabs()).thenReturn(
-                List.of(nullUrlTab, blankUrlTab, unparseableTab, brokenHostTab));
+        when(info.getTabs()).thenReturn(List.of(nullUrlTab, blankUrlTab, unparseableTab, brokenHostTab));
 
         ChannelDTO dto = ChannelDTO.from(info);
 
@@ -160,7 +169,6 @@ class ChannelDTOTest {
     @Test
     @DisplayName("Rejects a null ChannelInfo with IllegalArgumentException")
     void rejectsNullChannelInfo() {
-        assertThatThrownBy(() -> ChannelDTO.from(null))
-                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> ChannelDTO.from(null)).isInstanceOf(IllegalArgumentException.class);
     }
 }

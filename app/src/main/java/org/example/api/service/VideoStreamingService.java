@@ -1,5 +1,6 @@
 package org.example.api.service;
 
+import java.util.List;
 import org.example.api.cache.StreamInfoCache;
 import org.example.api.config.ExtractionProperties;
 import org.example.api.exception.ExtractionException;
@@ -10,8 +11,6 @@ import org.schabi.newpipe.extractor.stream.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-
-import java.util.List;
 
 /**
  * Service for extracting detailed information about video streams.
@@ -53,19 +52,26 @@ public class VideoStreamingService {
             logger.info("Extracting stream info for URL: {}", url);
             StreamInfo info = StreamInfo.getInfo(url);
 
-            boolean hasAdaptiveStreams =
-                    !info.getVideoOnlyStreams().isEmpty() || !info.getAudioStreams().isEmpty();
+            boolean hasAdaptiveStreams = !info.getVideoOnlyStreams().isEmpty()
+                    || !info.getAudioStreams().isEmpty();
             boolean isValidResult = info.getDuration() > 0;
 
             if (!hasAdaptiveStreams && isValidResult && attemptsRemaining > 1) {
-                logger.warn("Got incomplete streams for URL: {} (videoOnly={}, audio={}, muxed={}) — retrying ({} attempts remaining)",
-                        url, info.getVideoOnlyStreams().size(), info.getAudioStreams().size(),
-                        info.getVideoStreams().size(), attemptsRemaining - 1);
+                logger.warn(
+                        "Got incomplete streams for URL: {} (videoOnly={}, audio={}, muxed={}) — retrying ({} attempts remaining)",
+                        url,
+                        info.getVideoOnlyStreams().size(),
+                        info.getAudioStreams().size(),
+                        info.getVideoStreams().size(),
+                        attemptsRemaining - 1);
                 return extractWithRetry(url, attemptsRemaining - 1);
             }
 
-            logger.info("Extracted streams for URL: {} (videoOnly={}, audio={}, muxed={})",
-                    url, info.getVideoOnlyStreams().size(), info.getAudioStreams().size(),
+            logger.info(
+                    "Extracted streams for URL: {} (videoOnly={}, audio={}, muxed={})",
+                    url,
+                    info.getVideoOnlyStreams().size(),
+                    info.getAudioStreams().size(),
                     info.getVideoStreams().size());
             return info;
         } catch (Exception e) {

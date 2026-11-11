@@ -1,5 +1,20 @@
 package org.example.api.controller;
 
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.hasSize;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import java.util.List;
+import java.util.stream.Stream;
 import org.example.api.config.GlobalExceptionHandler;
 import org.example.api.dto.channels.ChannelTabDTO;
 import org.example.api.exception.ExtractionException;
@@ -20,22 +35,6 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-
-import java.util.List;
-import java.util.stream.Stream;
-
-import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.hasSize;
-import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * Unit tests for ChannelController.
@@ -76,7 +75,8 @@ class ChannelControllerTest {
             dto.setNextPage(new ChannelTabDTO.PageDto(
                     "https://www.youtube.com/youtubei/v1/browse?prettyPrint=false",
                     "eyJjb250aW51YXRpb24iOiJ0b2tlbiJ9",
-                    List.of("Linus Tech Tips",
+                    List.of(
+                            "Linus Tech Tips",
                             "https://www.youtube.com/channel/UCXuqSBlHAE6Xw-yeJA0Tunw",
                             "VERIFIED")));
         }
@@ -104,9 +104,7 @@ class ChannelControllerTest {
             when(mockInfo.getTags()).thenReturn(List.of());
             when(channelService.getChannelInfo(CHANNEL_URL)).thenReturn(mockInfo);
 
-            mockMvc.perform(get("/api/v1/channels")
-                            .param("id", CHANNEL_ID)
-                            .contentType(MediaType.APPLICATION_JSON))
+            mockMvc.perform(get("/api/v1/channels").param("id", CHANNEL_ID).contentType(MediaType.APPLICATION_JSON))
                     .andExpect(status().isOk())
                     .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                     .andExpect(jsonPath("$.id").value("UCXuqSBlHAE6Xw-yeJA0Tunw"))
@@ -118,14 +116,13 @@ class ChannelControllerTest {
         }
 
         @Test
-        @DisplayName("Propagates service failures to the exception handler (single advice-wiring test for this controller)")
+        @DisplayName(
+                "Propagates service failures to the exception handler (single advice-wiring test for this controller)")
         void propagatesFailuresToAdvice() throws Exception {
             when(channelService.getChannelInfo(anyString()))
                     .thenThrow(new ExtractionException("Failed to extract channel info"));
 
-            mockMvc.perform(get("/api/v1/channels")
-                            .param("id", CHANNEL_ID)
-                            .contentType(MediaType.APPLICATION_JSON))
+            mockMvc.perform(get("/api/v1/channels").param("id", CHANNEL_ID).contentType(MediaType.APPLICATION_JSON))
                     .andExpect(status().isInternalServerError())
                     .andExpect(jsonPath("$.errorCode").value("EXTRACTION_ERROR"))
                     .andExpect(jsonPath("$.message").value(containsString("Failed to extract")));
@@ -144,9 +141,7 @@ class ChannelControllerTest {
             when(channelTabService.getChannelTab(anyString(), anyString(), anyString()))
                     .thenReturn(channelTabDTO("videos", CHANNEL_ID, true));
 
-            mockMvc.perform(get("/api/v1/channels/tab")
-                            .param("id", CHANNEL_ID)
-                            .contentType(MediaType.APPLICATION_JSON))
+            mockMvc.perform(get("/api/v1/channels/tab").param("id", CHANNEL_ID).contentType(MediaType.APPLICATION_JSON))
                     .andExpect(status().isOk())
                     .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                     .andExpect(jsonPath("$.tab").value("videos"))
@@ -167,10 +162,10 @@ class ChannelControllerTest {
     class ChannelTabPageTests {
 
         @Test
-        @DisplayName("Returns 200, defaulting tab and passing all page parameters (including the pageIds list) verbatim")
+        @DisplayName(
+                "Returns 200, defaulting tab and passing all page parameters (including the pageIds list) verbatim")
         void returnsPage_passingAllParametersVerbatim() throws Exception {
-            when(channelTabService.getChannelTabPage(
-                    anyString(), anyString(), anyString(), anyString(), anyList()))
+            when(channelTabService.getChannelTabPage(anyString(), anyString(), anyString(), anyString(), anyList()))
                     .thenReturn(channelTabDTO("videos", "UCXuq", true));
 
             mockMvc.perform(get("/api/v1/channels/tab/page")
@@ -185,19 +180,19 @@ class ChannelControllerTest {
                     .andExpect(jsonPath("$.tab").value("videos"))
                     .andExpect(jsonPath("$.items").isArray());
 
-            verify(channelTabService).getChannelTabPage(
-                    eq("UCXuq"),
-                    eq("videos"), // defaultValue binding
-                    eq("https://youtube.com/browse"),
-                    eq("bodyBase64"),
-                    eq(List.of("Channel Name", "https://youtube.com/channel/UC1", "VERIFIED")));
+            verify(channelTabService)
+                    .getChannelTabPage(
+                            eq("UCXuq"),
+                            eq("videos"), // defaultValue binding
+                            eq("https://youtube.com/browse"),
+                            eq("bodyBase64"),
+                            eq(List.of("Channel Name", "https://youtube.com/channel/UC1", "VERIFIED")));
         }
 
         @Test
         @DisplayName("Omits nextPage from the response on the final page")
         void omitsNextPageOnFinalPage() throws Exception {
-            when(channelTabService.getChannelTabPage(
-                    anyString(), anyString(), anyString(), anyString(), anyList()))
+            when(channelTabService.getChannelTabPage(anyString(), anyString(), anyString(), anyString(), anyList()))
                     .thenReturn(channelTabDTO("videos", "UCXuq", false));
 
             mockMvc.perform(get("/api/v1/channels/tab/page")
@@ -217,26 +212,28 @@ class ChannelControllerTest {
 
     static Stream<Arguments> requestsMissingARequiredParam() {
         return Stream.of(
-                Arguments.of("/channels without id",
-                        get("/api/v1/channels")),
-                Arguments.of("/channels/tab without id",
-                        get("/api/v1/channels/tab")),
-                Arguments.of("/channels/tab/page without channelId",
+                Arguments.of("/channels without id", get("/api/v1/channels")),
+                Arguments.of("/channels/tab without id", get("/api/v1/channels/tab")),
+                Arguments.of(
+                        "/channels/tab/page without channelId",
                         get("/api/v1/channels/tab/page")
                                 .param("pageUrl", "https://youtube.com/browse")
                                 .param("pageBody", "body")
                                 .param("pageIds", "Ch")),
-                Arguments.of("/channels/tab/page without pageUrl",
+                Arguments.of(
+                        "/channels/tab/page without pageUrl",
                         get("/api/v1/channels/tab/page")
                                 .param("channelId", "UCXuq")
                                 .param("pageBody", "body")
                                 .param("pageIds", "Ch")),
-                Arguments.of("/channels/tab/page without pageBody",
+                Arguments.of(
+                        "/channels/tab/page without pageBody",
                         get("/api/v1/channels/tab/page")
                                 .param("channelId", "UCXuq")
                                 .param("pageUrl", "https://youtube.com/browse")
                                 .param("pageIds", "Ch")),
-                Arguments.of("/channels/tab/page without pageIds",
+                Arguments.of(
+                        "/channels/tab/page without pageIds",
                         get("/api/v1/channels/tab/page")
                                 .param("channelId", "UCXuq")
                                 .param("pageUrl", "https://youtube.com/browse")
@@ -246,9 +243,7 @@ class ChannelControllerTest {
     @ParameterizedTest(name = "{0} returns 400")
     @MethodSource("requestsMissingARequiredParam")
     @DisplayName("Missing required parameters return 400")
-    void missingRequiredParam_returnsBadRequest(
-            String name, MockHttpServletRequestBuilder request) throws Exception {
-        mockMvc.perform(request.contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isBadRequest());
+    void missingRequiredParam_returnsBadRequest(String name, MockHttpServletRequestBuilder request) throws Exception {
+        mockMvc.perform(request.contentType(MediaType.APPLICATION_JSON)).andExpect(status().isBadRequest());
     }
 }

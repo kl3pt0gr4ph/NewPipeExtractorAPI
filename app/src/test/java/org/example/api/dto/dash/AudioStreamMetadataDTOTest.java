@@ -1,9 +1,17 @@
 package org.example.api.dto.dash;
 
-import tools.jackson.databind.ObjectMapper;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
+import java.util.Locale;
+import java.util.Set;
+import java.util.function.UnaryOperator;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -13,16 +21,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.schabi.newpipe.extractor.MediaFormat;
 import org.schabi.newpipe.extractor.services.youtube.ItagItem;
 import org.schabi.newpipe.extractor.stream.AudioStream;
-
-import java.util.Locale;
-import java.util.Set;
-import java.util.function.UnaryOperator;
-import java.util.stream.Stream;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Unit tests for AudioStreamMetadataDTO.
@@ -78,7 +77,9 @@ class AudioStreamMetadataDTOTest {
     @DisplayName("Builder wires every field to its own getter")
     void builderWiresAllFields() {
         AudioStreamMetadataDTO dto = validBuilder()
-                .initRange("0-722").indexRange("723-898").format("M4A")
+                .initRange("0-722")
+                .indexRange("723-898")
+                .format("M4A")
                 .build();
 
         assertThat(dto.id()).isEqualTo("audio-1");
@@ -105,20 +106,32 @@ class AudioStreamMetadataDTOTest {
 
     static Stream<Arguments> invalidFieldCases() {
         return Stream.of(
-                Arguments.of("blank id", (UnaryOperator<AudioStreamMetadataDTO.Builder>) b -> b.id(""),
+                Arguments.of(
+                        "blank id",
+                        (UnaryOperator<AudioStreamMetadataDTO.Builder>) b -> b.id(""),
                         "Audio stream ID cannot be blank"),
-                Arguments.of("blank url", (UnaryOperator<AudioStreamMetadataDTO.Builder>) b -> b.url(""),
+                Arguments.of(
+                        "blank url",
+                        (UnaryOperator<AudioStreamMetadataDTO.Builder>) b -> b.url(""),
                         "Audio stream URL cannot be blank"),
-                Arguments.of("blank codec", (UnaryOperator<AudioStreamMetadataDTO.Builder>) b -> b.codec(""),
+                Arguments.of(
+                        "blank codec",
+                        (UnaryOperator<AudioStreamMetadataDTO.Builder>) b -> b.codec(""),
                         "Audio codec cannot be blank"),
-                Arguments.of("blank mimeType", (UnaryOperator<AudioStreamMetadataDTO.Builder>) b -> b.mimeType(""),
+                Arguments.of(
+                        "blank mimeType",
+                        (UnaryOperator<AudioStreamMetadataDTO.Builder>) b -> b.mimeType(""),
                         "Audio MIME type cannot be blank"),
-                Arguments.of("blank audioSamplingRate",
+                Arguments.of(
+                        "blank audioSamplingRate",
                         (UnaryOperator<AudioStreamMetadataDTO.Builder>) b -> b.audioSamplingRate(""),
                         "Audio sampling rate cannot be blank"),
-                Arguments.of("zero bandwidth", (UnaryOperator<AudioStreamMetadataDTO.Builder>) b -> b.bandwidth(0),
+                Arguments.of(
+                        "zero bandwidth",
+                        (UnaryOperator<AudioStreamMetadataDTO.Builder>) b -> b.bandwidth(0),
                         "Bandwidth must be at least 1"),
-                Arguments.of("zero audioChannels",
+                Arguments.of(
+                        "zero audioChannels",
                         (UnaryOperator<AudioStreamMetadataDTO.Builder>) b -> b.audioChannels(0),
                         "Audio channels must be at least 1"));
     }
@@ -126,8 +139,8 @@ class AudioStreamMetadataDTOTest {
     @ParameterizedTest(name = "Rejects {0}")
     @MethodSource("invalidFieldCases")
     @DisplayName("Rejects DTOs violating a single constraint, with the matching message")
-    void rejectsInvalidField(String name, UnaryOperator<AudioStreamMetadataDTO.Builder> mutator,
-                             String expectedMessage) {
+    void rejectsInvalidField(
+            String name, UnaryOperator<AudioStreamMetadataDTO.Builder> mutator, String expectedMessage) {
         Set<ConstraintViolation<AudioStreamMetadataDTO>> violations =
                 validator.validate(mutator.apply(validBuilder()).build());
 
@@ -230,8 +243,13 @@ class AudioStreamMetadataDTOTest {
     @DisplayName("Omits unset optional fields from the serialized JSON")
     void omitsNullFieldsInJson() throws Exception {
         AudioStreamMetadataDTO dto = AudioStreamMetadataDTO.builder()
-                .id("audio-1").url("https://example.com/audio.mp4").codec("mp4a.40.2")
-                .mimeType("audio/mp4").bandwidth(130482).audioSamplingRate("44100").audioChannels(2)
+                .id("audio-1")
+                .url("https://example.com/audio.mp4")
+                .codec("mp4a.40.2")
+                .mimeType("audio/mp4")
+                .bandwidth(130482)
+                .audioSamplingRate("44100")
+                .audioChannels(2)
                 .build();
 
         String json = objectMapper.writeValueAsString(dto);
@@ -243,10 +261,13 @@ class AudioStreamMetadataDTOTest {
     @DisplayName("Round-trips every field through serialize/deserialize unchanged")
     void roundTripPreservesAllFields() throws Exception {
         AudioStreamMetadataDTO original = validBuilder()
-                .initRange("0-722").indexRange("723-898").format("M4A").build();
+                .initRange("0-722")
+                .indexRange("723-898")
+                .format("M4A")
+                .build();
 
-        AudioStreamMetadataDTO restored = objectMapper.readValue(
-                objectMapper.writeValueAsString(original), AudioStreamMetadataDTO.class);
+        AudioStreamMetadataDTO restored =
+                objectMapper.readValue(objectMapper.writeValueAsString(original), AudioStreamMetadataDTO.class);
 
         assertThat(restored.id()).isEqualTo(original.id());
         assertThat(restored.url()).isEqualTo(original.url());

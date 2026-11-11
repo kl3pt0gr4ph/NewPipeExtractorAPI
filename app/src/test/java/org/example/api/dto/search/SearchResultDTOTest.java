@@ -1,6 +1,11 @@
 package org.example.api.dto.search;
 
-import tools.jackson.databind.ObjectMapper;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+import java.util.List;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -12,13 +17,7 @@ import org.schabi.newpipe.extractor.Page;
 import org.schabi.newpipe.extractor.search.SearchInfo;
 import org.schabi.newpipe.extractor.stream.StreamInfoItem;
 import org.schabi.newpipe.extractor.stream.StreamType;
-
-import java.util.List;
-import java.util.stream.Stream;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Unit tests for SearchResultDTO.
@@ -58,7 +57,8 @@ class SearchResultDTOTest {
     @Test
     @DisplayName("Maps every scalar field, the item list, and a present cursor from a fully-populated SearchInfo")
     void mapsAllFieldsFromFullSearchInfo() {
-        SearchInfo info = searchInfo("test",
+        SearchInfo info = searchInfo(
+                "test",
                 List.of(streamItem("Video 1", "https://youtube.com/watch?v=1")),
                 new Page("https://youtube.com/results?page=2", "4qmFsgJcEBIYdmlkZW8"));
         when(info.getOriginalUrl()).thenReturn("https://youtube.com/search?q=test");
@@ -81,7 +81,8 @@ class SearchResultDTOTest {
     }
 
     @Test
-    @DisplayName("Leaves originalUrl/searchSuggestion null, items empty, and hasNextPage false for a minimal, last-page SearchInfo")
+    @DisplayName(
+            "Leaves originalUrl/searchSuggestion null, items empty, and hasNextPage false for a minimal, last-page SearchInfo")
     void mapsMinimalSearchInfo() {
         SearchInfo info = searchInfo("query", List.of(), null);
         when(info.getOriginalUrl()).thenReturn(null);
@@ -104,12 +105,16 @@ class SearchResultDTOTest {
         return Stream.of(
                 Arguments.of("null Page", null, null, null),
                 Arguments.of("Page with null url", new Page(null, "someToken"), null, null),
-                Arguments.of("Page with null id (token absent)",
+                Arguments.of(
+                        "Page with null id (token absent)",
                         new Page("https://youtube.com/browse", (String) null),
-                        "https://youtube.com/browse", null),
-                Arguments.of("Page with a continuation token",
+                        "https://youtube.com/browse",
+                        null),
+                Arguments.of(
+                        "Page with a continuation token",
                         new Page("https://youtube.com/browse", "4qmFsgJcEBIYdmlkZW8_token"),
-                        "https://youtube.com/browse", "4qmFsgJcEBIYdmlkZW8_token"));
+                        "https://youtube.com/browse",
+                        "4qmFsgJcEBIYdmlkZW8_token"));
     }
 
     @ParameterizedTest(name = "{0}")
@@ -138,19 +143,19 @@ class SearchResultDTOTest {
 
         assertThat(objectMapper.writeValueAsString(withPage))
                 .contains("\"nextPage\":{", "\"url\"", "\"id\"", "https://youtube.com/browse");
-        assertThat(objectMapper.writeValueAsString(withoutPage))
-                .contains("\"nextPage\":null");
+        assertThat(objectMapper.writeValueAsString(withoutPage)).contains("\"nextPage\":null");
     }
 
     @Test
     @DisplayName("Round-trips every scalar field and the item count through serialize/deserialize unchanged")
     void roundTripPreservesFieldsAndItemCount() throws Exception {
-        SearchResultDTO original = SearchResultDTO.from(searchInfo("test",
+        SearchResultDTO original = SearchResultDTO.from(searchInfo(
+                "test",
                 List.of(streamItem("Video 1", "https://youtube.com/watch?v=1")),
                 new Page("https://youtube.com/results?page=2", "token")));
 
-        SearchResultDTO restored = objectMapper.readValue(
-                objectMapper.writeValueAsString(original), SearchResultDTO.class);
+        SearchResultDTO restored =
+                objectMapper.readValue(objectMapper.writeValueAsString(original), SearchResultDTO.class);
 
         assertThat(restored.getSearchString()).isEqualTo(original.getSearchString());
         assertThat(restored.getUrl()).isEqualTo(original.getUrl());

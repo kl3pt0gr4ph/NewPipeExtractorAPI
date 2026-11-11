@@ -1,5 +1,15 @@
 package org.example.api.controller;
 
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import java.util.List;
 import org.example.api.config.GlobalExceptionHandler;
 import org.example.api.dto.ServiceDTO;
 import org.example.api.service.RestService;
@@ -8,17 +18,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-
-import java.util.List;
-
-import static org.hamcrest.Matchers.not;
-import static org.hamcrest.Matchers.containsString;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @DisplayName("NewPipeController")
 class NewPipeControllerTest {
@@ -37,8 +36,8 @@ class NewPipeControllerTest {
     @Test
     @DisplayName("GET /services returns the services as a JSON array")
     void getServices_returnsServices() throws Exception {
-        when(restService.getServices()).thenReturn(List.of(
-                new ServiceDTO(0, "YouTube"), new ServiceDTO(1, "SoundCloud")));
+        when(restService.getServices())
+                .thenReturn(List.of(new ServiceDTO(0, "YouTube"), new ServiceDTO(1, "SoundCloud")));
 
         mockMvc.perform(get("/api/v1/services"))
                 .andExpect(status().isOk())

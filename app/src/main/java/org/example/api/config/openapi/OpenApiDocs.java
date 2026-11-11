@@ -35,8 +35,7 @@ public final class OpenApiDocs {
                     + "`videos`, `shorts` and `livestreams` hold `STREAM` items; `playlists` and "
                     + "`albums` hold `PLAYLIST` items.";
 
-    public static final String FROM_NEXT_PAGE =
-            "Taken verbatim from the `nextPage` object of the previous response.";
+    public static final String FROM_NEXT_PAGE = "Taken verbatim from the `nextPage` object of the previous response.";
 
     /** Appended to descriptions of endpoints that hand out googlevideo URLs. */
     public static final String SIGNED_URLS =

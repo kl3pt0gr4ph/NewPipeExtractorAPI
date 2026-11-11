@@ -1,5 +1,14 @@
 package org.example.api.integration.streaming;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+
+import java.io.ByteArrayInputStream;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
+import java.util.stream.Stream;
+import javax.xml.parsers.DocumentBuilderFactory;
 import org.example.api.integration.BaseIntegrationTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -14,16 +23,6 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-
-import javax.xml.parsers.DocumentBuilderFactory;
-import java.io.ByteArrayInputStream;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Consumer;
-import java.util.stream.Stream;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
 
 /**
  * Integration tests for StreamingController
@@ -47,32 +46,38 @@ class StreamingControllerIT extends BaseIntegrationTest {
 
     static Stream<Arguments> accessorEndpoints() {
         return Stream.of(
-                Arguments.of("", (Consumer<String>) body -> assertThat(body)
-                        .contains("\"id\"", "\"name\"", "\"url\"", "\"duration\"", "\"viewCount\"")),
-                Arguments.of("/audio", (Consumer<String>) body -> assertThat(body)
-                        .startsWith("[").endsWith("]").contains("averageBitrate", "url")),
-                Arguments.of("/video", (Consumer<String>) body -> assertThat(body)
-                        .startsWith("[").endsWith("]").contains("resolution", "url")),
+                Arguments.of("", (Consumer<String>) body ->
+                        assertThat(body).contains("\"id\"", "\"name\"", "\"url\"", "\"duration\"", "\"viewCount\"")),
+                Arguments.of("/audio", (Consumer<String>)
+                        body -> assertThat(body).startsWith("[").endsWith("]").contains("averageBitrate", "url")),
+                Arguments.of("/video", (Consumer<String>)
+                        body -> assertThat(body).startsWith("[").endsWith("]").contains("resolution", "url")),
                 Arguments.of("/video/dash", (Consumer<String>) body -> {
                     if (body != null && !body.isBlank()) {
                         assertThat(body).startsWith("http");
                     }
                 }),
-                Arguments.of("/thumbnails", (Consumer<String>) body -> assertThat(body)
-                        .startsWith("[").endsWith("]").contains("url", "height", "width")),
-                Arguments.of("/subtitles", (Consumer<String>) body -> assertThat(body)
-                        .startsWith("[").endsWith("]")),
-                Arguments.of("/segments", (Consumer<String>) body -> assertThat(body)
-                        .startsWith("[").endsWith("]")),
+                Arguments.of("/thumbnails", (Consumer<String>)
+                        body -> assertThat(body).startsWith("[").endsWith("]").contains("url", "height", "width")),
+                Arguments.of("/subtitles", (Consumer<String>)
+                        body -> assertThat(body).startsWith("[").endsWith("]")),
+                Arguments.of("/segments", (Consumer<String>)
+                        body -> assertThat(body).startsWith("[").endsWith("]")),
                 Arguments.of("/preview-frames", (Consumer<String>) body -> assertThat(body)
                         // Also previously untested happy path.
-                        .startsWith("[").endsWith("]")),
-                Arguments.of("/description", (Consumer<String>) body -> assertThat(body)
-                        .contains("content")),
+                        .startsWith("[")
+                        .endsWith("]")),
+                Arguments.of("/description", (Consumer<String>)
+                        body -> assertThat(body).contains("content")),
                 Arguments.of("/details", (Consumer<String>) body -> assertThat(body)
-                        .contains("\"videoTitle\"", "\"url\"", "\"viewCount\"", "\"channelName\"", "\"uploaderAvatars\"")),
-                Arguments.of("/related", (Consumer<String>) body -> assertThat(body)
-                        .startsWith("[").endsWith("]").contains("name", "url")));
+                        .contains(
+                                "\"videoTitle\"",
+                                "\"url\"",
+                                "\"viewCount\"",
+                                "\"channelName\"",
+                                "\"uploaderAvatars\"")),
+                Arguments.of("/related", (Consumer<String>)
+                        body -> assertThat(body).startsWith("[").endsWith("]").contains("name", "url")));
     }
 
     @ParameterizedTest(name = "GET /api/v1/streams{0} returns a well-formed body")
@@ -89,9 +94,19 @@ class StreamingControllerIT extends BaseIntegrationTest {
     // ── Missing/empty id ─────────────────────────────────────────────────
 
     static Stream<String> allPaths() {
-        return Stream.of("", "/audio", "/video", "/video/dash", "/dash",
-                "/thumbnails", "/subtitles", "/segments", "/preview-frames",
-                "/description", "/details", "/related");
+        return Stream.of(
+                "",
+                "/audio",
+                "/video",
+                "/video/dash",
+                "/dash",
+                "/thumbnails",
+                "/subtitles",
+                "/segments",
+                "/preview-frames",
+                "/description",
+                "/details",
+                "/related");
     }
 
     @ParameterizedTest(name = "{0} without id returns 400")
@@ -120,12 +135,15 @@ class StreamingControllerIT extends BaseIntegrationTest {
 
         boolean isDash = body.contains("<?xml") && body.contains("<MPD");
         boolean isMuxed = body.startsWith("https://") && body.contains("googlevideo.com");
-        assertThat(isDash || isMuxed).as("Expected DASH manifest or muxed URL, got: %s", body).isTrue();
+        assertThat(isDash || isMuxed)
+                .as("Expected DASH manifest or muxed URL, got: %s", body)
+                .isTrue();
 
         if (isDash) {
             assertThat(body).contains("<BaseURL>", "mimeType=\"video/", "mimeType=\"audio/");
-            assertThatCode(() -> DocumentBuilderFactory.newInstance().newDocumentBuilder()
-                    .parse(new ByteArrayInputStream(body.getBytes())))
+            assertThatCode(() -> DocumentBuilderFactory.newInstance()
+                            .newDocumentBuilder()
+                            .parse(new ByteArrayInputStream(body.getBytes())))
                     .as("Manifest should be well-formed XML")
                     .doesNotThrowAnyException();
         }
@@ -156,7 +174,10 @@ class StreamingControllerIT extends BaseIntegrationTest {
         ResponseEntity<String> response = restTemplate.getForEntity(urlWithBadId, String.class);
 
         assertThat(response.getStatusCode())
-                .isIn(HttpStatus.BAD_REQUEST, HttpStatus.NOT_FOUND, HttpStatus.INTERNAL_SERVER_ERROR,
+                .isIn(
+                        HttpStatus.BAD_REQUEST,
+                        HttpStatus.NOT_FOUND,
+                        HttpStatus.INTERNAL_SERVER_ERROR,
                         HttpStatus.BAD_GATEWAY);
     }
 

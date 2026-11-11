@@ -1,5 +1,20 @@
 package org.example.api.downloader;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import mockwebserver3.MockResponse;
 import mockwebserver3.MockWebServer;
 import mockwebserver3.RecordedRequest;
@@ -15,22 +30,6 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.schabi.newpipe.extractor.downloader.Request;
 import org.schabi.newpipe.extractor.downloader.Response;
 import org.schabi.newpipe.extractor.exceptions.ReCaptchaException;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
-
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests for DownloaderImpl, using MockWebServer for hermetic HTTP.
@@ -72,8 +71,7 @@ class DownloaderImplTest {
         assertNotNull(fromNull);
         assertSame(fromNull, DownloaderImpl.getInstance());
 
-        OkHttpClient.Builder customBuilder = new OkHttpClient.Builder()
-                .connectTimeout(10, TimeUnit.SECONDS);
+        OkHttpClient.Builder customBuilder = new OkHttpClient.Builder().connectTimeout(10, TimeUnit.SECONDS);
         DownloaderImpl fromCustom = DownloaderImpl.init(customBuilder, USER_AGENT);
         assertNotNull(fromCustom);
         assertSame(fromCustom, DownloaderImpl.getInstance());
@@ -170,8 +168,7 @@ class DownloaderImplTest {
                     .chunkedBody(new Buffer().writeUtf8("test content"), 4)
                     .build());
 
-            assertThrows(IOException.class, () ->
-                    downloader.getContentLength(baseUrl + "file"));
+            assertThrows(IOException.class, () -> downloader.getContentLength(baseUrl + "file"));
         }
 
         @Test
@@ -183,8 +180,8 @@ class DownloaderImplTest {
                     .setHeader("Content-Length", "not-a-number")
                     .build());
 
-            IOException exception = assertThrows(IOException.class, () ->
-                    downloader.getContentLength(baseUrl + "file"));
+            IOException exception =
+                    assertThrows(IOException.class, () -> downloader.getContentLength(baseUrl + "file"));
             assertTrue(exception.getMessage().contains("Invalid content length"));
         }
     }
@@ -229,10 +226,7 @@ class DownloaderImplTest {
         @Test
         @DisplayName("Returns a non-null empty stream for an empty body")
         void stream_returnsEmptyStreamForEmptyBody() throws Exception {
-            mockWebServer.enqueue(new MockResponse.Builder()
-                    .code(204)
-                    .body("")
-                    .build());
+            mockWebServer.enqueue(new MockResponse.Builder().code(204).body("").build());
 
             InputStream stream = downloader.stream(baseUrl + "empty");
 
@@ -245,8 +239,7 @@ class DownloaderImplTest {
         void stream_throwsOn429() {
             mockWebServer.enqueue(new MockResponse.Builder().code(429).build());
 
-            IOException exception = assertThrows(IOException.class, () ->
-                    downloader.stream(baseUrl + "blocked"));
+            IOException exception = assertThrows(IOException.class, () -> downloader.stream(baseUrl + "blocked"));
             assertTrue(exception.getMessage().contains("reCaptcha"));
         }
     }
@@ -261,10 +254,8 @@ class DownloaderImplTest {
         @DisplayName("Executes GET returning code and body, with the configured User-Agent")
         void execute_getRequest_returnsCodeAndBody() throws Exception {
             String responseBody = "Success response";
-            mockWebServer.enqueue(new MockResponse.Builder()
-                    .code(200)
-                    .body(responseBody)
-                    .build());
+            mockWebServer.enqueue(
+                    new MockResponse.Builder().code(200).body(responseBody).build());
 
             Response response = downloader.execute(
                     new Request.Builder().get(baseUrl + "api/data").build());
@@ -343,21 +334,17 @@ class DownloaderImplTest {
                     .headers(Map.of("User-Agent", List.of(clientUserAgent)))
                     .build());
 
-            assertEquals(List.of(clientUserAgent),
+            assertEquals(
+                    List.of(clientUserAgent),
                     mockWebServer.takeRequest().getHeaders().values("User-Agent"));
         }
 
         @ParameterizedTest(name = "Passes through HTTP {0} with its body")
-        @CsvSource({
-                "404, Not Found",
-                "500, Internal Server Error"
-        })
+        @CsvSource({"404, Not Found", "500, Internal Server Error"})
         @DisplayName("Passes error statuses and bodies through unchanged")
         void execute_passesThroughErrorStatuses(int status, String body) throws Exception {
-            mockWebServer.enqueue(new MockResponse.Builder()
-                    .code(status)
-                    .body(body)
-                    .build());
+            mockWebServer.enqueue(
+                    new MockResponse.Builder().code(status).body(body).build());
 
             Response response = downloader.execute(
                     new Request.Builder().get(baseUrl + "api/err").build());
@@ -400,8 +387,10 @@ class DownloaderImplTest {
         void execute_throwsReCaptchaOn429() {
             mockWebServer.enqueue(new MockResponse.Builder().code(429).build());
 
-            ReCaptchaException exception = assertThrows(ReCaptchaException.class, () ->
-                    downloader.execute(new Request.Builder().get(baseUrl + "api/data").build()));
+            ReCaptchaException exception = assertThrows(
+                    ReCaptchaException.class,
+                    () -> downloader.execute(
+                            new Request.Builder().get(baseUrl + "api/data").build()));
             assertTrue(exception.getMessage().contains("reCaptcha"));
         }
     }
@@ -417,8 +406,7 @@ class DownloaderImplTest {
         void execute_invalidUrl_throwsIOException() {
             Request request = new Request.Builder().get("not-a-valid-url").build();
 
-            IOException exception = assertThrows(IOException.class, () ->
-                    downloader.execute(request));
+            IOException exception = assertThrows(IOException.class, () -> downloader.execute(request));
 
             assertTrue(exception.getMessage().contains("Invalid URL"));
             assertTrue(exception.getCause() instanceof IllegalArgumentException);
@@ -448,8 +436,8 @@ class DownloaderImplTest {
                     .headersDelay(2, TimeUnit.SECONDS)
                     .body("late")
                     .build());
-            DownloaderImpl shortTimeout = DownloaderImpl.init(
-                    new OkHttpClient.Builder().readTimeout(200, TimeUnit.MILLISECONDS), USER_AGENT);
+            DownloaderImpl shortTimeout =
+                    DownloaderImpl.init(new OkHttpClient.Builder().readTimeout(200, TimeUnit.MILLISECONDS), USER_AGENT);
 
             Request request = new Request.Builder().get(baseUrl + "slow").build();
 

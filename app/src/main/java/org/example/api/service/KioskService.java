@@ -1,5 +1,6 @@
 package org.example.api.service;
 
+import java.util.List;
 import org.example.api.exception.ApiException;
 import org.example.api.exception.ErrorCode;
 import org.example.api.exception.ExtractionException;
@@ -13,18 +14,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-
 @Service
 public class KioskService {
     private static final Logger logger = LoggerFactory.getLogger(KioskService.class);
 
     public List<String> getKioskIds(int serviceId) throws ExtractionException {
         try {
-            List<String> kioskIds = List.copyOf(NewPipe.getService(serviceId)
-                    .getKioskList()
-                    .getAvailableKiosks()
-            );
+            List<String> kioskIds =
+                    List.copyOf(NewPipe.getService(serviceId).getKioskList().getAvailableKiosks());
             logger.info("Extracted {} kiosk ID(s)", kioskIds.size());
             return kioskIds;
         } catch (Exception e) {
@@ -42,8 +39,14 @@ public class KioskService {
             // NewPipe reports an unknown ID as a bare ExtractionException, which would map to
             // EXTRACTION_ERROR. It's the client asking for something that doesn't exist.
             if (!kiosks.getAvailableKiosks().contains(kioskId)) {
-                throw new ApiException(ErrorCode.NOT_FOUND, "No kiosk '%s'. Available kiosks: %s"
-                        .formatted(kioskId, kiosks.getAvailableKiosks().stream().sorted().toList()));
+                throw new ApiException(
+                        ErrorCode.NOT_FOUND,
+                        "No kiosk '%s'. Available kiosks: %s"
+                                .formatted(
+                                        kioskId,
+                                        kiosks.getAvailableKiosks().stream()
+                                                .sorted()
+                                                .toList()));
             }
 
             KioskExtractor<?> extractor = kiosks.getExtractorById(kioskId, null);
@@ -51,8 +54,10 @@ public class KioskService {
 
             KioskInfo info = KioskInfo.getInfo(extractor);
 
-            logger.info("Extracted {} item(s) from kiosk '{}'",
-                    info.getRelatedItems().size(), kioskId);
+            logger.info(
+                    "Extracted {} item(s) from kiosk '{}'",
+                    info.getRelatedItems().size(),
+                    kioskId);
 
             return info;
         } catch (Exception e) {

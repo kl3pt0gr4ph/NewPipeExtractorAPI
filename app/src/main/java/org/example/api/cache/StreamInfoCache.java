@@ -5,16 +5,15 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.Expiry;
 import com.github.benmanes.caffeine.cache.Ticker;
 import com.github.benmanes.caffeine.cache.stats.CacheStats;
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.concurrent.CompletionException;
 import org.example.api.exception.ExtractionException;
 import org.jspecify.annotations.NonNull;
 import org.schabi.newpipe.extractor.stream.StreamInfo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-
-import java.time.Clock;
-import java.time.Duration;
-import java.time.Instant;
-import java.util.concurrent.CompletionException;
 
 /**
  * Caches {@link  StreamInfo} per video URL for as long as the signed stream URLs
@@ -45,13 +44,15 @@ public class StreamInfoCache {
                     }
 
                     @Override
-                    public long expireAfterUpdate(@NonNull String key, @NonNull StreamInfo value, long currentTime, long currentDuration) {
+                    public long expireAfterUpdate(
+                            @NonNull String key, @NonNull StreamInfo value, long currentTime, long currentDuration) {
                         return ttl(value, properties, clock.instant()).toNanos();
                     }
 
                     @Override
-                    public long expireAfterRead(@NonNull String key, @NonNull StreamInfo value, long currentTime, long currentDuration) {
-//                        return ttl(value, properties, clock.instant()).toNanos();
+                    public long expireAfterRead(
+                            @NonNull String key, @NonNull StreamInfo value, long currentTime, long currentDuration) {
+                        //                        return ttl(value, properties, clock.instant()).toNanos();
                         return currentDuration;
                     }
                 })
@@ -64,8 +65,8 @@ public class StreamInfoCache {
      * reading the clock, so it can be exercised directly in tests.
      */
     static Duration ttl(StreamInfo info, StreamInfoCacheProperties props, Instant now) {
-        boolean degraded = info.getVideoOnlyStreams().isEmpty()
-                && info.getAudioStreams().isEmpty();
+        boolean degraded =
+                info.getVideoOnlyStreams().isEmpty() && info.getAudioStreams().isEmpty();
         if (degraded) {
             // Don't pin a bad extraction for the lifetime of the signature.
             return props.degradedTtl();
@@ -96,8 +97,13 @@ public class StreamInfoCache {
         }
     }
 
-    public void invalidate(String url) { cache.invalidate(url); }
-    public CacheStats stats() { return cache.stats(); }
+    public void invalidate(String url) {
+        cache.invalidate(url);
+    }
+
+    public CacheStats stats() {
+        return cache.stats();
+    }
 
     @FunctionalInterface
     public interface ExtractionLoader {

@@ -1,9 +1,16 @@
 package org.example.api.dto.dash;
 
-import tools.jackson.databind.ObjectMapper;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
+import java.util.Set;
+import java.util.function.UnaryOperator;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -12,15 +19,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.schabi.newpipe.extractor.MediaFormat;
 import org.schabi.newpipe.extractor.stream.VideoStream;
-
-import java.util.Set;
-import java.util.function.UnaryOperator;
-import java.util.stream.Stream;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Unit tests for VideoStreamMetadataDTO.
@@ -57,7 +56,10 @@ class VideoStreamMetadataDTOTest {
     @DisplayName("Builder wires every field to its own getter")
     void builderWiresAllFields() {
         VideoStreamMetadataDTO dto = validBuilder()
-                .initRange("0-740").indexRange("741-1048").format("MPEG_4").build();
+                .initRange("0-740")
+                .indexRange("741-1048")
+                .format("MPEG_4")
+                .build();
 
         assertThat(dto.id()).isEqualTo("video-1");
         assertThat(dto.url()).isEqualTo("https://example.com/video.mp4");
@@ -82,29 +84,45 @@ class VideoStreamMetadataDTOTest {
 
     static Stream<Arguments> invalidFieldCases() {
         return Stream.of(
-                Arguments.of("blank id", (UnaryOperator<VideoStreamMetadataDTO.Builder>) b -> b.id(""),
+                Arguments.of(
+                        "blank id",
+                        (UnaryOperator<VideoStreamMetadataDTO.Builder>) b -> b.id(""),
                         "Video stream ID cannot be blank"),
-                Arguments.of("blank url", (UnaryOperator<VideoStreamMetadataDTO.Builder>) b -> b.url(""),
+                Arguments.of(
+                        "blank url",
+                        (UnaryOperator<VideoStreamMetadataDTO.Builder>) b -> b.url(""),
                         "Video stream URL cannot be blank"),
-                Arguments.of("blank codec", (UnaryOperator<VideoStreamMetadataDTO.Builder>) b -> b.codec(""),
+                Arguments.of(
+                        "blank codec",
+                        (UnaryOperator<VideoStreamMetadataDTO.Builder>) b -> b.codec(""),
                         "Video codec cannot be blank"),
-                Arguments.of("blank mimeType", (UnaryOperator<VideoStreamMetadataDTO.Builder>) b -> b.mimeType(""),
+                Arguments.of(
+                        "blank mimeType",
+                        (UnaryOperator<VideoStreamMetadataDTO.Builder>) b -> b.mimeType(""),
                         "Video MIME type cannot be blank"),
-                Arguments.of("blank frameRate", (UnaryOperator<VideoStreamMetadataDTO.Builder>) b -> b.frameRate(""),
+                Arguments.of(
+                        "blank frameRate",
+                        (UnaryOperator<VideoStreamMetadataDTO.Builder>) b -> b.frameRate(""),
                         "Frame rate cannot be blank"),
-                Arguments.of("zero width", (UnaryOperator<VideoStreamMetadataDTO.Builder>) b -> b.width(0),
+                Arguments.of(
+                        "zero width",
+                        (UnaryOperator<VideoStreamMetadataDTO.Builder>) b -> b.width(0),
                         "Video width must be at least 1"),
-                Arguments.of("zero height", (UnaryOperator<VideoStreamMetadataDTO.Builder>) b -> b.height(0),
+                Arguments.of(
+                        "zero height",
+                        (UnaryOperator<VideoStreamMetadataDTO.Builder>) b -> b.height(0),
                         "Video height must be at least 1"),
-                Arguments.of("zero bandwidth", (UnaryOperator<VideoStreamMetadataDTO.Builder>) b -> b.bandwidth(0),
+                Arguments.of(
+                        "zero bandwidth",
+                        (UnaryOperator<VideoStreamMetadataDTO.Builder>) b -> b.bandwidth(0),
                         "Bandwidth must be at least 1"));
     }
 
     @ParameterizedTest(name = "Rejects {0}")
     @MethodSource("invalidFieldCases")
     @DisplayName("Rejects DTOs violating a single constraint, with the matching message")
-    void rejectsInvalidField(String name, UnaryOperator<VideoStreamMetadataDTO.Builder> mutator,
-                             String expectedMessage) {
+    void rejectsInvalidField(
+            String name, UnaryOperator<VideoStreamMetadataDTO.Builder> mutator, String expectedMessage) {
         Set<ConstraintViolation<VideoStreamMetadataDTO>> violations =
                 validator.validate(mutator.apply(validBuilder()).build());
 
@@ -215,10 +233,13 @@ class VideoStreamMetadataDTOTest {
     @DisplayName("Round-trips every field through serialize/deserialize unchanged")
     void roundTripPreservesAllFields() throws Exception {
         VideoStreamMetadataDTO original = validBuilder()
-                .initRange("0-740").indexRange("741-1048").format("MPEG_4").build();
+                .initRange("0-740")
+                .indexRange("741-1048")
+                .format("MPEG_4")
+                .build();
 
-        VideoStreamMetadataDTO restored = objectMapper.readValue(
-                objectMapper.writeValueAsString(original), VideoStreamMetadataDTO.class);
+        VideoStreamMetadataDTO restored =
+                objectMapper.readValue(objectMapper.writeValueAsString(original), VideoStreamMetadataDTO.class);
 
         assertThat(restored.id()).isEqualTo(original.id());
         assertThat(restored.url()).isEqualTo(original.url());
