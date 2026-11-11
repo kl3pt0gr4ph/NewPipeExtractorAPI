@@ -1,5 +1,7 @@
 package org.example.api.utils;
 
+import java.util.Locale;
+
 /**
  * Utility class for building DASH manifest XML strings.
  * Provides methods for XML escaping, formatting, and construction.
@@ -61,13 +63,15 @@ public class ManifestXmlBuilder {
      * @return ISO 8601 formatted duration string with milliseconds if needed
      */
     public static String formatDurationWithMillis(double durationSeconds) {
-        if (durationSeconds <= 0) {
+        long totalMillis = Math.round(durationSeconds * 1000);
+        if (totalMillis <= 0) {
             return "PT0S";
         }
 
-        long hours = (long) (durationSeconds / 3600);
-        long minutes = (long) ((durationSeconds % 3600) / 60);
-        double seconds = durationSeconds % 60;
+        long hours = totalMillis / 3_600_000;
+        long minutes = (totalMillis % 3_600_000) / 60_000;
+        long seconds = (totalMillis % 60_000) / 1000;
+        long millis = totalMillis % 1000;
 
         StringBuilder duration = new StringBuilder("PT");
 
@@ -77,12 +81,12 @@ public class ManifestXmlBuilder {
         if (minutes > 0) {
             duration.append(minutes).append("M");
         }
-        if (seconds > 0 || (hours == 0 && minutes == 0)) {
-            if (seconds == (long) seconds) {
-                duration.append((long) seconds).append("S");
-            } else {
-                duration.append(String.format("%.3f", seconds)).append("S");
+        if (seconds > 0 || millis > 0 || (hours == 0 && minutes == 0)) {
+            duration.append(seconds);
+            if (millis > 0) {
+                duration.append(String.format(Locale.ROOT, ".%03d", millis));
             }
+            duration.append("S");
         }
 
         return duration.toString();
