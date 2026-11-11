@@ -1,18 +1,17 @@
 package org.example.api.dto;
 
-import tools.jackson.databind.ObjectMapper;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.schabi.newpipe.extractor.Image;
 import org.schabi.newpipe.extractor.stream.Description;
 import org.schabi.newpipe.extractor.stream.StreamInfo;
-
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Unit tests for StreamDetailsDTO.
@@ -90,8 +89,8 @@ class StreamDetailsDTOTest {
     @Test
     @DisplayName("Round-trips every scalar field through serialize/deserialize unchanged")
     void roundTripPreservesScalarFields() throws Exception {
-        StreamDetailsDTO original = new StreamDetailsDTO("Test Video", null, List.of(),
-                1_000_000L, 50_000L, 500L, "Channel Name", 500_000L, "2025-12-01");
+        StreamDetailsDTO original = new StreamDetailsDTO(
+                "Test Video", null, List.of(), 1_000_000L, 50_000L, 500L, "Channel Name", 500_000L, "2025-12-01");
 
         assertThat(objectMapper.readValue(objectMapper.writeValueAsString(original), StreamDetailsDTO.class))
                 .isEqualTo(original);

@@ -16,13 +16,10 @@ public class JacksonConfig {
 
     @Bean
     public JsonMapperBuilderCustomizer jsonMapperCustomizer() {
-        return builder -> builder
-                .disable(SerializationFeature.FAIL_ON_EMPTY_BEANS)
+        return builder -> builder.disable(SerializationFeature.FAIL_ON_EMPTY_BEANS)
                 .disable(SerializationFeature.FAIL_ON_SELF_REFERENCES)
                 .disable(SerializationFeature.WRITE_SELF_REFERENCES_AS_NULL)
                 .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
-                .changeDefaultPropertyInclusion(incl ->
-                        incl.withValueInclusion(JsonInclude.Include.NON_NULL));
+                .changeDefaultPropertyInclusion(incl -> incl.withValueInclusion(JsonInclude.Include.NON_NULL));
     }
-
 }

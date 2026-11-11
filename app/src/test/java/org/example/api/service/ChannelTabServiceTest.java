@@ -1,5 +1,23 @@
 package org.example.api.service;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.util.Base64;
+import java.util.List;
+import java.util.stream.Stream;
 import org.example.api.dto.channels.ChannelTabDTO;
 import org.example.api.exception.ErrorCode;
 import org.example.api.exception.ExtractionException;
@@ -27,25 +45,6 @@ import org.schabi.newpipe.extractor.exceptions.ParsingException;
 import org.schabi.newpipe.extractor.linkhandler.ListLinkHandler;
 import org.schabi.newpipe.extractor.stream.StreamInfoItem;
 
-import java.util.Base64;
-import java.util.List;
-import java.util.stream.Stream;
-
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.inOrder;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
 /**
  * Unit tests for ChannelTabService.
  */
@@ -62,10 +61,11 @@ class ChannelTabServiceTest {
     // ── Helpers ──────────────────────────────────────────────────────────
 
     /** Mocks wired for a channel exposing a single tab. */
-    private record TabMocks(StreamingService service,
-                            ChannelInfo channelInfo,
-                            ListLinkHandler tabHandler,
-                            ChannelTabExtractor extractor) { }
+    private record TabMocks(
+            StreamingService service,
+            ChannelInfo channelInfo,
+            ListLinkHandler tabHandler,
+            ChannelTabExtractor extractor) {}
 
     private TabMocks stubChannelWithTab(String channelUrl, String tab) throws Exception {
         ListLinkHandler handler = mock(ListLinkHandler.class);
@@ -82,9 +82,11 @@ class ChannelTabServiceTest {
         return new TabMocks(service, channelInfo, handler, extractor);
     }
 
-    private void wireStatics(MockedStatic<NewPipe> newPipeMock,
-                             MockedStatic<ChannelInfo> channelInfoMock,
-                             String channelUrl, TabMocks mocks) {
+    private void wireStatics(
+            MockedStatic<NewPipe> newPipeMock,
+            MockedStatic<ChannelInfo> channelInfoMock,
+            String channelUrl,
+            TabMocks mocks) {
         newPipeMock.when(() -> NewPipe.getServiceByUrl(channelUrl)).thenReturn(mocks.service());
         channelInfoMock.when(() -> ChannelInfo.getInfo(channelUrl)).thenReturn(mocks.channelInfo());
     }
@@ -116,11 +118,13 @@ class ChannelTabServiceTest {
             when(tabInfo.getNextPage()).thenReturn(null);
 
             try (MockedStatic<NewPipe> newPipeMock = mockStatic(NewPipe.class);
-                 MockedStatic<ChannelInfo> channelInfoMock = mockStatic(ChannelInfo.class);
-                 MockedStatic<ChannelTabInfo> tabInfoMock = mockStatic(ChannelTabInfo.class)) {
+                    MockedStatic<ChannelInfo> channelInfoMock = mockStatic(ChannelInfo.class);
+                    MockedStatic<ChannelTabInfo> tabInfoMock = mockStatic(ChannelTabInfo.class)) {
 
                 wireStatics(newPipeMock, channelInfoMock, CHANNEL_URL, mocks);
-                tabInfoMock.when(() -> ChannelTabInfo.getInfo(mocks.extractor())).thenReturn(tabInfo);
+                tabInfoMock
+                        .when(() -> ChannelTabInfo.getInfo(mocks.extractor()))
+                        .thenReturn(tabInfo);
 
                 ChannelTabDTO result = channelTabService.getChannelTab(CHANNEL_URL, "videos", CHANNEL_ID);
 
@@ -144,11 +148,13 @@ class ChannelTabServiceTest {
             when(tabInfo.getNextPage()).thenReturn(null);
 
             try (MockedStatic<NewPipe> newPipeMock = mockStatic(NewPipe.class);
-                 MockedStatic<ChannelInfo> channelInfoMock = mockStatic(ChannelInfo.class);
-                 MockedStatic<ChannelTabInfo> tabInfoMock = mockStatic(ChannelTabInfo.class)) {
+                    MockedStatic<ChannelInfo> channelInfoMock = mockStatic(ChannelInfo.class);
+                    MockedStatic<ChannelTabInfo> tabInfoMock = mockStatic(ChannelTabInfo.class)) {
 
                 wireStatics(newPipeMock, channelInfoMock, CHANNEL_URL, mocks);
-                tabInfoMock.when(() -> ChannelTabInfo.getInfo(mocks.extractor())).thenReturn(tabInfo);
+                tabInfoMock
+                        .when(() -> ChannelTabInfo.getInfo(mocks.extractor()))
+                        .thenReturn(tabInfo);
 
                 ChannelTabDTO result = channelTabService.getChannelTab(CHANNEL_URL, "VIDEOS", CHANNEL_ID);
 
@@ -162,12 +168,13 @@ class ChannelTabServiceTest {
             TabMocks mocks = stubChannelWithTab(CHANNEL_URL, "videos");
 
             try (MockedStatic<NewPipe> newPipeMock = mockStatic(NewPipe.class);
-                 MockedStatic<ChannelInfo> channelInfoMock = mockStatic(ChannelInfo.class)) {
+                    MockedStatic<ChannelInfo> channelInfoMock = mockStatic(ChannelInfo.class)) {
 
                 wireStatics(newPipeMock, channelInfoMock, CHANNEL_URL, mocks);
 
-                ValidationException ex = assertThrows(ValidationException.class, () ->
-                        channelTabService.getChannelTab(CHANNEL_URL, "playlists", CHANNEL_ID));
+                ValidationException ex = assertThrows(
+                        ValidationException.class,
+                        () -> channelTabService.getChannelTab(CHANNEL_URL, "playlists", CHANNEL_ID));
 
                 assertEquals(ErrorCode.VALIDATION_ERROR, ex.getCode());
                 assertTrue(ex.getMessage().contains("no 'playlists' tab"));
@@ -192,14 +199,17 @@ class ChannelTabServiceTest {
             ChannelTabInfo tabInfo = tabInfoWith(List.of(), List.of(swallowed));
 
             try (MockedStatic<NewPipe> newPipeMock = mockStatic(NewPipe.class);
-                 MockedStatic<ChannelInfo> channelInfoMock = mockStatic(ChannelInfo.class);
-                 MockedStatic<ChannelTabInfo> tabInfoMock = mockStatic(ChannelTabInfo.class)) {
+                    MockedStatic<ChannelInfo> channelInfoMock = mockStatic(ChannelInfo.class);
+                    MockedStatic<ChannelTabInfo> tabInfoMock = mockStatic(ChannelTabInfo.class)) {
 
                 wireStatics(newPipeMock, channelInfoMock, CHANNEL_URL, mocks);
-                tabInfoMock.when(() -> ChannelTabInfo.getInfo(mocks.extractor())).thenReturn(tabInfo);
+                tabInfoMock
+                        .when(() -> ChannelTabInfo.getInfo(mocks.extractor()))
+                        .thenReturn(tabInfo);
 
-                ExtractionException ex = assertThrows(ExtractionException.class, () ->
-                        channelTabService.getChannelTab(CHANNEL_URL, "shorts", CHANNEL_ID));
+                ExtractionException ex = assertThrows(
+                        ExtractionException.class,
+                        () -> channelTabService.getChannelTab(CHANNEL_URL, "shorts", CHANNEL_ID));
 
                 assertEquals(ErrorCode.UPSTREAM_CHANGED, ex.getCode());
                 assertFalse(ex.getMessage().contains("Could not get tab content"));
@@ -212,15 +222,16 @@ class ChannelTabServiceTest {
         void returnsItemsDespitePartialErrors() throws Exception {
             TabMocks mocks = stubChannelWithTab(CHANNEL_URL, "videos");
             ChannelTabInfo tabInfo = tabInfoWith(
-                    List.of(mock(StreamInfoItem.class)),
-                    List.of(new ParsingException("Could not get upload date")));
+                    List.of(mock(StreamInfoItem.class)), List.of(new ParsingException("Could not get upload date")));
 
             try (MockedStatic<NewPipe> newPipeMock = mockStatic(NewPipe.class);
-                 MockedStatic<ChannelInfo> channelInfoMock = mockStatic(ChannelInfo.class);
-                 MockedStatic<ChannelTabInfo> tabInfoMock = mockStatic(ChannelTabInfo.class)) {
+                    MockedStatic<ChannelInfo> channelInfoMock = mockStatic(ChannelInfo.class);
+                    MockedStatic<ChannelTabInfo> tabInfoMock = mockStatic(ChannelTabInfo.class)) {
 
                 wireStatics(newPipeMock, channelInfoMock, CHANNEL_URL, mocks);
-                tabInfoMock.when(() -> ChannelTabInfo.getInfo(mocks.extractor())).thenReturn(tabInfo);
+                tabInfoMock
+                        .when(() -> ChannelTabInfo.getInfo(mocks.extractor()))
+                        .thenReturn(tabInfo);
 
                 ChannelTabDTO result = channelTabService.getChannelTab(CHANNEL_URL, "videos", CHANNEL_ID);
 
@@ -237,8 +248,9 @@ class ChannelTabServiceTest {
             try (MockedStatic<NewPipe> newPipeMock = mockStatic(NewPipe.class)) {
                 newPipeMock.when(() -> NewPipe.getServiceByUrl(CHANNEL_URL)).thenThrow(thrown);
 
-                ExtractionException ex = assertThrows(ExtractionException.class, () ->
-                        channelTabService.getChannelTab(CHANNEL_URL, "videos", CHANNEL_ID));
+                ExtractionException ex = assertThrows(
+                        ExtractionException.class,
+                        () -> channelTabService.getChannelTab(CHANNEL_URL, "videos", CHANNEL_ID));
 
                 assertEquals(ErrorCode.EXTRACTION_ERROR, ex.getCode());
                 assertFalse(ex.getMessage().contains("No service"));
@@ -253,10 +265,8 @@ class ChannelTabServiceTest {
     @DisplayName("getChannelTabPage()")
     class GetChannelTabPageTests {
 
-        private static final List<String> PAGE_IDS = List.of(
-                "Channel Name",
-                "https://www.youtube.com/channel/UCtest",
-                "false");
+        private static final List<String> PAGE_IDS =
+                List.of("Channel Name", "https://www.youtube.com/channel/UCtest", "false");
         private static final String CHANNEL_URL = PAGE_IDS.get(1);
         private static final String PAGE_URL = "https://youtube.com/browse";
 
@@ -271,12 +281,12 @@ class ChannelTabServiceTest {
             when(mocks.extractor().getPage(any(Page.class))).thenReturn(emptyPage);
 
             try (MockedStatic<NewPipe> newPipeMock = mockStatic(NewPipe.class);
-                 MockedStatic<ChannelInfo> channelInfoMock = mockStatic(ChannelInfo.class)) {
+                    MockedStatic<ChannelInfo> channelInfoMock = mockStatic(ChannelInfo.class)) {
 
                 wireStatics(newPipeMock, channelInfoMock, CHANNEL_URL, mocks);
 
-                ChannelTabDTO result = channelTabService.getChannelTabPage(
-                        "UCtest", "videos", PAGE_URL, pageBody, PAGE_IDS);
+                ChannelTabDTO result =
+                        channelTabService.getChannelTabPage("UCtest", "videos", PAGE_URL, pageBody, PAGE_IDS);
 
                 // fetchPage() before getPage(), and the Page carries all
                 // three fields the service javadoc documents as required.
@@ -303,12 +313,12 @@ class ChannelTabServiceTest {
             when(mocks.extractor().getPage(any(Page.class))).thenReturn(emptyPage);
 
             try (MockedStatic<NewPipe> newPipeMock = mockStatic(NewPipe.class);
-                 MockedStatic<ChannelInfo> channelInfoMock = mockStatic(ChannelInfo.class)) {
+                    MockedStatic<ChannelInfo> channelInfoMock = mockStatic(ChannelInfo.class)) {
 
                 wireStatics(newPipeMock, channelInfoMock, CHANNEL_URL, mocks);
 
-                ChannelTabDTO result = channelTabService.getChannelTabPage(
-                        "UCtest", "videos", PAGE_URL, null, PAGE_IDS);
+                ChannelTabDTO result =
+                        channelTabService.getChannelTabPage("UCtest", "videos", PAGE_URL, null, PAGE_IDS);
 
                 assertNotNull(result);
 
@@ -328,13 +338,13 @@ class ChannelTabServiceTest {
             when(mocks.extractor().getPage(any(Page.class))).thenReturn(emptyPage);
 
             try (MockedStatic<NewPipe> newPipeMock = mockStatic(NewPipe.class);
-                 MockedStatic<ChannelInfo> channelInfoMock = mockStatic(ChannelInfo.class)) {
+                    MockedStatic<ChannelInfo> channelInfoMock = mockStatic(ChannelInfo.class)) {
 
                 wireStatics(newPipeMock, channelInfoMock, CHANNEL_URL, mocks);
 
-                ExtractionException ex = assertThrows(ExtractionException.class, () ->
-                        channelTabService.getChannelTabPage(
-                                "UCtest", "playlists", PAGE_URL, null, PAGE_IDS));
+                ExtractionException ex = assertThrows(
+                        ExtractionException.class,
+                        () -> channelTabService.getChannelTabPage("UCtest", "playlists", PAGE_URL, null, PAGE_IDS));
 
                 assertEquals(ErrorCode.UPSTREAM_CHANGED, ex.getCode());
                 assertSame(swallowed, ex.getCause());
@@ -352,12 +362,12 @@ class ChannelTabServiceTest {
             when(mocks.extractor().getPage(any(Page.class))).thenReturn(page);
 
             try (MockedStatic<NewPipe> newPipeMock = mockStatic(NewPipe.class);
-                 MockedStatic<ChannelInfo> channelInfoMock = mockStatic(ChannelInfo.class)) {
+                    MockedStatic<ChannelInfo> channelInfoMock = mockStatic(ChannelInfo.class)) {
 
                 wireStatics(newPipeMock, channelInfoMock, CHANNEL_URL, mocks);
 
-                ChannelTabDTO result = channelTabService.getChannelTabPage(
-                        "UCtest", "videos", PAGE_URL, null, PAGE_IDS);
+                ChannelTabDTO result =
+                        channelTabService.getChannelTabPage("UCtest", "videos", PAGE_URL, null, PAGE_IDS);
 
                 assertEquals(1, result.getItems().size());
             }
@@ -373,9 +383,9 @@ class ChannelTabServiceTest {
         @MethodSource("invalidPageIds")
         @DisplayName("Rejects pageIds that cannot supply the channelUrl with 400 VALIDATION_ERROR")
         void rejectsInvalidPageIds(String name, List<String> pageIds) {
-            ValidationException ex = assertThrows(ValidationException.class, () ->
-                    channelTabService.getChannelTabPage(
-                            "UCtest", "videos", PAGE_URL, "bodyBase64", pageIds));
+            ValidationException ex = assertThrows(
+                    ValidationException.class,
+                    () -> channelTabService.getChannelTabPage("UCtest", "videos", PAGE_URL, "bodyBase64", pageIds));
 
             assertEquals(ErrorCode.VALIDATION_ERROR, ex.getCode());
             assertTrue(ex.getMessage().contains("pageIds"));
@@ -388,13 +398,13 @@ class ChannelTabServiceTest {
             TabMocks mocks = stubChannelWithTab(CHANNEL_URL, "videos");
 
             try (MockedStatic<NewPipe> newPipeMock = mockStatic(NewPipe.class);
-                 MockedStatic<ChannelInfo> channelInfoMock = mockStatic(ChannelInfo.class)) {
+                    MockedStatic<ChannelInfo> channelInfoMock = mockStatic(ChannelInfo.class)) {
 
                 wireStatics(newPipeMock, channelInfoMock, CHANNEL_URL, mocks);
 
-                ValidationException ex = assertThrows(ValidationException.class, () ->
-                        channelTabService.getChannelTabPage(
-                                "UCtest", "playlists", PAGE_URL, "body", PAGE_IDS));
+                ValidationException ex = assertThrows(
+                        ValidationException.class,
+                        () -> channelTabService.getChannelTabPage("UCtest", "playlists", PAGE_URL, "body", PAGE_IDS));
 
                 assertEquals(ErrorCode.VALIDATION_ERROR, ex.getCode());
                 assertTrue(ex.getMessage().contains("no 'playlists' tab"));
@@ -410,9 +420,9 @@ class ChannelTabServiceTest {
             try (MockedStatic<NewPipe> newPipeMock = mockStatic(NewPipe.class)) {
                 newPipeMock.when(() -> NewPipe.getServiceByUrl(CHANNEL_URL)).thenThrow(thrown);
 
-                ExtractionException ex = assertThrows(ExtractionException.class, () ->
-                        channelTabService.getChannelTabPage(
-                                "UCtest", "videos", PAGE_URL, "body", PAGE_IDS));
+                ExtractionException ex = assertThrows(
+                        ExtractionException.class,
+                        () -> channelTabService.getChannelTabPage("UCtest", "videos", PAGE_URL, "body", PAGE_IDS));
 
                 assertEquals(ErrorCode.EXTRACTION_ERROR, ex.getCode());
                 assertSame(thrown, ex.getCause());

@@ -1,33 +1,5 @@
 package org.example.api.service;
 
-import org.example.api.dto.search.SearchItemDTO;
-import org.example.api.dto.search.SearchPageDTO;
-import org.example.api.dto.search.SearchResultDTO;
-import org.example.api.exception.ErrorCode;
-import org.example.api.exception.ExtractionException;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
-import org.mockito.InOrder;
-import org.mockito.MockedStatic;
-import org.schabi.newpipe.extractor.exceptions.ParsingException;
-import org.schabi.newpipe.extractor.exceptions.ReCaptchaException;
-import org.schabi.newpipe.extractor.InfoItem;
-import org.schabi.newpipe.extractor.ListExtractor;
-import org.schabi.newpipe.extractor.NewPipe;
-import org.schabi.newpipe.extractor.Page;
-import org.schabi.newpipe.extractor.StreamingService;
-import org.schabi.newpipe.extractor.linkhandler.SearchQueryHandler;
-import org.schabi.newpipe.extractor.linkhandler.SearchQueryHandlerFactory;
-import org.schabi.newpipe.extractor.search.SearchExtractor;
-import org.schabi.newpipe.extractor.search.SearchInfo;
-import org.schabi.newpipe.extractor.stream.StreamInfoItem;
-import org.schabi.newpipe.extractor.stream.StreamType;
-
-import java.util.Collections;
-import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -40,6 +12,33 @@ import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
+
+import java.util.Collections;
+import java.util.List;
+import org.example.api.dto.search.SearchItemDTO;
+import org.example.api.dto.search.SearchPageDTO;
+import org.example.api.dto.search.SearchResultDTO;
+import org.example.api.exception.ErrorCode;
+import org.example.api.exception.ExtractionException;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
+import org.mockito.MockedStatic;
+import org.schabi.newpipe.extractor.InfoItem;
+import org.schabi.newpipe.extractor.ListExtractor;
+import org.schabi.newpipe.extractor.NewPipe;
+import org.schabi.newpipe.extractor.Page;
+import org.schabi.newpipe.extractor.StreamingService;
+import org.schabi.newpipe.extractor.exceptions.ParsingException;
+import org.schabi.newpipe.extractor.exceptions.ReCaptchaException;
+import org.schabi.newpipe.extractor.linkhandler.SearchQueryHandler;
+import org.schabi.newpipe.extractor.linkhandler.SearchQueryHandlerFactory;
+import org.schabi.newpipe.extractor.search.SearchExtractor;
+import org.schabi.newpipe.extractor.search.SearchInfo;
+import org.schabi.newpipe.extractor.stream.StreamInfoItem;
+import org.schabi.newpipe.extractor.stream.StreamType;
 
 /**
  * Unit tests for SearchService: deduplication, page reconstruction,
@@ -62,7 +61,8 @@ class SearchServiceTest {
         SearchQueryHandler mockHandler = mock(SearchQueryHandler.class);
         when(mockStreamingService.getSearchQHFactory()).thenReturn(mockQueryHandlerFactory);
         when(mockQueryHandlerFactory.fromQuery(any(), any(), any())).thenReturn(mockHandler);
-        when(mockStreamingService.getSearchExtractor((SearchQueryHandler) any())).thenReturn(mockSearchExtractor);
+        when(mockStreamingService.getSearchExtractor((SearchQueryHandler) any()))
+                .thenReturn(mockSearchExtractor);
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────
@@ -116,14 +116,14 @@ class SearchServiceTest {
             SearchInfo mockInfo = mockSearchInfo("java tutorial", List.of(first, duplicate, unique));
 
             try (MockedStatic<NewPipe> newPipeMock = mockStatic(NewPipe.class);
-                 MockedStatic<SearchInfo> searchInfoMock = mockStatic(SearchInfo.class)) {
+                    MockedStatic<SearchInfo> searchInfoMock = mockStatic(SearchInfo.class)) {
 
                 newPipeMock.when(() -> NewPipe.getService(0)).thenReturn(mockStreamingService);
-                searchInfoMock.when(() -> SearchInfo.getInfo(any(SearchExtractor.class)))
+                searchInfoMock
+                        .when(() -> SearchInfo.getInfo(any(SearchExtractor.class)))
                         .thenReturn(mockInfo);
 
-                SearchResultDTO result = searchService.getSearchInfo(
-                        "java tutorial", Collections.emptyList(), null);
+                SearchResultDTO result = searchService.getSearchInfo("java tutorial", Collections.emptyList(), null);
 
                 assertEquals("java tutorial", result.getSearchString());
                 assertEquals(
@@ -138,14 +138,14 @@ class SearchServiceTest {
             SearchInfo mockInfo = mockSearchInfo("no results query", Collections.emptyList());
 
             try (MockedStatic<NewPipe> newPipeMock = mockStatic(NewPipe.class);
-                 MockedStatic<SearchInfo> searchInfoMock = mockStatic(SearchInfo.class)) {
+                    MockedStatic<SearchInfo> searchInfoMock = mockStatic(SearchInfo.class)) {
 
                 newPipeMock.when(() -> NewPipe.getService(0)).thenReturn(mockStreamingService);
-                searchInfoMock.when(() -> SearchInfo.getInfo(any(SearchExtractor.class)))
+                searchInfoMock
+                        .when(() -> SearchInfo.getInfo(any(SearchExtractor.class)))
                         .thenReturn(mockInfo);
 
-                SearchResultDTO result = searchService.getSearchInfo(
-                        "no results query", Collections.emptyList(), null);
+                SearchResultDTO result = searchService.getSearchInfo("no results query", Collections.emptyList(), null);
 
                 assertNotNull(result.getItems());
                 assertTrue(result.getItems().isEmpty());
@@ -156,11 +156,13 @@ class SearchServiceTest {
         @DisplayName("Translates NewPipe failures, keeping their text out of the message")
         void translatesFailures() {
             try (MockedStatic<NewPipe> newPipeMock = mockStatic(NewPipe.class)) {
-                newPipeMock.when(() -> NewPipe.getService(anyInt()))
+                newPipeMock
+                        .when(() -> NewPipe.getService(anyInt()))
                         .thenThrow(new ReCaptchaException("reCaptcha Challenge requested", "https://www.youtube.com"));
 
-                ExtractionException exception = assertThrows(ExtractionException.class, () ->
-                        searchService.getSearchInfo("test", Collections.emptyList(), null));
+                ExtractionException exception = assertThrows(
+                        ExtractionException.class,
+                        () -> searchService.getSearchInfo("test", Collections.emptyList(), null));
 
                 assertEquals(ErrorCode.UPSTREAM_BLOCKED, exception.getCode());
                 assertFalse(exception.getMessage().contains("reCaptcha"));
@@ -179,7 +181,8 @@ class SearchServiceTest {
         private static final String PAGE_ID = "4qmFsgJcEBIYdmlkZW8token";
 
         @Test
-        @DisplayName("Initialises the extractor before requesting the reconstructed page, and itemCount reflects deduplication")
+        @DisplayName(
+                "Initialises the extractor before requesting the reconstructed page, and itemCount reflects deduplication")
         void initialisesExtractorAndRequestsReconstructedPage() throws Exception {
             // Duplicate URLs in the page verify the dedup wiring on this
             // path too — and itemCount, which only the page path sets.
@@ -192,15 +195,16 @@ class SearchServiceTest {
                 newPipeMock.when(() -> NewPipe.getService(0)).thenReturn(mockStreamingService);
                 when(mockSearchExtractor.getPage(any(Page.class))).thenReturn(page);
 
-                SearchPageDTO result = searchService.getSearchPage(
-                        "java", Collections.emptyList(), null, PAGE_URL, PAGE_ID);
+                SearchPageDTO result =
+                        searchService.getSearchPage("java", Collections.emptyList(), null, PAGE_URL, PAGE_ID);
 
                 // fetchPage() MUST precede getPage(): skipping the InnerTube
                 // session initialisation yields empty pages (see service javadoc).
                 InOrder callOrder = inOrder(mockSearchExtractor);
                 callOrder.verify(mockSearchExtractor).fetchPage();
-                callOrder.verify(mockSearchExtractor).getPage(argThat(p ->
-                        PAGE_URL.equals(p.getUrl()) && PAGE_ID.equals(p.getId())));
+                callOrder
+                        .verify(mockSearchExtractor)
+                        .getPage(argThat(p -> PAGE_URL.equals(p.getUrl()) && PAGE_ID.equals(p.getId())));
 
                 assertEquals(1, result.items().size());
                 assertEquals("First Video", result.items().getFirst().name());
@@ -217,8 +221,8 @@ class SearchServiceTest {
                 newPipeMock.when(() -> NewPipe.getService(0)).thenReturn(mockStreamingService);
                 when(mockSearchExtractor.getPage(any(Page.class))).thenReturn(page);
 
-                SearchPageDTO result = searchService.getSearchPage(
-                        "test", Collections.emptyList(), null, PAGE_URL, null);
+                SearchPageDTO result =
+                        searchService.getSearchPage("test", Collections.emptyList(), null, PAGE_URL, null);
 
                 assertNotNull(result);
             }
@@ -228,13 +232,14 @@ class SearchServiceTest {
         @DisplayName("Translates NewPipe failures, keeping their text out of the message")
         void translatesFailures() {
             try (MockedStatic<NewPipe> newPipeMock = mockStatic(NewPipe.class)) {
-                newPipeMock.when(() -> NewPipe.getService(anyInt()))
+                newPipeMock
+                        .when(() -> NewPipe.getService(anyInt()))
                         .thenThrow(new ParsingException("Pagination failure"));
 
-                ExtractionException exception = assertThrows(ExtractionException.class, () ->
-                        searchService.getSearchPage(
-                                "test", Collections.emptyList(), null,
-                                "https://youtube.com/next", "someToken"));
+                ExtractionException exception = assertThrows(
+                        ExtractionException.class,
+                        () -> searchService.getSearchPage(
+                                "test", Collections.emptyList(), null, "https://youtube.com/next", "someToken"));
 
                 assertEquals(ErrorCode.UPSTREAM_CHANGED, exception.getCode());
                 assertFalse(exception.getMessage().contains("Pagination failure"));

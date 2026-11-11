@@ -1,5 +1,7 @@
 package org.example.api.controller;
 
+import static org.example.api.config.openapi.OpenApiDocs.*;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -7,6 +9,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.List;
 import org.example.api.dto.ServiceDTO;
 import org.example.api.service.RestService;
 import org.slf4j.Logger;
@@ -14,10 +17,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
-
-import static org.example.api.config.openapi.OpenApiDocs.*;
 
 /**
  * REST controller for handling API requests for YouTube information from New Pipe Extractor.
@@ -57,13 +56,18 @@ public class NewPipeController {
     /**
      * Lists the streaming services NewPipeExtractor supports.
      */
-    @Operation(summary = "Supported services",
+    @Operation(
+            summary = "Supported services",
             description = "The streaming services NewPipeExtractor supports, with their IDs. "
                     + "The rest of this API only queries YouTube (service 0).")
-    @ApiResponse(responseCode = "200", description = "Services",
-            content = @Content(mediaType = "application/json",
-                    array = @ArraySchema(schema = @Schema(implementation = ServiceDTO.class)),
-                    examples = @ExampleObject(value = """
+    @ApiResponse(
+            responseCode = "200",
+            description = "Services",
+            content =
+                    @Content(
+                            mediaType = "application/json",
+                            array = @ArraySchema(schema = @Schema(implementation = ServiceDTO.class)),
+                            examples = @ExampleObject(value = """
                             [
                               { "serviceId": 0, "serviceName": "YouTube" },
                               { "serviceId": 1, "serviceName": "SoundCloud" }

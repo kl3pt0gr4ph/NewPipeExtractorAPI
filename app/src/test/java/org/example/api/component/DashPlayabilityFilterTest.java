@@ -1,5 +1,14 @@
 package org.example.api.component;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.function.Consumer;
+import java.util.stream.Stream;
 import org.example.api.component.DashPlayabilityFilter.PlayableStreams;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -14,16 +23,6 @@ import org.schabi.newpipe.extractor.stream.DeliveryMethod;
 import org.schabi.newpipe.extractor.stream.StreamInfo;
 import org.schabi.newpipe.extractor.stream.SubtitlesStream;
 import org.schabi.newpipe.extractor.stream.VideoStream;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.function.Consumer;
-import java.util.stream.Stream;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 /**
  * Unit tests for DashPlayabilityFilter.
@@ -95,8 +94,7 @@ class DashPlayabilityFilterTest {
         return stream;
     }
 
-    private static StreamInfo info(List<VideoStream> video, List<AudioStream> audio,
-                                   List<SubtitlesStream> subtitles) {
+    private static StreamInfo info(List<VideoStream> video, List<AudioStream> audio, List<SubtitlesStream> subtitles) {
         StreamInfo info = mock(StreamInfo.class);
         when(info.getVideoOnlyStreams()).thenReturn(video);
         when(info.getAudioStreams()).thenReturn(audio);
@@ -149,39 +147,39 @@ class DashPlayabilityFilterTest {
     static Stream<Arguments> videoRejections() {
         return Stream.of(
                 // Delivery and URL
-                Arguments.of("DASH delivery", (Consumer<VideoStream>) v ->
-                        when(v.getDeliveryMethod()).thenReturn(DeliveryMethod.DASH)),
-                Arguments.of("HLS delivery", (Consumer<VideoStream>) v ->
-                        when(v.getDeliveryMethod()).thenReturn(DeliveryMethod.HLS)),
-                Arguments.of("content that is not a URL", (Consumer<VideoStream>) v ->
-                        when(v.isUrl()).thenReturn(false)),
-                Arguments.of("a blank URL", (Consumer<VideoStream>) v ->
-                        when(v.getContent()).thenReturn(" ")),
+                Arguments.of("DASH delivery", (Consumer<VideoStream>)
+                        v -> when(v.getDeliveryMethod()).thenReturn(DeliveryMethod.DASH)),
+                Arguments.of("HLS delivery", (Consumer<VideoStream>)
+                        v -> when(v.getDeliveryMethod()).thenReturn(DeliveryMethod.HLS)),
+                Arguments.of("content that is not a URL", (Consumer<VideoStream>)
+                        v -> when(v.isUrl()).thenReturn(false)),
+                Arguments.of("a blank URL", (Consumer<VideoStream>)
+                        v -> when(v.getContent()).thenReturn(" ")),
                 // mimeType and codec
-                Arguments.of("no MediaFormat", (Consumer<VideoStream>) v ->
-                        when(v.getFormat()).thenReturn(null)),
+                Arguments.of("no MediaFormat", (Consumer<VideoStream>)
+                        v -> when(v.getFormat()).thenReturn(null)),
                 Arguments.of("a blank mimeType", (Consumer<VideoStream>) v -> {
                     MediaFormat format = formatWithMimeType("");
                     when(v.getFormat()).thenReturn(format);
                 }),
-                Arguments.of("no codec", (Consumer<VideoStream>) v ->
-                        when(v.getCodec()).thenReturn(null)),
-                Arguments.of("a blank codec", (Consumer<VideoStream>) v ->
-                        when(v.getCodec()).thenReturn(" ")),
+                Arguments.of("no codec", (Consumer<VideoStream>)
+                        v -> when(v.getCodec()).thenReturn(null)),
+                Arguments.of("a blank codec", (Consumer<VideoStream>)
+                        v -> when(v.getCodec()).thenReturn(" ")),
                 // Byte ranges
                 Arguments.of("unknown ranges (ItagItem leaves them at 0)", (Consumer<VideoStream>) v -> {
                     when(v.getInitEnd()).thenReturn(0);
                     when(v.getIndexStart()).thenReturn(0);
                     when(v.getIndexEnd()).thenReturn(0);
                 }),
-                Arguments.of("a negative init start", (Consumer<VideoStream>) v ->
-                        when(v.getInitStart()).thenReturn(-1)),
-                Arguments.of("an init end that isn't after its start", (Consumer<VideoStream>) v ->
-                        when(v.getInitEnd()).thenReturn(0)),
-                Arguments.of("an index range overlapping the init segment", (Consumer<VideoStream>) v ->
-                        when(v.getIndexStart()).thenReturn(700)),
-                Arguments.of("an index end that isn't after its start", (Consumer<VideoStream>) v ->
-                        when(v.getIndexEnd()).thenReturn(741)));
+                Arguments.of("a negative init start", (Consumer<VideoStream>)
+                        v -> when(v.getInitStart()).thenReturn(-1)),
+                Arguments.of("an init end that isn't after its start", (Consumer<VideoStream>)
+                        v -> when(v.getInitEnd()).thenReturn(0)),
+                Arguments.of("an index range overlapping the init segment", (Consumer<VideoStream>)
+                        v -> when(v.getIndexStart()).thenReturn(700)),
+                Arguments.of("an index end that isn't after its start", (Consumer<VideoStream>)
+                        v -> when(v.getIndexEnd()).thenReturn(741)));
     }
 
     // ── Audio streams ────────────────────────────────────────────────────
@@ -220,12 +218,12 @@ class DashPlayabilityFilterTest {
 
     static Stream<Arguments> audioRejections() {
         return Stream.of(
-                Arguments.of("DASH delivery", (Consumer<AudioStream>) a ->
-                        when(a.getDeliveryMethod()).thenReturn(DeliveryMethod.DASH)),
-                Arguments.of("no MediaFormat", (Consumer<AudioStream>) a ->
-                        when(a.getFormat()).thenReturn(null)),
-                Arguments.of("no codec", (Consumer<AudioStream>) a ->
-                        when(a.getCodec()).thenReturn(null)),
+                Arguments.of("DASH delivery", (Consumer<AudioStream>)
+                        a -> when(a.getDeliveryMethod()).thenReturn(DeliveryMethod.DASH)),
+                Arguments.of("no MediaFormat", (Consumer<AudioStream>)
+                        a -> when(a.getFormat()).thenReturn(null)),
+                Arguments.of("no codec", (Consumer<AudioStream>)
+                        a -> when(a.getCodec()).thenReturn(null)),
                 Arguments.of("unknown ranges (ItagItem leaves them at 0)", (Consumer<AudioStream>) a -> {
                     when(a.getInitEnd()).thenReturn(0);
                     when(a.getIndexStart()).thenReturn(0);
@@ -307,24 +305,21 @@ class DashPlayabilityFilterTest {
             when(notUrl.isUrl()).thenReturn(false);
             SubtitlesStream good = subtitle(YT_SUBTITLE_BASE + "en", MediaFormat.VTT);
 
-            PlayableStreams playable = filter.filter(
-                    info(List.of(), List.of(), List.of(notProgressive, notUrl, good)));
+            PlayableStreams playable = filter.filter(info(List.of(), List.of(), List.of(notProgressive, notUrl, good)));
 
             assertThat(playable.subtitles()).containsExactly(good);
         }
     }
 
     static Stream<MediaFormat> unparseableSubtitleFormats() {
-        List<MediaFormat> formats = new ArrayList<>(List.of(
-                MediaFormat.TRANSCRIPT1, MediaFormat.TRANSCRIPT2, MediaFormat.TRANSCRIPT3, MediaFormat.SRT));
+        List<MediaFormat> formats = new ArrayList<>(
+                List.of(MediaFormat.TRANSCRIPT1, MediaFormat.TRANSCRIPT2, MediaFormat.TRANSCRIPT3, MediaFormat.SRT));
         formats.add(null); // unknown format
         return formats.stream();
     }
 
     static Stream<Arguments> ttmlPositions() {
-        return Stream.of(
-                Arguments.of("first", true),
-                Arguments.of("second", false));
+        return Stream.of(Arguments.of("first", true), Arguments.of("second", false));
     }
 
     // ── Null and empty input ─────────────────────────────────────────────
@@ -343,15 +338,17 @@ class DashPlayabilityFilterTest {
 
     static Stream<Arguments> manifestSupportCases() {
         return Stream.of(
-                Arguments.of("video and audio",
-                        new PlayableStreams(List.of(video("v")), List.of(audio("a")), List.of()), true),
-                Arguments.of("no video",
-                        new PlayableStreams(List.of(), List.of(audio("a")), List.of()), false),
-                Arguments.of("no audio",
-                        new PlayableStreams(List.of(video("v")), List.of(), List.of()), false),
-                Arguments.of("only subtitles",
-                        new PlayableStreams(List.of(), List.of(),
-                                List.of(subtitle(YT_SUBTITLE_BASE + "en", MediaFormat.VTT))), false));
+                Arguments.of(
+                        "video and audio",
+                        new PlayableStreams(List.of(video("v")), List.of(audio("a")), List.of()),
+                        true),
+                Arguments.of("no video", new PlayableStreams(List.of(), List.of(audio("a")), List.of()), false),
+                Arguments.of("no audio", new PlayableStreams(List.of(video("v")), List.of(), List.of()), false),
+                Arguments.of(
+                        "only subtitles",
+                        new PlayableStreams(
+                                List.of(), List.of(), List.of(subtitle(YT_SUBTITLE_BASE + "en", MediaFormat.VTT))),
+                        false));
     }
 
     @ParameterizedTest(name = "{0} -> {2}")
@@ -385,7 +382,8 @@ class DashPlayabilityFilterTest {
             VideoStream first = muxed("first");
             VideoStream second = muxed("second");
 
-            assertThat(filter.muxedFallback(infoWithMuxed(hls, notUrl, first, second))).contains(first);
+            assertThat(filter.muxedFallback(infoWithMuxed(hls, notUrl, first, second)))
+                    .contains(first);
         }
 
         @Test

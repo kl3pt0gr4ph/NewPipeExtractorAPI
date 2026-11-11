@@ -20,11 +20,7 @@ import org.springframework.validation.annotation.Validated;
 @ConfigurationProperties(prefix = "opentube.newpipe")
 public record NewPipeProperties(
         @DefaultValue("en")
-        @NotNull @Pattern(regexp = "[a-z]{2,3}", message = "must be a lower-case ISO 639 code, e.g. en")
-        String language,
+        @NotNull @Pattern(regexp = "[a-z]{2,3}", message = "must be a lower-case ISO 639 code, e.g. en") String language,
 
         @DefaultValue("GB")
-        @NotNull @Pattern(regexp = "[A-Z]{2}", message = "must be an upper-case ISO 3166 code, e.g. GB")
-        String country
-) {}
-
+        @NotNull @Pattern(regexp = "[A-Z]{2}", message = "must be an upper-case ISO 3166 code, e.g. GB") String country) {}

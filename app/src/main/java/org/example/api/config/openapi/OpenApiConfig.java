@@ -1,5 +1,7 @@
 package org.example.api.config.openapi;
 
+import static org.example.api.config.openapi.OpenApiDocs.*;
+
 import io.swagger.v3.oas.models.ExternalDocumentation;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.Operation;
@@ -7,6 +9,9 @@ import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.media.ObjectSchema;
 import io.swagger.v3.oas.models.servers.Server;
 import io.swagger.v3.oas.models.tags.Tag;
+import java.util.List;
+import java.util.Objects;
+import java.util.stream.Stream;
 import org.example.api.config.GlobalExceptionHandler;
 import org.springdoc.core.customizers.OpenApiCustomizer;
 import org.springdoc.core.utils.SpringDocUtils;
@@ -15,12 +20,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.info.BuildProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-
-import java.util.List;
-import java.util.Objects;
-import java.util.stream.Stream;
-
-import static org.example.api.config.openapi.OpenApiDocs.*;
 
 /**
  * Metadata and post-processing for the OpenAPI document springdoc generates.
@@ -38,9 +37,12 @@ public class OpenApiConfig {
         // NewPipeExtractor's Info and InfoItemsPage types carry a List<Throwable> of
         // non-fatal errors. Left alone, the schema walks the whole Throwable graph
         // (stack traces, causes, suppressed); describe it as an opaque object instead.
-        SpringDocUtils.getConfig().replaceWithSchema(Throwable.class, new ObjectSchema()
-                .description("A non-fatal error NewPipeExtractor recorded during extraction, "
-                        + "serialised from a Java exception."));
+        SpringDocUtils.getConfig()
+                .replaceWithSchema(
+                        Throwable.class,
+                        new ObjectSchema()
+                                .description("A non-fatal error NewPipeExtractor recorded during extraction, "
+                                        + "serialised from a Java exception."));
     }
 
     private static final String DESCRIPTION = """
@@ -68,24 +70,19 @@ public class OpenApiConfig {
                 .orElse("dev");
 
         OpenAPI openApi = new OpenAPI()
-                .info(new Info()
-                        .title("NewPipeExtractorAPI")
-                        .version(version)
-                        .description(DESCRIPTION))
-                .externalDocs(new ExternalDocumentation()
-                        .description("README")
-                        .url(REPO_URL + "#readme"))
+                .info(new Info().title("NewPipeExtractorAPI").version(version).description(DESCRIPTION))
+                .externalDocs(new ExternalDocumentation().description("README").url(REPO_URL + "#readme"))
                 .tags(List.of(
-                        new Tag().name(TAG_STREAMS).description(
-                                "Metadata, stream lists and DASH manifests for one video. "
+                        new Tag()
+                                .name(TAG_STREAMS)
+                                .description("Metadata, stream lists and DASH manifests for one video. "
                                         + "All of these share one cached extraction per video."),
                         new Tag().name(TAG_SEARCH).description("Search and its continuation pages"),
                         new Tag().name(TAG_CHANNELS).description("Channel info and tab contents"),
                         new Tag().name(TAG_PLAYLISTS).description("Playlist info and its continuation pages"),
                         new Tag().name(TAG_COMMENTS).description("Video comments and their continuation pages"),
                         new Tag().name(TAG_KIOSKS).description("YouTube's curated feeds, such as trending music"),
-                        new Tag().name(TAG_SERVICES).description("Streaming services NewPipeExtractor supports")
-                ));
+                        new Tag().name(TAG_SERVICES).description("Streaming services NewPipeExtractor supports")));
 
         String serverUrl = properties.serverUrl();
         if (serverUrl != null && !serverUrl.isBlank()) {
@@ -106,8 +103,8 @@ public class OpenApiConfig {
                 return;
             }
             openApi.getPaths().values().stream()
-                    .flatMap(path -> Stream.of(path.getGet(), path.getPost(), path.getPut(),
-                            path.getPatch(), path.getDelete()))
+                    .flatMap(path ->
+                            Stream.of(path.getGet(), path.getPost(), path.getPut(), path.getPatch(), path.getDelete()))
                     .filter(Objects::nonNull)
                     .filter(OpenApiConfig::hasNoParameters)
                     .forEach(op -> {

@@ -1,13 +1,12 @@
 package org.example.api.service;
 
+import java.util.List;
 import org.example.api.dto.ServiceDTO;
 import org.schabi.newpipe.extractor.NewPipe;
 import org.schabi.newpipe.extractor.StreamingService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-
-import java.util.List;
 
 @Service
 public class RestService {
@@ -26,7 +25,8 @@ public class RestService {
         }
 
         List<ServiceDTO> result = services.stream()
-                .map(service -> new ServiceDTO(service.getServiceId(), service.getServiceInfo().getName()))
+                .map(service -> new ServiceDTO(
+                        service.getServiceId(), service.getServiceInfo().getName()))
                 .toList();
 
         logger.info("Listed {} service(s)", result.size());

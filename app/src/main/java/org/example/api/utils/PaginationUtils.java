@@ -1,11 +1,9 @@
 package org.example.api.utils;
 
-import tools.jackson.databind.ObjectMapper;
+import java.util.function.Supplier;
 import org.example.api.exception.NewPipeExceptionMapper;
 import org.springframework.stereotype.Component;
-
-import java.util.function.Supplier;
-
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Utility class for handling paginated API responses.

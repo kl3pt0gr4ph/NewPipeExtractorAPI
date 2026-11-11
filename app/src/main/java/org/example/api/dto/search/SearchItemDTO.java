@@ -51,8 +51,7 @@ public record SearchItemDTO(
             case StreamInfoItem streamItem -> mapStreamInfo(builder.type("stream"), streamItem);
             case ChannelInfoItem channelItem -> mapChannelInfo(builder.type("channel"), channelItem);
             case PlaylistInfoItem playlistItem -> mapPlaylistInfo(builder.type("playlist"), playlistItem);
-            default -> {
-            }
+            default -> {}
         }
 
         return builder.build();
@@ -119,29 +118,116 @@ public record SearchItemDTO(
         private String playlistType;
         private Long videoCount;
 
-        public Builder type(String type) { this.type = type; return this; }
-        public Builder name(String name) { this.name = name; return this; }
-        public Builder url(String url) { this.url = url; return this; }
-        public Builder thumbnailUrl(String thumbnailUrl) { this.thumbnailUrl = thumbnailUrl; return this; }
-        public Builder uploaderName(String uploaderName) { this.uploaderName = uploaderName; return this; }
-        public Builder uploaderUrl(String uploaderUrl) { this.uploaderUrl = uploaderUrl; return this; }
-        public Builder uploaderAvatarUrl(String uploaderAvatarUrl) { this.uploaderAvatarUrl = uploaderAvatarUrl; return this; }
-        public Builder uploaderVerified(Boolean uploaderVerified) { this.uploaderVerified = uploaderVerified; return this; }
-        public Builder duration(Long duration) { this.duration = duration; return this; }
-        public Builder viewCount(Long viewCount) { this.viewCount = viewCount; return this; }
-        public Builder uploadDate(String uploadDate) { this.uploadDate = uploadDate; return this; }
-        public Builder streamType(String streamType) { this.streamType = streamType; return this; }
-        public Builder isShortFormContent(Boolean isShortFormContent) { this.isShortFormContent = isShortFormContent; return this; }
-        public Builder subscriberCount(Long subscriberCount) { this.subscriberCount = subscriberCount; return this; }
-        public Builder streamCount(Long streamCount) { this.streamCount = streamCount; return this; }
-        public Builder description(String description) { this.description = description; return this; }
-        public Builder playlistType(String playlistType) { this.playlistType = playlistType; return this; }
-        public Builder videoCount(Long videoCount) { this.videoCount = videoCount; return this; }
+        public Builder type(String type) {
+            this.type = type;
+            return this;
+        }
+
+        public Builder name(String name) {
+            this.name = name;
+            return this;
+        }
+
+        public Builder url(String url) {
+            this.url = url;
+            return this;
+        }
+
+        public Builder thumbnailUrl(String thumbnailUrl) {
+            this.thumbnailUrl = thumbnailUrl;
+            return this;
+        }
+
+        public Builder uploaderName(String uploaderName) {
+            this.uploaderName = uploaderName;
+            return this;
+        }
+
+        public Builder uploaderUrl(String uploaderUrl) {
+            this.uploaderUrl = uploaderUrl;
+            return this;
+        }
+
+        public Builder uploaderAvatarUrl(String uploaderAvatarUrl) {
+            this.uploaderAvatarUrl = uploaderAvatarUrl;
+            return this;
+        }
+
+        public Builder uploaderVerified(Boolean uploaderVerified) {
+            this.uploaderVerified = uploaderVerified;
+            return this;
+        }
+
+        public Builder duration(Long duration) {
+            this.duration = duration;
+            return this;
+        }
+
+        public Builder viewCount(Long viewCount) {
+            this.viewCount = viewCount;
+            return this;
+        }
+
+        public Builder uploadDate(String uploadDate) {
+            this.uploadDate = uploadDate;
+            return this;
+        }
+
+        public Builder streamType(String streamType) {
+            this.streamType = streamType;
+            return this;
+        }
+
+        public Builder isShortFormContent(Boolean isShortFormContent) {
+            this.isShortFormContent = isShortFormContent;
+            return this;
+        }
+
+        public Builder subscriberCount(Long subscriberCount) {
+            this.subscriberCount = subscriberCount;
+            return this;
+        }
+
+        public Builder streamCount(Long streamCount) {
+            this.streamCount = streamCount;
+            return this;
+        }
+
+        public Builder description(String description) {
+            this.description = description;
+            return this;
+        }
+
+        public Builder playlistType(String playlistType) {
+            this.playlistType = playlistType;
+            return this;
+        }
+
+        public Builder videoCount(Long videoCount) {
+            this.videoCount = videoCount;
+            return this;
+        }
 
         public SearchItemDTO build() {
-            return new SearchItemDTO(type, name, url, thumbnailUrl, uploaderName, uploaderUrl,
-                    uploaderAvatarUrl, uploaderVerified, duration, viewCount, uploadDate, streamType,
-                    isShortFormContent, subscriberCount, streamCount, description, playlistType, videoCount);
+            return new SearchItemDTO(
+                    type,
+                    name,
+                    url,
+                    thumbnailUrl,
+                    uploaderName,
+                    uploaderUrl,
+                    uploaderAvatarUrl,
+                    uploaderVerified,
+                    duration,
+                    viewCount,
+                    uploadDate,
+                    streamType,
+                    isShortFormContent,
+                    subscriberCount,
+                    streamCount,
+                    description,
+                    playlistType,
+                    videoCount);
         }
     }
 }

@@ -1,5 +1,16 @@
 package org.example.api.controller;
 
+import static org.hamcrest.Matchers.containsString;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import java.util.List;
+import java.util.stream.Stream;
 import org.example.api.config.GlobalExceptionHandler;
 import org.example.api.exception.ExtractionException;
 import org.example.api.service.CommentService;
@@ -19,18 +30,6 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-
-import java.util.List;
-import java.util.stream.Stream;
-
-import static org.hamcrest.Matchers.containsString;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * Unit tests for CommentController.
@@ -65,9 +64,7 @@ class CommentControllerTest {
         CommentsInfo mockInfo = mock(CommentsInfo.class);
         when(commentService.getCommentsInfo(VIDEO_URL)).thenReturn(mockInfo);
 
-        mockMvc.perform(get("/api/v1/comments")
-                        .param("id", TEST_VIDEO_ID)
-                        .contentType(MediaType.APPLICATION_JSON))
+        mockMvc.perform(get("/api/v1/comments").param("id", TEST_VIDEO_ID).contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk());
 
         verify(commentService).getCommentsInfo(VIDEO_URL);
@@ -81,8 +78,7 @@ class CommentControllerTest {
     void getCommentsPage_passesConstructedUrlAndPageUrl() throws Exception {
         String pageUrl = "https://www.youtube.com/comments?continuation=token";
         @SuppressWarnings("unchecked")
-        ListExtractor.InfoItemsPage<CommentsInfoItem> mockPage =
-                mock(ListExtractor.InfoItemsPage.class);
+        ListExtractor.InfoItemsPage<CommentsInfoItem> mockPage = mock(ListExtractor.InfoItemsPage.class);
         when(mockPage.getItems()).thenReturn(List.of());
         when(commentService.getCommentsPage(VIDEO_URL, pageUrl)).thenReturn(mockPage);
 
@@ -103,9 +99,7 @@ class CommentControllerTest {
         when(commentService.getCommentsInfo(anyString()))
                 .thenThrow(new ExtractionException("Failed to retrieve comments information"));
 
-        mockMvc.perform(get("/api/v1/comments")
-                        .param("id", TEST_VIDEO_ID)
-                        .contentType(MediaType.APPLICATION_JSON))
+        mockMvc.perform(get("/api/v1/comments").param("id", TEST_VIDEO_ID).contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.errorCode").value("EXTRACTION_ERROR"))
                 .andExpect(jsonPath("$.message").value(containsString("Failed to retrieve")));
@@ -115,22 +109,19 @@ class CommentControllerTest {
 
     static Stream<Arguments> requestsMissingARequiredParam() {
         return Stream.of(
-                Arguments.of("/comments without id",
-                        get("/api/v1/comments")),
-                Arguments.of("/comments/page without id",
-                        get("/api/v1/comments/page")
-                                .param("pageUrl", "https://youtube.com/comments?c=t")),
-                Arguments.of("/comments/page without pageUrl",
-                        get("/api/v1/comments/page")
-                                .param("id", TEST_VIDEO_ID)));
+                Arguments.of("/comments without id", get("/api/v1/comments")),
+                Arguments.of(
+                        "/comments/page without id",
+                        get("/api/v1/comments/page").param("pageUrl", "https://youtube.com/comments?c=t")),
+                Arguments.of(
+                        "/comments/page without pageUrl",
+                        get("/api/v1/comments/page").param("id", TEST_VIDEO_ID)));
     }
 
     @ParameterizedTest(name = "{0} returns 400")
     @MethodSource("requestsMissingARequiredParam")
     @DisplayName("Missing required parameters return 400")
-    void missingRequiredParam_returnsBadRequest(
-            String name, MockHttpServletRequestBuilder request) throws Exception {
-        mockMvc.perform(request.contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isBadRequest());
+    void missingRequiredParam_returnsBadRequest(String name, MockHttpServletRequestBuilder request) throws Exception {
+        mockMvc.perform(request.contentType(MediaType.APPLICATION_JSON)).andExpect(status().isBadRequest());
     }
 }

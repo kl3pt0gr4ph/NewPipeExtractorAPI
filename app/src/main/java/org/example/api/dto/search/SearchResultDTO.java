@@ -2,10 +2,9 @@ package org.example.api.dto.search;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import org.schabi.newpipe.extractor.search.SearchInfo;
-
 import java.util.List;
 import java.util.stream.Collectors;
+import org.schabi.newpipe.extractor.search.SearchInfo;
 
 /**
  * Data Transfer Object for search results.
@@ -56,10 +55,8 @@ public class SearchResultDTO {
      *
      */
     @JsonInclude(JsonInclude.Include.ALWAYS)
-    public record PageDto(
-            String url,
-            String id   // the continuation token string from page.getId()
-    ) {}
+    public record PageDto(String url, String id // the continuation token string from page.getId()
+            ) {}
 
     // ── Constructors ─────────────────────────────────────────────────────────────
 
@@ -83,9 +80,8 @@ public class SearchResultDTO {
         dto.setSearchSuggestion(searchInfo.getSearchSuggestion());
         dto.setCorrectedSearch(searchInfo.isCorrectedSearch());
 
-        dto.setItems(searchInfo.getRelatedItems().stream()
-                .map(SearchItemDTO::from)
-                .collect(Collectors.toList()));
+        dto.setItems(
+                searchInfo.getRelatedItems().stream().map(SearchItemDTO::from).collect(Collectors.toList()));
 
         dto.setNextPage(buildNextPage(searchInfo.getNextPage()));
         dto.setHasNextPage(dto.nextPage != null);
@@ -102,30 +98,75 @@ public class SearchResultDTO {
 
     // ── Getters & Setters ────────────────────────────────────────────────────────
 
-    public String getUrl() { return url; }
-    public void setUrl(String url) { this.url = url; }
+    public String getUrl() {
+        return url;
+    }
 
-    public String getOriginalUrl() { return originalUrl; }
-    public void setOriginalUrl(String originalUrl) { this.originalUrl = originalUrl; }
+    public void setUrl(String url) {
+        this.url = url;
+    }
 
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
+    public String getOriginalUrl() {
+        return originalUrl;
+    }
 
-    public String getSearchString() { return searchString; }
-    public void setSearchString(String searchString) { this.searchString = searchString; }
+    public void setOriginalUrl(String originalUrl) {
+        this.originalUrl = originalUrl;
+    }
 
-    public String getSearchSuggestion() { return searchSuggestion; }
-    public void setSearchSuggestion(String searchSuggestion) { this.searchSuggestion = searchSuggestion; }
+    public String getName() {
+        return name;
+    }
 
-    public boolean isCorrectedSearch() { return isCorrectedSearch; }
-    public void setCorrectedSearch(boolean correctedSearch) { isCorrectedSearch = correctedSearch; }
+    public void setName(String name) {
+        this.name = name;
+    }
 
-    public List<SearchItemDTO> getItems() { return items; }
-    public void setItems(List<SearchItemDTO> items) { this.items = items; }
+    public String getSearchString() {
+        return searchString;
+    }
 
-    public PageDto getNextPage() { return nextPage; }
-    public void setNextPage(PageDto nextPage) { this.nextPage = nextPage; }
+    public void setSearchString(String searchString) {
+        this.searchString = searchString;
+    }
 
-    public boolean isHasNextPage() { return hasNextPage; }
-    public void setHasNextPage(boolean hasNextPage) { this.hasNextPage = hasNextPage; }
+    public String getSearchSuggestion() {
+        return searchSuggestion;
+    }
+
+    public void setSearchSuggestion(String searchSuggestion) {
+        this.searchSuggestion = searchSuggestion;
+    }
+
+    public boolean isCorrectedSearch() {
+        return isCorrectedSearch;
+    }
+
+    public void setCorrectedSearch(boolean correctedSearch) {
+        isCorrectedSearch = correctedSearch;
+    }
+
+    public List<SearchItemDTO> getItems() {
+        return items;
+    }
+
+    public void setItems(List<SearchItemDTO> items) {
+        this.items = items;
+    }
+
+    public PageDto getNextPage() {
+        return nextPage;
+    }
+
+    public void setNextPage(PageDto nextPage) {
+        this.nextPage = nextPage;
+    }
+
+    public boolean isHasNextPage() {
+        return hasNextPage;
+    }
+
+    public void setHasNextPage(boolean hasNextPage) {
+        this.hasNextPage = hasNextPage;
+    }
 }

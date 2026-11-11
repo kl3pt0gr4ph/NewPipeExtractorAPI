@@ -1,20 +1,18 @@
 package org.example.api.downloader;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.List;
+import java.util.Map;
 import okhttp3.OkHttpClient;
 import okhttp3.RequestBody;
 import okhttp3.ResponseBody;
 import org.jetbrains.annotations.Nullable;
 import org.jspecify.annotations.NonNull;
-
 import org.schabi.newpipe.extractor.downloader.Downloader;
 import org.schabi.newpipe.extractor.downloader.Request;
 import org.schabi.newpipe.extractor.downloader.Response;
 import org.schabi.newpipe.extractor.exceptions.ReCaptchaException;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.List;
-import java.util.Map;
 
 public class DownloaderImpl extends Downloader {
     private static DownloaderImpl instance;
@@ -37,8 +35,7 @@ public class DownloaderImpl extends Downloader {
      * @return the new downloader
      */
     public static DownloaderImpl init(@Nullable OkHttpClient.Builder builder, String userAgent) {
-        return instance = new DownloaderImpl(
-                builder != null ? builder : new OkHttpClient.Builder(), userAgent);
+        return instance = new DownloaderImpl(builder != null ? builder : new OkHttpClient.Builder(), userAgent);
     }
 
     public static DownloaderImpl getInstance() {
@@ -75,7 +72,8 @@ public class DownloaderImpl extends Downloader {
     public InputStream stream(String siteUrl) throws IOException {
         try {
             final okhttp3.Request.Builder requestBuilder = new okhttp3.Request.Builder()
-                    .method("GET", null).url(siteUrl)
+                    .method("GET", null)
+                    .url(siteUrl)
                     .addHeader("User-Agent", userAgent);
 
             if (!isEmpty(mCookies)) {
@@ -96,6 +94,7 @@ public class DownloaderImpl extends Downloader {
             throw new IOException(e.getMessage(), e.getCause());
         }
     }
+
     @Override
     public Response execute(@NonNull Request request) throws IOException, ReCaptchaException {
         try {
@@ -112,7 +111,8 @@ public class DownloaderImpl extends Downloader {
             }
 
             final okhttp3.Request.Builder requestBuilder = new okhttp3.Request.Builder()
-                    .method(httpMethod, requestBody).url(url)
+                    .method(httpMethod, requestBody)
+                    .url(url)
                     .addHeader("User-Agent", userAgent);
 
             if (!isEmpty(mCookies)) {
@@ -131,10 +131,10 @@ public class DownloaderImpl extends Downloader {
                 } else if (headerValueList.size() == 1) {
                     requestBuilder.header(headerName, headerValueList.getFirst());
                 }
-
             }
 
-            final okhttp3.Response response = client.newCall(requestBuilder.build()).execute();
+            final okhttp3.Response response =
+                    client.newCall(requestBuilder.build()).execute();
 
             if (response.code() == 429) {
                 response.close();
@@ -148,7 +148,8 @@ public class DownloaderImpl extends Downloader {
                 responseBodyToReturn = body.string();
             }
 
-            return new Response(response.code(), response.message(), response.headers().toMultimap(), responseBodyToReturn, url);
+            return new Response(
+                    response.code(), response.message(), response.headers().toMultimap(), responseBodyToReturn, url);
         } catch (IllegalArgumentException e) {
             throw new IOException("Invalid URL: %s".formatted(request.url()), e);
         }

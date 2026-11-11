@@ -1,16 +1,15 @@
 package org.example.api.cache;
 
-import org.schabi.newpipe.extractor.stream.StreamInfo;
-import org.schabi.newpipe.extractor.stream.Stream;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.schabi.newpipe.extractor.stream.Stream;
+import org.schabi.newpipe.extractor.stream.StreamInfo;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public final class StreamExpiry {
     private static final Logger logger = LoggerFactory.getLogger(StreamExpiry.class);
@@ -42,7 +41,6 @@ public final class StreamExpiry {
             } catch (NumberFormatException e) {
                 logger.warn("Ignoring unparseable expire value: {}", raw);
             }
-
         }
         return earliest == Long.MAX_VALUE ? Optional.empty() : Optional.of(Instant.ofEpochSecond(earliest));
     }

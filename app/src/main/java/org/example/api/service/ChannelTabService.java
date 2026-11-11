@@ -1,5 +1,8 @@
 package org.example.api.service;
 
+import java.util.Base64;
+import java.util.List;
+import java.util.Optional;
 import org.example.api.dto.channels.ChannelTabDTO;
 import org.example.api.exception.ExtractionException;
 import org.example.api.exception.NewPipeExceptionMapper;
@@ -17,10 +20,6 @@ import org.schabi.newpipe.extractor.linkhandler.ListLinkHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-
-import java.util.Base64;
-import java.util.List;
-import java.util.Optional;
 
 /**
  * Service for extracting paginated content from YouTube channel tabs via
@@ -46,8 +45,7 @@ public class ChannelTabService {
     /**
      * Fetches the first page of items from a given channel tab.
      */
-    public ChannelTabDTO getChannelTab(String channelUrl, String tab, String channelId)
-            throws ExtractionException {
+    public ChannelTabDTO getChannelTab(String channelUrl, String tab, String channelId) throws ExtractionException {
         try {
             logger.info("Fetching channel tab '{}' for URL: {}", tab, channelUrl);
 
@@ -62,8 +60,11 @@ public class ChannelTabService {
             ChannelTabInfo tabInfo = ChannelTabInfo.getInfo(extractor);
             checkExtractionErrors(tab, channelUrl, tabInfo.getRelatedItems(), tabInfo.getErrors());
 
-            logger.info("Fetched {} item(s) from tab '{}' (hasNextPage={})",
-                    tabInfo.getRelatedItems().size(), tab, tabInfo.hasNextPage());
+            logger.info(
+                    "Fetched {} item(s) from tab '{}' (hasNextPage={})",
+                    tabInfo.getRelatedItems().size(),
+                    tab,
+                    tabInfo.hasNextPage());
 
             return ChannelTabDTO.from(tabInfo, tab, channelId);
 
@@ -87,8 +88,8 @@ public class ChannelTabService {
      * @param pageBody    from {@code nextPage.body} in the previous response (Base64)
      * @param pageIds     from {@code nextPage.ids} in the previous response
      */
-    public ChannelTabDTO getChannelTabPage(String channelId, String tab,
-                                           String pageUrl, String pageBody, List<String> pageIds)
+    public ChannelTabDTO getChannelTabPage(
+            String channelId, String tab, String pageUrl, String pageBody, List<String> pageIds)
             throws ExtractionException {
         try {
             logger.debug("Fetching next page for channel tab '{}', channelId: {}", tab, channelId);
@@ -96,12 +97,11 @@ public class ChannelTabService {
             byte[] bodyBytes = pageBody != null ? Base64.getDecoder().decode(pageBody) : null;
             Page pageInstance = new Page(pageUrl, null, pageIds, null, bodyBytes);
 
-            String channelUrl = pageIds != null && pageIds.size() >= 2
-                    ? pageIds.get(1)
-                    : null;
+            String channelUrl = pageIds != null && pageIds.size() >= 2 ? pageIds.get(1) : null;
 
             if (channelUrl == null) {
-                throw new ValidationException("pageIds",
+                throw new ValidationException(
+                        "pageIds",
                         "missing the channel URL at index 1; pass nextPage.ids from the previous "
                                 + "response unchanged");
             }
@@ -117,8 +117,11 @@ public class ChannelTabService {
             InfoItemsPage<InfoItem> page = extractor.getPage(pageInstance);
             checkExtractionErrors(tab, channelUrl, page.getItems(), page.getErrors());
 
-            logger.info("Fetched {} item(s) from tab '{}' page (hasNextPage={})",
-                    page.getItems().size(), tab, page.hasNextPage());
+            logger.info(
+                    "Fetched {} item(s) from tab '{}' page (hasNextPage={})",
+                    page.getItems().size(),
+                    tab,
+                    page.hasNextPage());
 
             return ChannelTabDTO.fromPage(page, tab, channelId);
 
@@ -135,8 +138,8 @@ public class ChannelTabService {
      * item collectors record items they can't parse the same way. Unchecked, a broken tab looks
      * exactly like an empty one.
      */
-    private void checkExtractionErrors(String tab, String channelUrl,
-                                       List<? extends InfoItem> items, List<Throwable> errors) {
+    private void checkExtractionErrors(
+            String tab, String channelUrl, List<? extends InfoItem> items, List<Throwable> errors) {
         if (errors == null || errors.isEmpty()) {
             return;
         }
@@ -144,20 +147,24 @@ public class ChannelTabService {
         if (items == null || items.isEmpty()) {
             throw NewPipeExceptionMapper.translate(first);
         }
-        logger.warn("Tab '{}' for {} returned {} item(s) with {} extraction error(s); first: {}",
-                tab, channelUrl, items.size(), errors.size(), first.toString());
+        logger.warn(
+                "Tab '{}' for {} returned {} item(s) with {} extraction error(s); first: {}",
+                tab,
+                channelUrl,
+                items.size(),
+                errors.size(),
+                first.toString());
     }
 
     private Optional<ListLinkHandler> findTabHandler(List<ListLinkHandler> tabs, String tab) {
         return tabs.stream()
-                .filter(t -> t.getContentFilters().stream()
-                        .anyMatch(f -> f.equalsIgnoreCase(tab)))
+                .filter(t -> t.getContentFilters().stream().anyMatch(f -> f.equalsIgnoreCase(tab)))
                 .findFirst();
     }
 
     private ValidationException tabNotFound(String tab, List<ListLinkHandler> tabs) {
-        return new ValidationException("tab",
-                "this channel has no '%s' tab. Available tabs: %s".formatted(tab, describeAvailableTabs(tabs)));
+        return new ValidationException(
+                "tab", "this channel has no '%s' tab. Available tabs: %s".formatted(tab, describeAvailableTabs(tabs)));
     }
 
     private String describeAvailableTabs(List<ListLinkHandler> tabs) {

@@ -31,11 +31,10 @@ public class NewPipeInitializer implements InitializingBean {
 
     @Override
     public void afterPropertiesSet() {
-        NewPipe.init(downloader,
+        NewPipe.init(
+                downloader,
                 new Localization(properties.language(), properties.country()),
                 new ContentCountry(properties.country()));
-        logger.info("NewPipe initialised: language={}, country={}",
-                properties.language(), properties.country());
+        logger.info("NewPipe initialised: language={}, country={}", properties.language(), properties.country());
     }
 }
-

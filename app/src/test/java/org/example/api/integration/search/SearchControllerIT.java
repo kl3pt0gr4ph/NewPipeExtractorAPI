@@ -1,5 +1,12 @@
 package org.example.api.integration.search;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.example.api.dto.search.SearchItemDTO;
 import org.example.api.dto.search.SearchPageDTO;
 import org.example.api.dto.search.SearchResultDTO;
@@ -19,14 +26,6 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-import java.util.List;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import static org.assertj.core.api.Assertions.assertThat;
-
 /**
  * Integration tests for SearchController
  */
@@ -45,8 +44,7 @@ class SearchControllerIT extends BaseIntegrationTest {
 
     private ResponseEntity<SearchResultDTO> search(String query) {
         String url = "%s?searchString=%s".formatted(baseUrl(), URLEncoder.encode(query, StandardCharsets.UTF_8));
-        return restTemplate.exchange(url, HttpMethod.GET, null,
-                new ParameterizedTypeReference<SearchResultDTO>() { });
+        return restTemplate.exchange(url, HttpMethod.GET, null, new ParameterizedTypeReference<SearchResultDTO>() {});
     }
 
     // ── Happy path ───────────────────────────────────────────────────────
@@ -104,15 +102,16 @@ class SearchControllerIT extends BaseIntegrationTest {
     // ── Input shapes the real service must not choke on ─────────────────
 
     @ParameterizedTest(name = "Handles: {0}")
-    @ValueSource(strings = {
-            "a",                       // single character
-            "12345",                   // numbers only
-            "日本語",                    // Unicode (Japanese)
-            "music \uD83C\uDFB5",      // emoji
-            "\"java tutorial\"",       // embedded quotes
-            "java tutorial tutorial tutorial tutorial tutorial tutorial tutorial tutorial tutorial tutorial"
-            // long query (~100 chars)
-    })
+    @ValueSource(
+            strings = {
+                "a", // single character
+                "12345", // numbers only
+                "日本語", // Unicode (Japanese)
+                "music \uD83C\uDFB5", // emoji
+                "\"java tutorial\"", // embedded quotes
+                "java tutorial tutorial tutorial tutorial tutorial tutorial tutorial tutorial tutorial tutorial"
+                // long query (~100 chars)
+            })
     @DisplayName("Unusual but valid query text returns 200 without the service choking")
     void search_handlesUnusualQueryText(String query) {
         ResponseEntity<SearchResultDTO> response = search(query);
@@ -124,12 +123,12 @@ class SearchControllerIT extends BaseIntegrationTest {
     // ── Filters and sort: reach the real service without erroring ───────
 
     @Test
-    @DisplayName("Content filters and a sort filter reach the real service and return 200 (NewPipe/YouTube own the actual filtering/sorting behaviour, not this codebase)")
+    @DisplayName(
+            "Content filters and a sort filter reach the real service and return 200 (NewPipe/YouTube own the actual filtering/sorting behaviour, not this codebase)")
     void search_withContentFiltersAndSort_reachesRealServiceSuccessfully() {
-        String url = "%s?searchString=programming&contentFilters=videos&sortFilter=upload_date"
-                .formatted(baseUrl());
-        ResponseEntity<SearchResultDTO> response = restTemplate.exchange(
-                url, HttpMethod.GET, null, new ParameterizedTypeReference<SearchResultDTO>() { });
+        String url = "%s?searchString=programming&contentFilters=videos&sortFilter=upload_date".formatted(baseUrl());
+        ResponseEntity<SearchResultDTO> response =
+                restTemplate.exchange(url, HttpMethod.GET, null, new ParameterizedTypeReference<SearchResultDTO>() {});
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isNotNull();
@@ -153,17 +152,21 @@ class SearchControllerIT extends BaseIntegrationTest {
         SearchResultDTO first = search("tutorial").getBody();
         assertThat(first).isNotNull();
 
-        Assumptions.assumeTrue(first.isHasNextPage() && first.getNextPage() != null,
+        Assumptions.assumeTrue(
+                first.isHasNextPage() && first.getNextPage() != null,
                 "No further pages were returned for this query — nothing to test");
 
-        String pageUrl = "%s/page?searchString=%s&pageUrl=%s&pageId=%s".formatted(
-                baseUrl(),
-                URLEncoder.encode("tutorial", StandardCharsets.UTF_8),
-                URLEncoder.encode(first.getNextPage().url(), StandardCharsets.UTF_8),
-                first.getNextPage().id() == null ? "" : URLEncoder.encode(first.getNextPage().id(), StandardCharsets.UTF_8));
+        String pageUrl = "%s/page?searchString=%s&pageUrl=%s&pageId=%s"
+                .formatted(
+                        baseUrl(),
+                        URLEncoder.encode("tutorial", StandardCharsets.UTF_8),
+                        URLEncoder.encode(first.getNextPage().url(), StandardCharsets.UTF_8),
+                        first.getNextPage().id() == null
+                                ? ""
+                                : URLEncoder.encode(first.getNextPage().id(), StandardCharsets.UTF_8));
 
         ResponseEntity<SearchPageDTO> pageResponse = restTemplate.exchange(
-                pageUrl, HttpMethod.GET, null, new ParameterizedTypeReference<SearchPageDTO>() { });
+                pageUrl, HttpMethod.GET, null, new ParameterizedTypeReference<SearchPageDTO>() {});
 
         assertThat(pageResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
         SearchPageDTO page = pageResponse.getBody();

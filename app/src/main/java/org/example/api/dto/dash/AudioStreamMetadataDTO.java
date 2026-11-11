@@ -1,15 +1,13 @@
 package org.example.api.dto.dash;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import java.util.Locale;
 import org.schabi.newpipe.extractor.MediaFormat;
 import org.schabi.newpipe.extractor.services.youtube.ItagItem;
 import org.schabi.newpipe.extractor.stream.AudioStream;
 import org.schabi.newpipe.extractor.stream.AudioTrackType;
-
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
-
-import java.util.Locale;
 
 /**
  * Data Transfer Object representing metadata for an audio stream in a DASH manifest.
@@ -34,15 +32,22 @@ import java.util.Locale;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record AudioStreamMetadataDTO(
         @NotBlank(message = "Audio stream ID cannot be blank") String id,
+
         @NotBlank(message = "Audio stream URL cannot be blank") String url,
+
         String audioTrackId,
         String audioTrackName,
         AudioTrackType audioTrackType,
         @NotBlank(message = "Audio codec cannot be blank") String codec,
+
         @NotBlank(message = "Audio MIME type cannot be blank") String mimeType,
+
         @Min(value = 1, message = "Bandwidth must be at least 1") int bandwidth,
+
         @NotBlank(message = "Audio sampling rate cannot be blank") String audioSamplingRate,
+
         @Min(value = 1, message = "Audio channels must be at least 1") int audioChannels,
+
         String language,
         String languageName,
         String initRange,
@@ -228,9 +233,22 @@ public record AudioStreamMetadataDTO(
         }
 
         public AudioStreamMetadataDTO build() {
-            return new AudioStreamMetadataDTO(id, url, audioTrackId, audioTrackName, audioTrackType,
-                    codec, mimeType, bandwidth, audioSamplingRate, audioChannels, language, languageName,
-                    initRange, indexRange, format);
+            return new AudioStreamMetadataDTO(
+                    id,
+                    url,
+                    audioTrackId,
+                    audioTrackName,
+                    audioTrackType,
+                    codec,
+                    mimeType,
+                    bandwidth,
+                    audioSamplingRate,
+                    audioChannels,
+                    language,
+                    languageName,
+                    initRange,
+                    indexRange,
+                    format);
         }
     }
 
@@ -238,7 +256,7 @@ public record AudioStreamMetadataDTO(
     @Override
     public String toString() {
         return ("AudioStreamMetadataDTO{id='%s', codec='%s', bandwidth=%d, audioSamplingRate='%s', "
-                + "audioChannels=%d, language='%s', languageName='%s'}")
+                        + "audioChannels=%d, language='%s', languageName='%s'}")
                 .formatted(id, codec, bandwidth, audioSamplingRate, audioChannels, language, languageName);
     }
 }

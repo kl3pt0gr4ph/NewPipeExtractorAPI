@@ -1,12 +1,11 @@
 package org.example.api.cache;
 
+import java.time.Instant;
+import java.util.List;
 import org.schabi.newpipe.extractor.stream.AudioStream;
 import org.schabi.newpipe.extractor.stream.StreamInfo;
 import org.schabi.newpipe.extractor.stream.StreamType;
 import org.schabi.newpipe.extractor.stream.VideoStream;
-
-import java.time.Instant;
-import java.util.List;
 
 /**
  * Builders for the minimal {@link StreamInfo} shapes the cache tests need.
@@ -24,8 +23,8 @@ final class StreamFixtures {
     }
 
     static String signedUrl(String expireValue) {
-        return "https://rr3---sn-example.googlevideo.com/videoplayback"
-                + "?itag=140&expire=" + expireValue + "&ei=abc&source=youtube";
+        return "https://rr3---sn-example.googlevideo.com/videoplayback" + "?itag=140&expire=" + expireValue
+                + "&ei=abc&source=youtube";
     }
 
     static String unsignedUrl() {
@@ -60,9 +59,8 @@ final class StreamFixtures {
 
     /** A StreamInfo with no streams of any kind. */
     static StreamInfo empty() {
-        StreamInfo info = new StreamInfo(
-                0, WATCH_URL, WATCH_URL, StreamType.VIDEO_STREAM,
-                "dQw4w9WgXcQ", "Test video", 0);
+        StreamInfo info =
+                new StreamInfo(0, WATCH_URL, WATCH_URL, StreamType.VIDEO_STREAM, "dQw4w9WgXcQ", "Test video", 0);
         info.setDuration(212);
         info.setAudioStreams(List.of());
         info.setVideoOnlyStreams(List.of());
@@ -96,9 +94,7 @@ final class StreamFixtures {
         return info;
     }
 
-    static StreamInfo with(List<AudioStream> audio,
-                           List<VideoStream> videoOnly,
-                           List<VideoStream> muxed) {
+    static StreamInfo with(List<AudioStream> audio, List<VideoStream> videoOnly, List<VideoStream> muxed) {
         StreamInfo info = empty();
         info.setAudioStreams(audio);
         info.setVideoOnlyStreams(videoOnly);

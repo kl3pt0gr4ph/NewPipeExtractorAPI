@@ -1,13 +1,13 @@
 package org.example.api.config;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import org.example.api.downloader.DownloaderImpl;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.schabi.newpipe.extractor.NewPipe;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * NewPipe keeps its settings in static state, so these tests leave it initialised with
@@ -30,9 +30,12 @@ class NewPipeInitializerTest {
                 .run(context -> {
                     assertThat(context).hasNotFailed();
                     assertThat(NewPipe.getDownloader()).isSameAs(context.getBean(DownloaderImpl.class));
-                    assertThat(NewPipe.getPreferredLocalization().getLanguageCode()).isEqualTo("de");
-                    assertThat(NewPipe.getPreferredLocalization().getCountryCode()).isEqualTo("AT");
-                    assertThat(NewPipe.getPreferredContentCountry().getCountryCode()).isEqualTo("AT");
+                    assertThat(NewPipe.getPreferredLocalization().getLanguageCode())
+                            .isEqualTo("de");
+                    assertThat(NewPipe.getPreferredLocalization().getCountryCode())
+                            .isEqualTo("AT");
+                    assertThat(NewPipe.getPreferredContentCountry().getCountryCode())
+                            .isEqualTo("AT");
                 });
     }
 

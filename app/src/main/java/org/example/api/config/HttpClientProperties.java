@@ -2,12 +2,11 @@ package org.example.api.config;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import java.time.Duration;
 import org.hibernate.validator.constraints.time.DurationMin;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 import org.springframework.validation.annotation.Validated;
-
-import java.time.Duration;
 
 /**
  * The HTTP client NewPipeExtractor uses to reach YouTube.
@@ -23,10 +22,13 @@ import java.time.Duration;
 @Validated
 @ConfigurationProperties(prefix = "opentube.http")
 public record HttpClientProperties(
-        @DefaultValue("30s") @NotNull @DurationMin(millis = 1) Duration connectTimeout,
-        @DefaultValue("30s") @NotNull @DurationMin(millis = 1) Duration readTimeout,
-        @DefaultValue(HttpClientProperties.DEFAULT_USER_AGENT) @NotBlank String userAgent
-) {
+        @DefaultValue("30s") @NotNull @DurationMin(millis = 1)
+        Duration connectTimeout,
+
+        @DefaultValue("30s") @NotNull @DurationMin(millis = 1)
+        Duration readTimeout,
+
+        @DefaultValue(HttpClientProperties.DEFAULT_USER_AGENT) @NotBlank String userAgent) {
     /**
      * Matches NewPipeExtractor's own test downloader: the latest Firefox ESR. YouTube can
      * serve old browsers a different page layout, which NewPipeExtractor then can't parse,

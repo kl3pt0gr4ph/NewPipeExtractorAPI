@@ -1,6 +1,12 @@
 package org.example.api.dto.kiosk;
 
-import tools.jackson.databind.ObjectMapper;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+import java.util.Base64;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -11,14 +17,7 @@ import org.schabi.newpipe.extractor.Page;
 import org.schabi.newpipe.extractor.kiosk.KioskInfo;
 import org.schabi.newpipe.extractor.stream.StreamInfoItem;
 import org.schabi.newpipe.extractor.stream.StreamType;
-
-import java.util.Base64;
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Unit tests for KioskDTO.
@@ -29,8 +28,7 @@ class KioskDTOTest {
 
     private static final Image THUMBNAIL =
             new Image("https://i.ytimg.com/vi/x/thumb.jpg", 180, 320, ResolutionLevel.MEDIUM);
-    private static final Image AVATAR =
-            new Image("https://yt3.ggpht.com/avatar=s48", 48, 48, ResolutionLevel.LOW);
+    private static final Image AVATAR = new Image("https://yt3.ggpht.com/avatar=s48", 48, 48, ResolutionLevel.LOW);
 
     private ObjectMapper objectMapper;
 
@@ -70,9 +68,7 @@ class KioskDTOTest {
                 null,
                 "2 days ago",
                 "VIDEO_STREAM",
-                List.of(new KioskDTO.ImageDTO(
-                        "https://i.ytimg.com/vi/x/thumb.jpg", 320, 180, "MEDIUM"))
-        );
+                List.of(new KioskDTO.ImageDTO("https://i.ytimg.com/vi/x/thumb.jpg", 320, 180, "MEDIUM")));
     }
 
     // ── KioskDTO.from(KioskInfo) ────────────────────────────────────────
@@ -86,8 +82,7 @@ class KioskDTOTest {
         void mapsKioskInfoEndToEnd() {
             StreamInfoItem streamItem = stubStreamItem();
 
-            Page nextPage = new Page(
-                    "https://youtube.com/next", "pageId", List.of("id1"), null, "token".getBytes());
+            Page nextPage = new Page("https://youtube.com/next", "pageId", List.of("id1"), null, "token".getBytes());
 
             KioskInfo kioskInfo = mock(KioskInfo.class);
             when(kioskInfo.getServiceId()).thenReturn(0);
@@ -107,9 +102,7 @@ class KioskDTOTest {
                             "https://youtube.com/next",
                             "pageId",
                             List.of("id1"),
-                            Base64.getEncoder().encodeToString("token".getBytes())
-                    )
-            );
+                            Base64.getEncoder().encodeToString("token".getBytes())));
 
             assertThat(KioskDTO.from(kioskInfo)).isEqualTo(expected);
         }
@@ -139,8 +132,7 @@ class KioskDTOTest {
         @DisplayName("Maps uploader avatars alongside thumbnails")
         void mapsUploaderAvatars() {
             assertThat(KioskDTO.KioskStreamItemDTO.from(stubStreamItem()).uploaderAvatars())
-                    .containsExactly(new KioskDTO.ImageDTO(
-                            "https://yt3.ggpht.com/avatar=s48", 48, 48, "LOW"));
+                    .containsExactly(new KioskDTO.ImageDTO("https://yt3.ggpht.com/avatar=s48", 48, 48, "LOW"));
         }
 
         @Test
@@ -149,7 +141,8 @@ class KioskDTOTest {
             StreamInfoItem streamItem = stubStreamItem();
             when(streamItem.getUploaderAvatars()).thenReturn(List.of());
 
-            assertThat(KioskDTO.KioskStreamItemDTO.from(streamItem).uploaderAvatars()).isEmpty();
+            assertThat(KioskDTO.KioskStreamItemDTO.from(streamItem).uploaderAvatars())
+                    .isEmpty();
         }
 
         @Test
@@ -161,7 +154,8 @@ class KioskDTOTest {
             when(streamItem.getUploadDate()).thenReturn(null);
             when(streamItem.getStreamType()).thenReturn(StreamType.VIDEO_STREAM);
 
-            assertThat(KioskDTO.KioskStreamItemDTO.from(streamItem).uploadDate()).isNull();
+            assertThat(KioskDTO.KioskStreamItemDTO.from(streamItem).uploadDate())
+                    .isNull();
         }
 
         @Test
@@ -187,8 +181,7 @@ class KioskDTOTest {
         @DisplayName("Maps url, width, height and resolution level from an Image")
         void mapsFromImage() {
             assertThat(KioskDTO.ImageDTO.from(THUMBNAIL))
-                    .isEqualTo(new KioskDTO.ImageDTO(
-                            "https://i.ytimg.com/vi/x/thumb.jpg", 320, 180, "MEDIUM"));
+                    .isEqualTo(new KioskDTO.ImageDTO("https://i.ytimg.com/vi/x/thumb.jpg", 320, 180, "MEDIUM"));
         }
 
         @Test
@@ -221,14 +214,14 @@ class KioskDTOTest {
         @Test
         @DisplayName("Base64-encodes the body and leaves other fields untouched")
         void fromEncodesBody() {
-            Page page = new Page(
-                    "https://youtube.com/next", "pageId", List.of("id1"), null, "token".getBytes());
+            Page page = new Page("https://youtube.com/next", "pageId", List.of("id1"), null, "token".getBytes());
 
-            assertThat(KioskDTO.NextPageDTO.from(page)).isEqualTo(new KioskDTO.NextPageDTO(
-                    "https://youtube.com/next",
-                    "pageId",
-                    List.of("id1"),
-                    Base64.getEncoder().encodeToString("token".getBytes())));
+            assertThat(KioskDTO.NextPageDTO.from(page))
+                    .isEqualTo(new KioskDTO.NextPageDTO(
+                            "https://youtube.com/next",
+                            "pageId",
+                            List.of("id1"),
+                            Base64.getEncoder().encodeToString("token".getBytes())));
         }
 
         @Test
@@ -249,16 +242,17 @@ class KioskDTOTest {
         @Test
         @DisplayName("Serializes record accessor names as JSON property names")
         void serializesUsingAccessorNames() throws Exception {
-            KioskDTO dto = new KioskDTO(
-                    0, "trending", "Trending", "https://youtube.com/feed/trending", List.of(), null);
+            KioskDTO dto =
+                    new KioskDTO(0, "trending", "Trending", "https://youtube.com/feed/trending", List.of(), null);
 
             String json = objectMapper.writeValueAsString(dto);
 
-            assertThat(json).contains(
-                    "\"serviceId\":0",
-                    "\"id\":\"trending\"",
-                    "\"name\":\"Trending\"",
-                    "\"url\":\"https://youtube.com/feed/trending\"");
+            assertThat(json)
+                    .contains(
+                            "\"serviceId\":0",
+                            "\"id\":\"trending\"",
+                            "\"name\":\"Trending\"",
+                            "\"url\":\"https://youtube.com/feed/trending\"");
         }
 
         @Test
@@ -266,12 +260,13 @@ class KioskDTOTest {
         void serializesUploaderAvatars() throws Exception {
             String json = objectMapper.writeValueAsString(expectedStreamItemDto());
 
-            assertThat(json).contains(
-                    "\"uploaderAvatars\":[{",
-                    "\"url\":\"https://yt3.ggpht.com/avatar=s48\"",
-                    "\"width\":48",
-                    "\"height\":48",
-                    "\"estimatedResolutionLevel\":\"LOW\"");
+            assertThat(json)
+                    .contains(
+                            "\"uploaderAvatars\":[{",
+                            "\"url\":\"https://yt3.ggpht.com/avatar=s48\"",
+                            "\"width\":48",
+                            "\"height\":48",
+                            "\"estimatedResolutionLevel\":\"LOW\"");
         }
     }
 }

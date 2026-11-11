@@ -1,5 +1,6 @@
 package org.example.api.service;
 
+import java.util.List;
 import org.example.api.dto.CommentsDTO;
 import org.example.api.exception.ExtractionException;
 import org.example.api.exception.NewPipeExceptionMapper;
@@ -10,8 +11,6 @@ import org.schabi.newpipe.extractor.comments.CommentsInfoItem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-
-import java.util.List;
 
 @Service
 public class CommentService {
@@ -28,9 +27,10 @@ public class CommentService {
         }
     }
 
-    public ListExtractor.InfoItemsPage<CommentsInfoItem> getCommentsPage(String url, String pageUrl) throws ExtractionException {
+    public ListExtractor.InfoItemsPage<CommentsInfoItem> getCommentsPage(String url, String pageUrl)
+            throws ExtractionException {
         try {
-            //TODO optimize this. init page is fetched every time
+            // TODO optimize this. init page is fetched every time
             logger.debug("Extracting comments page for URL: {}", url);
             CommentsInfo info = CommentsInfo.getInfo(url);
             Page pageInstance = new Page(pageUrl);
@@ -54,14 +54,13 @@ public class CommentService {
                     CommentsDTO.RepliesDto replies = null;
                     if (item.getReplies() != null) {
                         replies = new CommentsDTO.RepliesDto(
-                                item.getReplies().getUrl(),
-                                item.getReplies().getId()
-                        );
+                                item.getReplies().getUrl(), item.getReplies().getId());
                     }
 
                     CommentsDTO.UploadDateDto uploadDate = null;
                     if (item.getUploadDate() != null) {
-                        uploadDate = new CommentsDTO.UploadDateDto(item.getUploadDate().isApproximation());
+                        uploadDate = new CommentsDTO.UploadDateDto(
+                                item.getUploadDate().isApproximation());
                     }
 
                     return new CommentsDTO.CommentItemDto(
@@ -86,8 +85,7 @@ public class CommentService {
                             item.getStreamPosition(),
                             item.getReplyCount(),
                             replies,
-                            item.isChannelOwner()
-                    );
+                            item.isChannelOwner());
                 })
                 .toList();
 
@@ -98,7 +96,6 @@ public class CommentService {
                 info.getOriginalUrl(),
                 info.getName(),
                 List.of(),
-                items
-        );
+                items);
     }
 }

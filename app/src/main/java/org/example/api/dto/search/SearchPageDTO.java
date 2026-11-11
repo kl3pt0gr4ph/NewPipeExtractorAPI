@@ -1,25 +1,22 @@
 package org.example.api.dto.search;
 
-import org.schabi.newpipe.extractor.ListExtractor;
-
 import java.util.List;
+import org.schabi.newpipe.extractor.ListExtractor;
 
 /**
  * Data Transfer Object for paginated search results.
  * Used when retrieving additional pages of search results.
  */
 public record SearchPageDTO(
-        List<SearchItemDTO> items,
-        SearchResultDTO.PageDto nextPage,
-        boolean hasNextPage,
-        int itemCount) {
+        List<SearchItemDTO> items, SearchResultDTO.PageDto nextPage, boolean hasNextPage, int itemCount) {
 
     public SearchPageDTO {
         items = items == null ? List.of() : List.copyOf(items);
     }
 
     public static SearchPageDTO from(ListExtractor.InfoItemsPage<?> page) {
-        List<SearchItemDTO> items = page.getItems().stream().map(SearchItemDTO::from).toList();
+        List<SearchItemDTO> items =
+                page.getItems().stream().map(SearchItemDTO::from).toList();
         SearchResultDTO.PageDto nextPage = buildNextPage(page.getNextPage());
         return new SearchPageDTO(items, nextPage, nextPage != null, items.size());
     }

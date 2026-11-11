@@ -1,5 +1,20 @@
 package org.example.api.service;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
+
+import java.io.IOException;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.List;
 import org.example.api.dto.CommentsDTO;
 import org.example.api.exception.ErrorCode;
 import org.example.api.exception.ExtractionException;
@@ -8,31 +23,14 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
-import org.schabi.newpipe.extractor.exceptions.ParsingException;
 import org.schabi.newpipe.extractor.Image;
 import org.schabi.newpipe.extractor.ListExtractor;
 import org.schabi.newpipe.extractor.Page;
 import org.schabi.newpipe.extractor.comments.CommentsInfo;
 import org.schabi.newpipe.extractor.comments.CommentsInfoItem;
+import org.schabi.newpipe.extractor.exceptions.ParsingException;
 import org.schabi.newpipe.extractor.localization.DateWrapper;
 import org.schabi.newpipe.extractor.stream.Description;
-
-import java.io.IOException;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
-import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.when;
 
 /**
  * Unit tests for CommentService.
@@ -71,11 +69,12 @@ class CommentServiceTest {
         @DisplayName("Translates failures, keeping the cause and its text out of the message")
         void translatesFailures() {
             try (MockedStatic<CommentsInfo> commentsInfoMock = mockStatic(CommentsInfo.class)) {
-                commentsInfoMock.when(() -> CommentsInfo.getInfo(TEST_URL))
+                commentsInfoMock
+                        .when(() -> CommentsInfo.getInfo(TEST_URL))
                         .thenThrow(new IOException("Connection reset"));
 
-                ExtractionException exception = assertThrows(ExtractionException.class,
-                        () -> commentService.getCommentsInfo(TEST_URL));
+                ExtractionException exception =
+                        assertThrows(ExtractionException.class, () -> commentService.getCommentsInfo(TEST_URL));
 
                 assertEquals(ErrorCode.UPSTREAM_UNREACHABLE, exception.getCode());
                 assertFalse(exception.getMessage().contains("Connection reset"));
@@ -96,16 +95,15 @@ class CommentServiceTest {
             String pageUrl = "https://www.youtube.com/comments?continuation=token";
             CommentsInfo mockInfo = mock(CommentsInfo.class);
             @SuppressWarnings("unchecked")
-            ListExtractor.InfoItemsPage<CommentsInfoItem> mockPage =
-                    mock(ListExtractor.InfoItemsPage.class);
+            ListExtractor.InfoItemsPage<CommentsInfoItem> mockPage = mock(ListExtractor.InfoItemsPage.class);
 
             try (MockedStatic<CommentsInfo> commentsInfoMock = mockStatic(CommentsInfo.class)) {
                 // Documents the current behaviour flagged by the TODO in the
                 // service: getInfo IS re-fetched for every page request.
                 commentsInfoMock.when(() -> CommentsInfo.getInfo(TEST_URL)).thenReturn(mockInfo);
-                commentsInfoMock.when(() -> CommentsInfo.getMoreItems(
-                                eq(mockInfo),
-                                argThat((Page p) -> pageUrl.equals(p.getUrl()))))
+                commentsInfoMock
+                        .when(() -> CommentsInfo.getMoreItems(
+                                eq(mockInfo), argThat((Page p) -> pageUrl.equals(p.getUrl()))))
                         .thenReturn(mockPage);
 
                 ListExtractor.InfoItemsPage<CommentsInfoItem> result =
@@ -119,11 +117,12 @@ class CommentServiceTest {
         @DisplayName("Translates failures, keeping the cause and its text out of the message")
         void translatesFailures() {
             try (MockedStatic<CommentsInfo> commentsInfoMock = mockStatic(CommentsInfo.class)) {
-                commentsInfoMock.when(() -> CommentsInfo.getInfo(TEST_URL))
+                commentsInfoMock
+                        .when(() -> CommentsInfo.getInfo(TEST_URL))
                         .thenThrow(new ParsingException("Page failure"));
 
-                ExtractionException exception = assertThrows(ExtractionException.class,
-                        () -> commentService.getCommentsPage(TEST_URL, "https://page.url"));
+                ExtractionException exception = assertThrows(
+                        ExtractionException.class, () -> commentService.getCommentsPage(TEST_URL, "https://page.url"));
 
                 assertEquals(ErrorCode.UPSTREAM_CHANGED, exception.getCode());
                 assertFalse(exception.getMessage().contains("Page failure"));
@@ -139,7 +138,8 @@ class CommentServiceTest {
     class MapCommentsToDtoTests {
 
         @Test
-        @DisplayName("Maps a fully-populated comment and a minimal comment (null replies/uploadDate) to the response DTO")
+        @DisplayName(
+                "Maps a fully-populated comment and a minimal comment (null replies/uploadDate) to the response DTO")
         void mapsFullAndMinimalComments() {
             // One fully-populated item exercises every mapped field including
             // the replies and uploadDate branches; one minimal item exercises
@@ -227,14 +227,14 @@ class CommentServiceTest {
                                     "https://youtube.com/@bob",
                                     false,
                                     null,
-                                    null,   // uploadDate branch: null in, null out
+                                    null, // uploadDate branch: null in, null out
                                     0,
                                     null,
                                     false,
                                     false,
                                     0,
                                     0,
-                                    null,   // replies branch: null in, null out
+                                    null, // replies branch: null in, null out
                                     false)));
 
             CommentsDTO.CommentsResponseDto actual = commentService.mapCommentsToDto(info);

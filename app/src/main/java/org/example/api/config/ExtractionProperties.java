@@ -17,5 +17,4 @@ import org.springframework.validation.annotation.Validated;
 @Validated
 @ConfigurationProperties(prefix = "opentube.extraction")
 public record ExtractionProperties(
-        @DefaultValue("2") @Min(1) @Max(5) int attempts
-) {}
+        @DefaultValue("2") @Min(1) @Max(5) int attempts) {}

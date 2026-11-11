@@ -1,5 +1,14 @@
 package org.example.api.config;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+import java.io.IOException;
+import java.net.SocketTimeoutException;
+import java.util.List;
+import java.util.concurrent.CompletionException;
+import java.util.stream.Stream;
 import org.example.api.dto.ErrorResponseDTO;
 import org.example.api.exception.ApiException;
 import org.example.api.exception.ErrorCode;
@@ -38,16 +47,6 @@ import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
-
-import java.io.IOException;
-import java.net.SocketTimeoutException;
-import java.util.List;
-import java.util.concurrent.CompletionException;
-import java.util.stream.Stream;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 @DisplayName("GlobalExceptionHandler")
 class GlobalExceptionHandlerTest {
@@ -107,8 +106,8 @@ class GlobalExceptionHandlerTest {
                 Arguments.of(new ParsingException(RAW), 502, "UPSTREAM_CHANGED"),
                 Arguments.of(new IOException(RAW), 502, "UPSTREAM_UNREACHABLE"),
                 Arguments.of(new SocketTimeoutException(RAW), 502, "UPSTREAM_UNREACHABLE"),
-                Arguments.of(new org.schabi.newpipe.extractor.exceptions.ExtractionException(RAW),
-                        500, "EXTRACTION_ERROR"));
+                Arguments.of(
+                        new org.schabi.newpipe.extractor.exceptions.ExtractionException(RAW), 500, "EXTRACTION_ERROR"));
     }
 
     @ParameterizedTest(name = "{0} -> {1} {2}")
@@ -134,8 +133,7 @@ class GlobalExceptionHandlerTest {
     @Test
     @DisplayName("A restriction wins over the generic ParsingException wrapped around it")
     void mostSpecificExceptionInChainWins() {
-        Throwable thrown = new ParsingException("Could not get stream info",
-                new AgeRestrictedContentException(RAW));
+        Throwable thrown = new ParsingException("Could not get stream info", new AgeRestrictedContentException(RAW));
 
         assertError(handleThrown(thrown), 403, "AGE_RESTRICTED");
     }
@@ -164,7 +162,8 @@ class GlobalExceptionHandlerTest {
         ValidationException own = new ValidationException("tab", "this channel has no 'x' tab");
 
         assertThat(NewPipeExceptionMapper.translate(own)).isSameAs(own);
-        assertThat(NewPipeExceptionMapper.translate(new CompletionException(own))).isSameAs(own);
+        assertThat(NewPipeExceptionMapper.translate(new CompletionException(own)))
+                .isSameAs(own);
     }
 
     @Test
@@ -215,8 +214,8 @@ class GlobalExceptionHandlerTest {
     @Test
     @DisplayName("NoStreamsAvailableException is 503 NO_STREAMS_AVAILABLE")
     void noStreamsAvailable() {
-        ResponseEntity<ErrorResponseDTO> response = handler.handleApiException(
-                new NoStreamsAvailableException("No streams available"), request);
+        ResponseEntity<ErrorResponseDTO> response =
+                handler.handleApiException(new NoStreamsAvailableException("No streams available"), request);
 
         assertError(response, 503, "NO_STREAMS_AVAILABLE");
         assertThat(response.getBody().message()).isEqualTo("No streams available");
@@ -228,14 +227,12 @@ class GlobalExceptionHandlerTest {
     @DisplayName("detail")
     class DetailTests {
 
-        private final GlobalExceptionHandler withDetail =
-                new GlobalExceptionHandler(new ApiErrorProperties(true));
+        private final GlobalExceptionHandler withDetail = new GlobalExceptionHandler(new ApiErrorProperties(true));
 
         @Test
         @DisplayName("Holds the underlying exception chain when include-detail is on")
         void includesCauseChainWhenEnabled() {
-            Throwable thrown = new ParsingException("Could not get stream info",
-                    new PrivateContentException(RAW));
+            Throwable thrown = new ParsingException("Could not get stream info", new PrivateContentException(RAW));
 
             ErrorResponseDTO body = handleThrown(withDetail, thrown).getBody();
 
@@ -248,8 +245,9 @@ class GlobalExceptionHandlerTest {
         @Test
         @DisplayName("Holds the exception for unexpected errors when include-detail is on")
         void includesUnexpectedExceptionWhenEnabled() {
-            ErrorResponseDTO body = withDetail.handleGenericException(
-                    new IllegalStateException(RAW), request).getBody();
+            ErrorResponseDTO body = withDetail
+                    .handleGenericException(new IllegalStateException(RAW), request)
+                    .getBody();
 
             assertThat(body.message()).isEqualTo("An unexpected error occurred");
             assertThat(body.detail()).isEqualTo("IllegalStateException: " + RAW);
@@ -258,7 +256,8 @@ class GlobalExceptionHandlerTest {
         @Test
         @DisplayName("Is absent when include-detail is off (the default)")
         void absentByDefault() {
-            ErrorResponseDTO body = handleThrown(new PrivateContentException(RAW)).getBody();
+            ErrorResponseDTO body =
+                    handleThrown(new PrivateContentException(RAW)).getBody();
 
             assertThat(body.detail()).isNull();
         }
@@ -266,8 +265,9 @@ class GlobalExceptionHandlerTest {
         @Test
         @DisplayName("Is absent when the error has no underlying exception")
         void absentWithoutCause() {
-            ErrorResponseDTO body = withDetail.handleApiException(
-                    new ValidationException("id", "must not be empty"), request).getBody();
+            ErrorResponseDTO body = withDetail
+                    .handleApiException(new ValidationException("id", "must not be empty"), request)
+                    .getBody();
 
             assertThat(body.detail()).isNull();
         }
@@ -293,7 +293,10 @@ class GlobalExceptionHandlerTest {
         @DisplayName("A parameter of the wrong type is 400 VALIDATION_ERROR naming the parameter and type")
         void typeMismatch() {
             MethodArgumentTypeMismatchException ex = new MethodArgumentTypeMismatchException(
-                    "abc", Integer.class, "count", mock(MethodParameter.class),
+                    "abc",
+                    Integer.class,
+                    "count",
+                    mock(MethodParameter.class),
                     new NumberFormatException("For input string: \"abc\""));
 
             ResponseEntity<ErrorResponseDTO> response = handler.handleTypeMismatch(ex, request);
@@ -355,8 +358,7 @@ class GlobalExceptionHandlerTest {
         void pathKeepsQueryString() {
             when(request.getDescription(false)).thenReturn("uri=/api/v1/search?q=test&page=2");
 
-            ResponseEntity<ErrorResponseDTO> response = handler.handleGenericException(
-                    new RuntimeException(), request);
+            ResponseEntity<ErrorResponseDTO> response = handler.handleGenericException(new RuntimeException(), request);
 
             assertThat(response.getBody().path()).isEqualTo("/api/v1/search?q=test&page=2");
         }

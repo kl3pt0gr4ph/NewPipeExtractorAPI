@@ -1,5 +1,14 @@
 package org.example.api.cache;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -7,16 +16,6 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.schabi.newpipe.extractor.stream.AudioStream;
 import org.schabi.newpipe.extractor.stream.StreamInfo;
-
-import java.time.Instant;
-import java.util.List;
-import java.util.Optional;
-import java.util.stream.Stream;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 class StreamExpiryTest {
 
@@ -28,11 +27,8 @@ class StreamExpiryTest {
                 Arguments.of(
                         "single signed stream",
                         StreamFixtures.with(
-                                List.of(StreamFixtures.audio(StreamFixtures.signedUrl(EARLY))),
-                                List.of(),
-                                List.of()),
+                                List.of(StreamFixtures.audio(StreamFixtures.signedUrl(EARLY))), List.of(), List.of()),
                         Optional.of(EARLY)),
-
                 Arguments.of(
                         "several streams with different expiries -> earliest wins",
                         StreamFixtures.with(
@@ -40,7 +36,6 @@ class StreamExpiryTest {
                                 List.of(StreamFixtures.videoOnly(StreamFixtures.signedUrl(EARLY))),
                                 List.of(StreamFixtures.muxed(StreamFixtures.signedUrl(LATE)))),
                         Optional.of(EARLY)),
-
                 Arguments.of(
                         "expiry only on audio, video unsigned -> still found",
                         StreamFixtures.with(
@@ -48,17 +43,11 @@ class StreamExpiryTest {
                                 List.of(StreamFixtures.videoOnly(StreamFixtures.unsignedUrl())),
                                 List.of()),
                         Optional.of(EARLY)),
-
                 Arguments.of(
                         "no expire parameter anywhere -> empty",
                         StreamFixtures.healthyWithoutExpiry(),
                         Optional.empty()),
-
-                Arguments.of(
-                        "no streams at all -> empty",
-                        StreamFixtures.empty(),
-                        Optional.empty())
-        );
+                Arguments.of("no streams at all -> empty", StreamFixtures.empty(), Optional.empty()));
     }
 
     @ParameterizedTest(name = "{0}")
@@ -75,9 +64,7 @@ class StreamExpiryTest {
         when(nullContent.getContent()).thenReturn(null);
 
         StreamInfo info = StreamFixtures.with(
-                List.of(nullContent, StreamFixtures.audio(StreamFixtures.signedUrl(EARLY))),
-                List.of(),
-                List.of());
+                List.of(nullContent, StreamFixtures.audio(StreamFixtures.signedUrl(EARLY))), List.of(), List.of());
 
         assertThat(StreamExpiry.earliest(info)).contains(EARLY);
     }
@@ -88,9 +75,7 @@ class StreamExpiryTest {
         String tooBig = "9".repeat(25);
 
         StreamInfo info = StreamFixtures.with(
-                List.of(StreamFixtures.audio(StreamFixtures.signedUrl(tooBig))),
-                List.of(),
-                List.of());
+                List.of(StreamFixtures.audio(StreamFixtures.signedUrl(tooBig))), List.of(), List.of());
 
         assertThatCode(() -> StreamExpiry.earliest(info)).doesNotThrowAnyException();
         assertThat(StreamExpiry.earliest(info)).isEmpty();

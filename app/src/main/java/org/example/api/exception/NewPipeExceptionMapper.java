@@ -1,5 +1,10 @@
 package org.example.api.exception;
 
+import static java.util.Map.entry;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
 import org.schabi.newpipe.extractor.exceptions.AccountTerminatedException;
 import org.schabi.newpipe.extractor.exceptions.AgeRestrictedContentException;
 import org.schabi.newpipe.extractor.exceptions.ContentNotAvailableException;
@@ -12,12 +17,6 @@ import org.schabi.newpipe.extractor.exceptions.SignInConfirmNotBotException;
 import org.schabi.newpipe.extractor.exceptions.SoundCloudGoPlusContentException;
 import org.schabi.newpipe.extractor.exceptions.UnsupportedContentInCountryException;
 import org.schabi.newpipe.extractor.exceptions.YoutubeMusicPremiumContentException;
-
-import java.io.IOException;
-import java.util.List;
-import java.util.Map;
-
-import static java.util.Map.entry;
 
 /**
  * Turns NewPipeExtractor's exceptions into {@link ApiException}s. This is the one place
@@ -108,8 +107,7 @@ public final class NewPipeExceptionMapper {
         return new ApiException(ErrorCode.INTERNAL_ERROR, thrown);
     }
 
-    private static ErrorCode match(List<Map.Entry<Class<? extends Throwable>, ErrorCode>> table,
-                                   Throwable t) {
+    private static ErrorCode match(List<Map.Entry<Class<? extends Throwable>, ErrorCode>> table, Throwable t) {
         for (Map.Entry<Class<? extends Throwable>, ErrorCode> rule : table) {
             if (rule.getKey().isInstance(t)) {
                 return rule.getValue();

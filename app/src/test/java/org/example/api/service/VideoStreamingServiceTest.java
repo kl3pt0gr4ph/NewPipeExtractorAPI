@@ -1,5 +1,18 @@
 package org.example.api.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.when;
+
+import java.io.IOException;
+import java.time.Duration;
+import java.util.Collections;
+import java.util.List;
+import java.util.function.Consumer;
+import java.util.stream.Stream;
 import org.example.api.cache.StreamInfoCache;
 import org.example.api.cache.StreamInfoCacheProperties;
 import org.example.api.config.ExtractionProperties;
@@ -26,20 +39,6 @@ import org.schabi.newpipe.extractor.stream.StreamSegment;
 import org.schabi.newpipe.extractor.stream.SubtitlesStream;
 import org.schabi.newpipe.extractor.stream.VideoStream;
 
-import java.io.IOException;
-import java.time.Duration;
-import java.util.Collections;
-import java.util.List;
-import java.util.function.Consumer;
-import java.util.stream.Stream;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.when;
-
 /**
  * Unit tests for VideoStreamingService.
  */
@@ -56,17 +55,12 @@ class VideoStreamingServiceTest {
     }
 
     private static VideoStreamingService serviceWithAttempts(int attempts) {
-        return new VideoStreamingService(
-                new StreamInfoCache(cacheProperties()), new ExtractionProperties(attempts));
+        return new VideoStreamingService(new StreamInfoCache(cacheProperties()), new ExtractionProperties(attempts));
     }
 
     private static StreamInfoCacheProperties cacheProperties() {
         return new StreamInfoCacheProperties(
-                300,
-                Duration.ofMinutes(10),
-                Duration.ofMinutes(5),
-                Duration.ofSeconds(30),
-                Duration.ofHours(6));
+                300, Duration.ofMinutes(10), Duration.ofMinutes(5), Duration.ofSeconds(30), Duration.ofHours(6));
     }
 
     /** A call to one of the service's accessor methods. */
@@ -81,9 +75,7 @@ class VideoStreamingServiceTest {
      * StreamInfo mock with explicit stream lists and duration — the three
      * inputs to the retry decision.
      */
-    private static StreamInfo streamInfo(List<VideoStream> videoOnly,
-                                         List<AudioStream> audio,
-                                         long duration) {
+    private static StreamInfo streamInfo(List<VideoStream> videoOnly, List<AudioStream> audio, long duration) {
         StreamInfo info = mock(StreamInfo.class);
         when(info.getVideoOnlyStreams()).thenReturn(videoOnly);
         when(info.getAudioStreams()).thenReturn(audio);
@@ -145,8 +137,7 @@ class VideoStreamingServiceTest {
             StreamInfo secondIncomplete = incompleteStreamInfo();
 
             try (MockedStatic<StreamInfo> extractor = mockStatic(StreamInfo.class)) {
-                extractor.when(() -> StreamInfo.getInfo(TEST_URL))
-                        .thenReturn(firstIncomplete, secondIncomplete);
+                extractor.when(() -> StreamInfo.getInfo(TEST_URL)).thenReturn(firstIncomplete, secondIncomplete);
 
                 StreamInfo result = service.getStreamInfo(TEST_URL);
 
@@ -238,46 +229,62 @@ class VideoStreamingServiceTest {
         List<InfoItem> related = List.of(mock(InfoItem.class), mock(InfoItem.class));
 
         return Stream.of(
-                accessor("getAudioStreams",
+                accessor(
+                        "getAudioStreams",
                         info -> when(info.getAudioStreams()).thenReturn(audio),
-                        s -> s.getAudioStreams(TEST_URL), audio),
-                accessor("getVideoStreams",
+                        s -> s.getAudioStreams(TEST_URL),
+                        audio),
+                accessor(
+                        "getVideoStreams",
                         info -> when(info.getVideoOnlyStreams()).thenReturn(video),
-                        s -> s.getVideoStreams(TEST_URL), video),
-                accessor("getDashMpdUrl",
+                        s -> s.getVideoStreams(TEST_URL),
+                        video),
+                accessor(
+                        "getDashMpdUrl",
                         info -> when(info.getDashMpdUrl()).thenReturn(dashUrl),
-                        s -> s.getDashMpdUrl(TEST_URL), dashUrl),
-                accessor("getStreamThumbnails",
+                        s -> s.getDashMpdUrl(TEST_URL),
+                        dashUrl),
+                accessor(
+                        "getStreamThumbnails",
                         info -> when(info.getThumbnails()).thenReturn(thumbnails),
-                        s -> s.getStreamThumbnails(TEST_URL), thumbnails),
-                accessor("getSubtitleStreams",
+                        s -> s.getStreamThumbnails(TEST_URL),
+                        thumbnails),
+                accessor(
+                        "getSubtitleStreams",
                         info -> when(info.getSubtitles()).thenReturn(subtitles),
-                        s -> s.getSubtitleStreams(TEST_URL), subtitles),
-                accessor("getStreamSegments",
+                        s -> s.getSubtitleStreams(TEST_URL),
+                        subtitles),
+                accessor(
+                        "getStreamSegments",
                         info -> when(info.getStreamSegments()).thenReturn(segments),
-                        s -> s.getStreamSegments(TEST_URL), segments),
-                accessor("getPreviewFrames",
+                        s -> s.getStreamSegments(TEST_URL),
+                        segments),
+                accessor(
+                        "getPreviewFrames",
                         info -> when(info.getPreviewFrames()).thenReturn(frames),
-                        s -> s.getPreviewFrames(TEST_URL), frames),
-                accessor("getStreamDescription",
+                        s -> s.getPreviewFrames(TEST_URL),
+                        frames),
+                accessor(
+                        "getStreamDescription",
                         info -> when(info.getDescription()).thenReturn(description),
-                        s -> s.getStreamDescription(TEST_URL), description),
-                accessor("getRelatedStreams",
+                        s -> s.getStreamDescription(TEST_URL),
+                        description),
+                accessor(
+                        "getRelatedStreams",
                         info -> when(info.getRelatedItems()).thenReturn(related),
-                        s -> s.getRelatedStreams(TEST_URL), related)
-        );
+                        s -> s.getRelatedStreams(TEST_URL),
+                        related));
     }
 
-    private static Arguments accessor(String name, Consumer<StreamInfo> stub,
-                                      ServiceCall call, Object expected) {
+    private static Arguments accessor(String name, Consumer<StreamInfo> stub, ServiceCall call, Object expected) {
         return Arguments.of(name, stub, call, expected);
     }
 
     @ParameterizedTest(name = "{0} returns the value from StreamInfo")
     @MethodSource("accessors")
     @DisplayName("Accessors delegate to the corresponding StreamInfo getter")
-    void accessor_delegatesToStreamInfo(String name, Consumer<StreamInfo> stub,
-                                        ServiceCall call, Object expected) throws Exception {
+    void accessor_delegatesToStreamInfo(String name, Consumer<StreamInfo> stub, ServiceCall call, Object expected)
+            throws Exception {
         // Complete info so the retry path stays inert; the stub then wires
         // the sentinel into the getter this accessor is supposed to read.
         StreamInfo info = completeStreamInfo();
@@ -293,8 +300,8 @@ class VideoStreamingServiceTest {
     @ParameterizedTest(name = "{0} translates failures")
     @MethodSource("accessors")
     @DisplayName("Accessors translate extraction failures")
-    void accessor_translatesExtractionFailure(String name, Consumer<StreamInfo> stub,
-                                              ServiceCall call, Object expected) {
+    void accessor_translatesExtractionFailure(
+            String name, Consumer<StreamInfo> stub, ServiceCall call, Object expected) {
         ParsingException thrown = new ParsingException("Could not get video id");
 
         try (MockedStatic<StreamInfo> extractor = mockStatic(StreamInfo.class)) {
@@ -353,12 +360,12 @@ class VideoStreamingServiceTest {
             StreamInfo info = completeStreamInfo();
 
             try (MockedStatic<StreamInfo> extractor = mockStatic(StreamInfo.class)) {
-                extractor.when(() -> StreamInfo.getInfo(TEST_URL))
+                extractor
+                        .when(() -> StreamInfo.getInfo(TEST_URL))
                         .thenThrow(new IOException("transient"))
                         .thenReturn(info);
 
-                assertThatThrownBy(() -> service.getStreamInfo(TEST_URL))
-                        .isInstanceOf(ExtractionException.class);
+                assertThatThrownBy(() -> service.getStreamInfo(TEST_URL)).isInstanceOf(ExtractionException.class);
 
                 assertThat(service.getStreamInfo(TEST_URL)).isSameAs(info);
                 extractor.verify(() -> StreamInfo.getInfo(TEST_URL), times(2));

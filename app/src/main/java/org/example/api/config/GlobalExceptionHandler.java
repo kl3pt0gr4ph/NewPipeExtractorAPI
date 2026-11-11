@@ -3,6 +3,7 @@ package org.example.api.config;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import java.util.Set;
 import org.example.api.dto.ErrorResponseDTO;
 import org.example.api.exception.ApiException;
 import org.example.api.exception.ErrorCode;
@@ -21,8 +22,6 @@ import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
-
-import java.util.Set;
 
 /**
  * Turns every exception that leaves a controller into an {@link ErrorResponseDTO}.
@@ -49,18 +48,15 @@ public class GlobalExceptionHandler {
 
     private static final String ERROR_JSON = "application/json";
 
-    static final String BAD_REQUEST_DESCRIPTION =
-            "`MISSING_PARAMETER`: a required parameter is absent. "
-                    + "`VALIDATION_ERROR`: a parameter is empty, malformed, of the wrong type, "
-                    + "or names something the target doesn't have (e.g. a channel tab)";
+    static final String BAD_REQUEST_DESCRIPTION = "`MISSING_PARAMETER`: a required parameter is absent. "
+            + "`VALIDATION_ERROR`: a parameter is empty, malformed, of the wrong type, "
+            + "or names something the target doesn't have (e.g. a channel tab)";
     static final String FORBIDDEN_DESCRIPTION =
             "The content exists but can't be played: `CONTENT_PRIVATE`, `AGE_RESTRICTED` "
                     + "(needs a signed-in account) or `PAID_CONTENT` (members, YouTube Music Premium)";
-    static final String NOT_FOUND_DESCRIPTION =
-            "`CONTENT_UNAVAILABLE`: the content was removed or never existed. "
-                    + "`NOT_FOUND`: no such endpoint or kiosk";
-    static final String GONE_DESCRIPTION =
-            "`ACCOUNT_TERMINATED`: the account the content belonged to was terminated";
+    static final String NOT_FOUND_DESCRIPTION = "`CONTENT_UNAVAILABLE`: the content was removed or never existed. "
+            + "`NOT_FOUND`: no such endpoint or kiosk";
+    static final String GONE_DESCRIPTION = "`ACCOUNT_TERMINATED`: the account the content belonged to was terminated";
     static final String UNAVAILABLE_FOR_LEGAL_REASONS_DESCRIPTION =
             "`GEO_RESTRICTED`: not available in the country the server is in";
     static final String SERVER_ERROR_DESCRIPTION =
@@ -88,19 +84,33 @@ public class GlobalExceptionHandler {
     /**
      * Every error the API raises on purpose: validation, extraction, no streams.
      */
-    @ApiResponse(responseCode = "400", description = BAD_REQUEST_DESCRIPTION,
+    @ApiResponse(
+            responseCode = "400",
+            description = BAD_REQUEST_DESCRIPTION,
             content = @Content(mediaType = ERROR_JSON, schema = @Schema(implementation = ErrorResponseDTO.class)))
-    @ApiResponse(responseCode = "403", description = FORBIDDEN_DESCRIPTION,
+    @ApiResponse(
+            responseCode = "403",
+            description = FORBIDDEN_DESCRIPTION,
             content = @Content(mediaType = ERROR_JSON, schema = @Schema(implementation = ErrorResponseDTO.class)))
-    @ApiResponse(responseCode = "404", description = NOT_FOUND_DESCRIPTION,
+    @ApiResponse(
+            responseCode = "404",
+            description = NOT_FOUND_DESCRIPTION,
             content = @Content(mediaType = ERROR_JSON, schema = @Schema(implementation = ErrorResponseDTO.class)))
-    @ApiResponse(responseCode = "410", description = GONE_DESCRIPTION,
+    @ApiResponse(
+            responseCode = "410",
+            description = GONE_DESCRIPTION,
             content = @Content(mediaType = ERROR_JSON, schema = @Schema(implementation = ErrorResponseDTO.class)))
-    @ApiResponse(responseCode = "451", description = UNAVAILABLE_FOR_LEGAL_REASONS_DESCRIPTION,
+    @ApiResponse(
+            responseCode = "451",
+            description = UNAVAILABLE_FOR_LEGAL_REASONS_DESCRIPTION,
             content = @Content(mediaType = ERROR_JSON, schema = @Schema(implementation = ErrorResponseDTO.class)))
-    @ApiResponse(responseCode = "502", description = BAD_GATEWAY_DESCRIPTION,
+    @ApiResponse(
+            responseCode = "502",
+            description = BAD_GATEWAY_DESCRIPTION,
             content = @Content(mediaType = ERROR_JSON, schema = @Schema(implementation = ErrorResponseDTO.class)))
-    @ApiResponse(responseCode = "503", description = SERVICE_UNAVAILABLE_DESCRIPTION,
+    @ApiResponse(
+            responseCode = "503",
+            description = SERVICE_UNAVAILABLE_DESCRIPTION,
             content = @Content(mediaType = ERROR_JSON, schema = @Schema(implementation = ErrorResponseDTO.class)))
     @ExceptionHandler(ApiException.class)
     public ResponseEntity<ErrorResponseDTO> handleApiException(ApiException ex, WebRequest request) {
@@ -113,9 +123,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MissingServletRequestParameterException.class)
     public ResponseEntity<ErrorResponseDTO> handleMissingParameter(
             MissingServletRequestParameterException ex, WebRequest request) {
-        return respond(ErrorCode.MISSING_PARAMETER,
+        return respond(
+                ErrorCode.MISSING_PARAMETER,
                 "Required parameter '%s' is missing".formatted(ex.getParameterName()),
-                null, null, request);
+                null,
+                null,
+                request);
     }
 
     /**
@@ -148,8 +161,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     public ResponseEntity<ErrorResponseDTO> handleMethodNotSupported(
             HttpRequestMethodNotSupportedException ex, WebRequest request) {
-        ResponseEntity<ErrorResponseDTO> response = respond(ErrorCode.METHOD_NOT_ALLOWED,
-                "Method '%s' isn't supported at this path".formatted(ex.getMethod()), null, null, request);
+        ResponseEntity<ErrorResponseDTO> response = respond(
+                ErrorCode.METHOD_NOT_ALLOWED,
+                "Method '%s' isn't supported at this path".formatted(ex.getMethod()),
+                null,
+                null,
+                request);
 
         Set<HttpMethod> allowed = ex.getSupportedHttpMethods();
         if (allowed == null || allowed.isEmpty()) {
@@ -163,7 +180,9 @@ public class GlobalExceptionHandler {
     /**
      * Anything else is a bug. The client gets a generic message; the stack trace goes to the log.
      */
-    @ApiResponse(responseCode = "500", description = SERVER_ERROR_DESCRIPTION,
+    @ApiResponse(
+            responseCode = "500",
+            description = SERVER_ERROR_DESCRIPTION,
             content = @Content(mediaType = ERROR_JSON, schema = @Schema(implementation = ErrorResponseDTO.class)))
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponseDTO> handleGenericException(Exception ex, WebRequest request) {
@@ -179,16 +198,16 @@ public class GlobalExceptionHandler {
      * @param cause   the underlying exception, for the log line and {@code detail}; may be {@code null}
      * @param thrown  what to print the stack trace of when the code is unexpected; may be {@code null}
      */
-    private ResponseEntity<ErrorResponseDTO> respond(ErrorCode code, String message, Throwable cause,
-                                                     Throwable thrown, WebRequest request) {
+    private ResponseEntity<ErrorResponseDTO> respond(
+            ErrorCode code, String message, Throwable cause, Throwable thrown, WebRequest request) {
         HttpStatus status = HttpStatus.valueOf(code.httpStatus());
         String path = path(request);
         String safeMessage = message != null ? message : code.defaultMessage();
 
         log(code, status, path, safeMessage, cause, thrown);
 
-        ErrorResponseDTO error = ErrorResponseDTO.of(
-                status.value(), status.getReasonPhrase(), safeMessage, code.name(), path);
+        ErrorResponseDTO error =
+                ErrorResponseDTO.of(status.value(), status.getReasonPhrase(), safeMessage, code.name(), path);
         if (includeDetail && cause != null) {
             error = error.withDetail(describe(cause));
         }
@@ -200,8 +219,8 @@ public class GlobalExceptionHandler {
      * failures at {@code WARN}; client errors and unplayable content, which are routine,
      * at {@code INFO}. The underlying message is logged, never sent.
      */
-    private void log(ErrorCode code, HttpStatus status, String path, String message,
-                     Throwable cause, Throwable thrown) {
+    private void log(
+            ErrorCode code, HttpStatus status, String path, String message, Throwable cause, Throwable thrown) {
         String reason = cause != null ? describe(cause) : message;
         if (code.unexpected()) {
             logger.error("{} {} on {}: {}", status.value(), code, path, reason, thrown);

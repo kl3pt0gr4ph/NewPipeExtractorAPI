@@ -1,5 +1,16 @@
 package org.example.api.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import java.io.StringReader;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
+import javax.xml.parsers.DocumentBuilderFactory;
 import org.example.api.dto.dash.AudioStreamMetadataDTO;
 import org.example.api.dto.dash.DashManifestConfigDTO;
 import org.example.api.dto.dash.SubtitleMetadataDTO;
@@ -18,18 +29,6 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
-
-import javax.xml.parsers.DocumentBuilderFactory;
-import java.io.StringReader;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Supplier;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-import java.util.stream.Stream;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Unit tests for DashManifestGeneratorService.
@@ -109,9 +108,10 @@ class DashManifestGeneratorServiceTest {
      * the *Builder helpers, changes what it needs, and calls build().
      */
 
-    private static DashManifestConfigDTO.Builder configBuilder(List<VideoStreamMetadataDTO> video,
-                                                               List<AudioStreamMetadataDTO> audio,
-                                                               List<SubtitleMetadataDTO> subtitles) {
+    private static DashManifestConfigDTO.Builder configBuilder(
+            List<VideoStreamMetadataDTO> video,
+            List<AudioStreamMetadataDTO> audio,
+            List<SubtitleMetadataDTO> subtitles) {
         return DashManifestConfigDTO.builder()
                 .type("static")
                 .mediaPresentationDuration("PT2M")
@@ -123,9 +123,10 @@ class DashManifestGeneratorServiceTest {
                 .subtitleStreams(subtitles);
     }
 
-    private static DashManifestConfigDTO configWith(List<VideoStreamMetadataDTO> video,
-                                                    List<AudioStreamMetadataDTO> audio,
-                                                    List<SubtitleMetadataDTO> subtitles) {
+    private static DashManifestConfigDTO configWith(
+            List<VideoStreamMetadataDTO> video,
+            List<AudioStreamMetadataDTO> audio,
+            List<SubtitleMetadataDTO> subtitles) {
         return configBuilder(video, audio, subtitles).build();
     }
 
@@ -173,8 +174,8 @@ class DashManifestGeneratorServiceTest {
         return videoBuilder(id, width, height, bandwidth).build();
     }
 
-    private static VideoStreamMetadataDTO createVideoStream(String id, String mimeType, String codec,
-                                                            int width, int height, int bandwidth) {
+    private static VideoStreamMetadataDTO createVideoStream(
+            String id, String mimeType, String codec, int width, int height, int bandwidth) {
         return videoBuilder(id, mimeType, codec, width, height, bandwidth).build();
     }
 
@@ -183,8 +184,8 @@ class DashManifestGeneratorServiceTest {
     }
 
     /** Playable by default: byte ranges are always set, as the filter guarantees. */
-    private static VideoStreamMetadataDTO.Builder videoBuilder(String id, String mimeType, String codec,
-                                                               int width, int height, int bandwidth) {
+    private static VideoStreamMetadataDTO.Builder videoBuilder(
+            String id, String mimeType, String codec, int width, int height, int bandwidth) {
         return VideoStreamMetadataDTO.builder()
                 .id(id)
                 .url("https://example.com/" + id)
@@ -202,8 +203,8 @@ class DashManifestGeneratorServiceTest {
         return audioBuilder(id, language, bandwidth).build();
     }
 
-    private static AudioStreamMetadataDTO createAudioStream(String id, String language, String mimeType,
-                                                            String codec, int bandwidth) {
+    private static AudioStreamMetadataDTO createAudioStream(
+            String id, String language, String mimeType, String codec, int bandwidth) {
         return audioBuilder(id, language, mimeType, codec, bandwidth).build();
     }
 
@@ -212,8 +213,8 @@ class DashManifestGeneratorServiceTest {
     }
 
     /** Playable by default: byte ranges are always set, as the filter guarantees. */
-    private static AudioStreamMetadataDTO.Builder audioBuilder(String id, String language, String mimeType,
-                                                               String codec, int bandwidth) {
+    private static AudioStreamMetadataDTO.Builder audioBuilder(
+            String id, String language, String mimeType, String codec, int bandwidth) {
         return AudioStreamMetadataDTO.builder()
                 .id(id)
                 .url("https://example.com/" + id)
@@ -229,8 +230,8 @@ class DashManifestGeneratorServiceTest {
     }
 
     /** Builds an audio stream that is part of a YouTube multi-track video. */
-    private static AudioStreamMetadataDTO inTrack(AudioStreamMetadataDTO.Builder audio, String trackId,
-                                                  AudioTrackType type, String trackName) {
+    private static AudioStreamMetadataDTO inTrack(
+            AudioStreamMetadataDTO.Builder audio, String trackId, AudioTrackType type, String trackName) {
         return audio.audioTrackId(trackId)
                 .audioTrackType(type)
                 .audioTrackName(trackName)
@@ -258,10 +259,10 @@ class DashManifestGeneratorServiceTest {
         // Null stream lists aren't listed: DashManifestConfigDTO turns them into empty lists.
         return Stream.of(
                 Arguments.of("null config", (Supplier<DashManifestConfigDTO>) () -> null),
-                Arguments.of("zero duration",
-                        (Supplier<DashManifestConfigDTO>) () -> minimalConfigBuilder().durationSeconds(0).build()),
-                Arguments.of("negative duration",
-                        (Supplier<DashManifestConfigDTO>) () -> minimalConfigBuilder().durationSeconds(-10).build()));
+                Arguments.of("zero duration", (Supplier<DashManifestConfigDTO>)
+                        () -> minimalConfigBuilder().durationSeconds(0).build()),
+                Arguments.of("negative duration", (Supplier<DashManifestConfigDTO>)
+                        () -> minimalConfigBuilder().durationSeconds(-10).build()));
     }
 
     @ParameterizedTest(name = "Rejects {0}")
@@ -276,34 +277,44 @@ class DashManifestGeneratorServiceTest {
         String noAdaptive = "at least one video and one audio";
         String missingField = "missing a required field";
         return Stream.of(
-                Arguments.of("no video streams",
-                        (Supplier<DashManifestConfigDTO>) () ->
-                                configWith(List.of(), List.of(defaultAudio()), List.of()),
+                Arguments.of(
+                        "no video streams",
+                        (Supplier<DashManifestConfigDTO>)
+                                () -> configWith(List.of(), List.of(defaultAudio()), List.of()),
                         noAdaptive),
-                Arguments.of("no audio streams",
-                        (Supplier<DashManifestConfigDTO>) () ->
-                                configWith(List.of(defaultVideo()), List.of(), List.of()),
+                Arguments.of(
+                        "no audio streams",
+                        (Supplier<DashManifestConfigDTO>)
+                                () -> configWith(List.of(defaultVideo()), List.of(), List.of()),
                         noAdaptive),
-                Arguments.of("video without indexRange",
-                        withVideo(defaultVideoBuilder().indexRange(null)), missingField),
-                Arguments.of("video with blank initRange",
-                        withVideo(defaultVideoBuilder().initRange(" ")), missingField),
-                Arguments.of("video without codec",
-                        withVideo(defaultVideoBuilder().codec(null)), missingField),
-                Arguments.of("audio without mimeType",
-                        withAudio(defaultAudioBuilder().mimeType(null)), missingField),
-                Arguments.of("audio with blank url",
-                        withAudio(defaultAudioBuilder().url("")), missingField),
-                Arguments.of("subtitle without mimeType",
-                        withSubtitle(subtitleBuilder("subtitle-1", "en", "subtitles").mimeType(null)),
+                Arguments.of(
+                        "video without indexRange",
+                        withVideo(defaultVideoBuilder().indexRange(null)),
+                        missingField),
+                Arguments.of(
+                        "video with blank initRange",
+                        withVideo(defaultVideoBuilder().initRange(" ")),
+                        missingField),
+                Arguments.of(
+                        "video without codec", withVideo(defaultVideoBuilder().codec(null)), missingField),
+                Arguments.of(
+                        "audio without mimeType",
+                        withAudio(defaultAudioBuilder().mimeType(null)),
+                        missingField),
+                Arguments.of(
+                        "audio with blank url", withAudio(defaultAudioBuilder().url("")), missingField),
+                Arguments.of(
+                        "subtitle without mimeType",
+                        withSubtitle(
+                                subtitleBuilder("subtitle-1", "en", "subtitles").mimeType(null)),
                         missingField));
     }
 
     @ParameterizedTest(name = "Rejects {0}")
     @MethodSource("contractViolations")
     @DisplayName("Rejects configs the playability filter should have prevented, with IllegalStateException")
-    void rejectsContractViolations(String name, Supplier<DashManifestConfigDTO> configSupplier,
-                                   String expectedMessage) {
+    void rejectsContractViolations(
+            String name, Supplier<DashManifestConfigDTO> configSupplier, String expectedMessage) {
         assertThatThrownBy(() -> service.generateManifestXml(configSupplier.get()))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining(expectedMessage);
@@ -335,21 +346,20 @@ class DashManifestGeneratorServiceTest {
     @DisplayName("Writes SegmentBase on every video and audio representation")
     void writesSegmentBaseOnEveryAdaptiveRepresentation() {
         DashManifestConfigDTO config = configWith(
-                List.of(createVideoStream("video-1080", 1920, 1080, 3_000_000),
+                List.of(
+                        createVideoStream("video-1080", 1920, 1080, 3_000_000),
                         createVideoStream("video-720", 1280, 720, 1_200_000)),
-                List.of(createAudioStream("audio-128", "en", 128_000),
-                        createAudioStream("audio-64", "en", 64_000)),
+                List.of(createAudioStream("audio-128", "en", 128_000), createAudioStream("audio-64", "en", 64_000)),
                 List.of());
 
         Document doc = generate(config);
 
-        assertThat(elements(doc, "Representation")).hasSize(4)
-                .allSatisfy(rep -> {
-                    Element segmentBase = only(childElements(rep, "SegmentBase"));
-                    assertThat(segmentBase.getAttribute("indexRange")).isNotBlank();
-                    assertThat(only(childElements(segmentBase, "Initialization")).getAttribute("range"))
-                            .isNotBlank();
-                });
+        assertThat(elements(doc, "Representation")).hasSize(4).allSatisfy(rep -> {
+            Element segmentBase = only(childElements(rep, "SegmentBase"));
+            assertThat(segmentBase.getAttribute("indexRange")).isNotBlank();
+            assertThat(only(childElements(segmentBase, "Initialization")).getAttribute("range"))
+                    .isNotBlank();
+        });
     }
 
     @Test
@@ -376,11 +386,13 @@ class DashManifestGeneratorServiceTest {
         @DisplayName("Sorts representations by height descending and carries full attributes")
         void sortsByHeightWithFullAttributes() {
             // Deliberately out of order
-            DashManifestConfigDTO config = configWith(List.of(
+            DashManifestConfigDTO config = configWith(
+                    List.of(
                             createVideoStream("video-360", 640, 360, 467558),
                             createVideoStream("video-1080", 1920, 1080, 3423702),
                             createVideoStream("video-720", 1280, 720, 1215044)),
-                    List.of(defaultAudio()), List.of());
+                    List.of(defaultAudio()),
+                    List.of());
 
             Document doc = generate(config);
 
@@ -391,8 +403,7 @@ class DashManifestGeneratorServiceTest {
             assertThat(set.getAttribute("startWithSAP")).isEqualTo("1");
 
             List<Element> reps = childElements(set, "Representation");
-            assertThat(reps).extracting(r -> r.getAttribute("height"))
-                    .containsExactly("1080", "720", "360");
+            assertThat(reps).extracting(r -> r.getAttribute("height")).containsExactly("1080", "720", "360");
 
             Element top = reps.getFirst();
             assertThat(top.getAttribute("id")).isEqualTo("video-1080");
@@ -406,24 +417,30 @@ class DashManifestGeneratorServiceTest {
         @Test
         @DisplayName("Splits into one AdaptationSet per container and codec family, in sorted key order")
         void splitsByContainerAndCodecFamily() {
-            DashManifestConfigDTO config = configWith(List.of(
+            DashManifestConfigDTO config = configWith(
+                    List.of(
                             createVideoStream("video-avc-1080", "video/mp4", "avc1.640028", 1920, 1080, 3_000_000),
                             createVideoStream("video-vp9-1080", "video/webm", "vp9", 1920, 1080, 2_000_000),
                             createVideoStream("video-avc-720", "video/mp4", "avc1.4d401f", 1280, 720, 1_200_000),
                             createVideoStream("video-av1-1080", "video/mp4", "av01.0.08M.08", 1920, 1080, 1_500_000)),
-                    List.of(defaultAudio()), List.of());
+                    List.of(defaultAudio()),
+                    List.of());
 
             List<Element> sets = setsOfType(generate(config), "video");
 
             // Keys: video/mp4|av01 < video/mp4|avc1 < video/webm|vp9
-            assertThat(sets).extracting(s -> s.getAttribute("mimeType"))
+            assertThat(sets)
+                    .extracting(s -> s.getAttribute("mimeType"))
                     .containsExactly("video/mp4", "video/mp4", "video/webm");
             assertThat(childElements(sets.get(0), "Representation"))
-                    .extracting(r -> r.getAttribute("id")).containsExactly("video-av1-1080");
+                    .extracting(r -> r.getAttribute("id"))
+                    .containsExactly("video-av1-1080");
             assertThat(childElements(sets.get(1), "Representation"))
-                    .extracting(r -> r.getAttribute("id")).containsExactly("video-avc-1080", "video-avc-720");
+                    .extracting(r -> r.getAttribute("id"))
+                    .containsExactly("video-avc-1080", "video-avc-720");
             assertThat(childElements(sets.get(2), "Representation"))
-                    .extracting(r -> r.getAttribute("id")).containsExactly("video-vp9-1080");
+                    .extracting(r -> r.getAttribute("id"))
+                    .containsExactly("video-vp9-1080");
         }
 
         @Test
@@ -465,14 +482,16 @@ class DashManifestGeneratorServiceTest {
         @Test
         @DisplayName("Splits one track by container, so no set mixes MP4/AAC with WebM/Opus")
         void splitsOneTrackByContainer() {
-            DashManifestConfigDTO config = configWith(List.of(defaultVideo()), List.of(
-                    createAudioStream("audio-aac", "en", "audio/mp4", "mp4a.40.2", 128_000),
-                    createAudioStream("audio-opus", "en", "audio/webm", "opus", 160_000)), List.of());
+            DashManifestConfigDTO config = configWith(
+                    List.of(defaultVideo()),
+                    List.of(
+                            createAudioStream("audio-aac", "en", "audio/mp4", "mp4a.40.2", 128_000),
+                            createAudioStream("audio-opus", "en", "audio/webm", "opus", 160_000)),
+                    List.of());
 
             List<Element> sets = setsOfType(generate(config), "audio");
 
-            assertThat(sets).extracting(s -> s.getAttribute("mimeType"))
-                    .containsExactly("audio/mp4", "audio/webm");
+            assertThat(sets).extracting(s -> s.getAttribute("mimeType")).containsExactly("audio/mp4", "audio/webm");
             assertThat(sets).allSatisfy(set -> {
                 assertThat(childElements(set, "Representation")).hasSize(1);
                 assertThat(set.getAttribute("lang")).isEqualTo("en");
@@ -484,20 +503,29 @@ class DashManifestGeneratorServiceTest {
         @Test
         @DisplayName("Keeps original, dubbed and descriptive tracks apart, with matching Roles")
         void separatesTracksWithRoles() {
-            DashManifestConfigDTO config = configWith(List.of(defaultVideo()), List.of(
-                    inTrack(audioBuilder("audio-en", "en", 128_000),
-                            "en.4", AudioTrackType.ORIGINAL, "English original"),
-                    inTrack(audioBuilder("audio-de", "de", 128_000),
-                            "de.3", AudioTrackType.DUBBED, "German"),
-                    inTrack(audioBuilder("audio-en-ad", "en", 96_000),
-                            "en.5", AudioTrackType.DESCRIPTIVE, "English descriptive")), List.of());
+            DashManifestConfigDTO config = configWith(
+                    List.of(defaultVideo()),
+                    List.of(
+                            inTrack(
+                                    audioBuilder("audio-en", "en", 128_000),
+                                    "en.4",
+                                    AudioTrackType.ORIGINAL,
+                                    "English original"),
+                            inTrack(audioBuilder("audio-de", "de", 128_000), "de.3", AudioTrackType.DUBBED, "German"),
+                            inTrack(
+                                    audioBuilder("audio-en-ad", "en", 96_000),
+                                    "en.5",
+                                    AudioTrackType.DESCRIPTIVE,
+                                    "English descriptive")),
+                    List.of());
 
             List<Element> sets = setsOfType(generate(config), "audio");
 
             // Two English tracks are not merged just because they share a language
             assertThat(sets).hasSize(3);
             Map<String, String> roleByLabel = sets.stream()
-                    .collect(Collectors.toMap(DashManifestGeneratorServiceTest.this::label, DashManifestGeneratorServiceTest.this::role));
+                    .collect(Collectors.toMap(
+                            DashManifestGeneratorServiceTest.this::label, DashManifestGeneratorServiceTest.this::role));
             assertThat(roleByLabel)
                     .containsEntry("English original", "main")
                     .containsEntry("German", "dub")
@@ -507,22 +535,27 @@ class DashManifestGeneratorServiceTest {
         @Test
         @DisplayName("Uses Role 'alternate' for secondary tracks and for untyped tracks when there are several")
         void usesAlternateRoleWhenNotIdentifiable() {
-            DashManifestConfigDTO config = configWith(List.of(defaultVideo()), List.of(
+            DashManifestConfigDTO config = configWith(
+                    List.of(defaultVideo()),
+                    List.of(
                             inTrack(audioBuilder("audio-en", "en", 128_000), "en.1", null, "English"),
-                            inTrack(audioBuilder("audio-fr", "fr", 128_000), "fr.2", AudioTrackType.SECONDARY, "French")),
+                            inTrack(
+                                    audioBuilder("audio-fr", "fr", 128_000),
+                                    "fr.2",
+                                    AudioTrackType.SECONDARY,
+                                    "French")),
                     List.of());
 
             List<Element> sets = setsOfType(generate(config), "audio");
 
-            assertThat(sets).hasSize(2)
-                    .allSatisfy(set -> assertThat(role(set)).isEqualTo("alternate"));
+            assertThat(sets).hasSize(2).allSatisfy(set -> assertThat(role(set)).isEqualTo("alternate"));
         }
 
         @ParameterizedTest(name = "trackName={0}, languageName={1} -> {2}")
         @CsvSource({
-                "'German (Germany) original', Deutsch, 'German (Germany) original'", // track name wins
-                ",                            Deutsch, Deutsch",                     // then language name
-                ",                            ,        German"                       // then lookup by code
+            "'German (Germany) original', Deutsch, 'German (Germany) original'", // track name wins
+            ",                            Deutsch, Deutsch", // then language name
+            ",                            ,        German" // then lookup by code
         })
         @DisplayName("Writes a Label element from track name, then language name, then a code lookup")
         void writesLabelElementWithFallbacks(String trackName, String languageName, String expected) {
@@ -531,8 +564,8 @@ class DashManifestGeneratorServiceTest {
                     .languageName(languageName)
                     .build();
 
-            Element set = only(setsOfType(
-                    generate(configWith(List.of(defaultVideo()), List.of(audio), List.of())), "audio"));
+            Element set =
+                    only(setsOfType(generate(configWith(List.of(defaultVideo()), List.of(audio), List.of())), "audio"));
 
             assertThat(label(set)).isEqualTo(expected);
             assertThat(set.hasAttribute("label")).isFalse();
@@ -543,8 +576,8 @@ class DashManifestGeneratorServiceTest {
         void usesUndForUnknownLanguage() {
             AudioStreamMetadataDTO audio = createAudioStream("audio-1", null, 128_000);
 
-            Element set = only(setsOfType(
-                    generate(configWith(List.of(defaultVideo()), List.of(audio), List.of())), "audio"));
+            Element set =
+                    only(setsOfType(generate(configWith(List.of(defaultVideo()), List.of(audio), List.of())), "audio"));
 
             assertThat(set.getAttribute("lang")).isEqualTo("und");
         }
@@ -554,8 +587,8 @@ class DashManifestGeneratorServiceTest {
         void labelsUntaggedMainTrackOriginal() {
             AudioStreamMetadataDTO audio = createAudioStream("audio-1", null, 128_000);
 
-            Element set = only(setsOfType(
-                    generate(configWith(List.of(defaultVideo()), List.of(audio), List.of())), "audio"));
+            Element set =
+                    only(setsOfType(generate(configWith(List.of(defaultVideo()), List.of(audio), List.of())), "audio"));
 
             assertThat(role(set)).isEqualTo("main");
             assertThat(label(set)).isEqualTo("Original");
@@ -564,11 +597,11 @@ class DashManifestGeneratorServiceTest {
         @Test
         @DisplayName("Labels a non-main track with no name or language 'Unknown'")
         void labelsUntaggedNonMainTrackUnknown() {
-            AudioStreamMetadataDTO audio = inTrack(audioBuilder("audio-1", null, 128_000),
-                    "und.3", AudioTrackType.DUBBED, null);
+            AudioStreamMetadataDTO audio =
+                    inTrack(audioBuilder("audio-1", null, 128_000), "und.3", AudioTrackType.DUBBED, null);
 
-            Element set = only(setsOfType(
-                    generate(configWith(List.of(defaultVideo()), List.of(audio), List.of())), "audio"));
+            Element set =
+                    only(setsOfType(generate(configWith(List.of(defaultVideo()), List.of(audio), List.of())), "audio"));
 
             assertThat(role(set)).isEqualTo("dub");
             assertThat(label(set)).isEqualTo("Unknown");
@@ -577,18 +610,19 @@ class DashManifestGeneratorServiceTest {
         @Test
         @DisplayName("Keeps YouTube's track name even when the language is unknown")
         void keepsTrackNameWhenLanguageUnknown() {
-            AudioStreamMetadataDTO audio = inTrack(audioBuilder("audio-1", null, 128_000),
-                    "en.4", AudioTrackType.ORIGINAL, "English original");
+            AudioStreamMetadataDTO audio = inTrack(
+                    audioBuilder("audio-1", null, 128_000), "en.4", AudioTrackType.ORIGINAL, "English original");
 
-            Element set = only(setsOfType(
-                    generate(configWith(List.of(defaultVideo()), List.of(audio), List.of())), "audio"));
+            Element set =
+                    only(setsOfType(generate(configWith(List.of(defaultVideo()), List.of(audio), List.of())), "audio"));
 
             assertThat(role(set)).isEqualTo("main");
             assertThat(label(set)).isEqualTo("English original");
         }
 
         @Test
-        @DisplayName("Sorts representations by bandwidth descending with full attributes, channel config, and SegmentBase")
+        @DisplayName(
+                "Sorts representations by bandwidth descending with full attributes, channel config, and SegmentBase")
         void sortsByBandwidthWithFullAttributes() {
             AudioStreamMetadataDTO top = audioBuilder("audio-256", "en", 256000)
                     .initRange("0-640")
@@ -602,8 +636,7 @@ class DashManifestGeneratorServiceTest {
             Element set = only(setsOfType(doc, "audio"));
             assertThat(set.getAttribute("id")).isEqualTo("1"); // continues after the video set
             List<Element> reps = childElements(set, "Representation");
-            assertThat(reps).extracting(r -> r.getAttribute("bandwidth"))
-                    .containsExactly("256000", "128000", "64000");
+            assertThat(reps).extracting(r -> r.getAttribute("bandwidth")).containsExactly("256000", "128000", "64000");
 
             Element rep = reps.getFirst();
             assertThat(rep.getAttribute("id")).isEqualTo("audio-256");
@@ -625,7 +658,8 @@ class DashManifestGeneratorServiceTest {
         @Test
         @DisplayName("Omits audioSamplingRate when it is unknown instead of writing \"null\"")
         void omitsUnknownSamplingRate() {
-            AudioStreamMetadataDTO audio = defaultAudioBuilder().audioSamplingRate(null).build();
+            AudioStreamMetadataDTO audio =
+                    defaultAudioBuilder().audioSamplingRate(null).build();
 
             Document doc = generate(configWith(List.of(defaultVideo()), List.of(audio), List.of()));
 
@@ -643,16 +677,21 @@ class DashManifestGeneratorServiceTest {
         @Test
         @DisplayName("Creates one AdaptationSet per subtitle in input order, with ids after the media sets")
         void onePerSubtitleInInputOrder() {
-            DashManifestConfigDTO config = configWith(List.of(defaultVideo()), List.of(defaultAudio()), List.of(
-                    createSubtitleStream("subtitle-es", "es", "subtitles"),
-                    createSubtitleStream("subtitle-en", "en", "subtitles")));
+            DashManifestConfigDTO config = configWith(
+                    List.of(defaultVideo()),
+                    List.of(defaultAudio()),
+                    List.of(
+                            createSubtitleStream("subtitle-es", "es", "subtitles"),
+                            createSubtitleStream("subtitle-en", "en", "subtitles")));
 
             List<Element> sets = setsOfType(generate(config), "text");
 
-            assertThat(sets).extracting(s -> s.getAttribute("lang"))
+            assertThat(sets)
+                    .extracting(s -> s.getAttribute("lang"))
                     .containsExactly("es", "en"); // no server-side language ordering
-            assertThat(sets).extracting(s -> s.getAttribute("id"))
-                    .containsExactly("2", "3");   // after video set 0 and audio set 1
+            assertThat(sets)
+                    .extracting(s -> s.getAttribute("id"))
+                    .containsExactly("2", "3"); // after video set 0 and audio set 1
 
             Element set = sets.get(1);
             assertThat(set.getAttribute("mimeType")).isEqualTo("text/vtt");
@@ -668,15 +707,12 @@ class DashManifestGeneratorServiceTest {
         }
 
         @ParameterizedTest(name = "kind {0} -> Role {1}")
-        @CsvSource({
-                "subtitles, subtitle",
-                "asr,       subtitle",
-                "captions,  caption",
-                ",          subtitle"
-        })
+        @CsvSource({"subtitles, subtitle", "asr,       subtitle", "captions,  caption", ",          subtitle"})
         @DisplayName("Maps kind to the singular DASH role values")
         void mapsKindToSingularRole(String kind, String expectedRole) {
-            DashManifestConfigDTO config = configWith(List.of(defaultVideo()), List.of(defaultAudio()),
+            DashManifestConfigDTO config = configWith(
+                    List.of(defaultVideo()),
+                    List.of(defaultAudio()),
                     List.of(createSubtitleStream("subtitle-1", "en", kind)));
 
             Element set = only(setsOfType(generate(config), "text"));
@@ -687,13 +723,17 @@ class DashManifestGeneratorServiceTest {
         @Test
         @DisplayName("Keeps manual and auto-generated tracks, labelling the auto-generated one")
         void labelsAutoGeneratedTracks() {
-            DashManifestConfigDTO config = configWith(List.of(defaultVideo()), List.of(defaultAudio()), List.of(
-                    createSubtitleStream("subtitle-manual", "en", "subtitles"),
-                    createSubtitleStream("subtitle-auto", "en", "asr")));
+            DashManifestConfigDTO config = configWith(
+                    List.of(defaultVideo()),
+                    List.of(defaultAudio()),
+                    List.of(
+                            createSubtitleStream("subtitle-manual", "en", "subtitles"),
+                            createSubtitleStream("subtitle-auto", "en", "asr")));
 
             List<Element> sets = setsOfType(generate(config), "text");
 
-            assertThat(sets).extracting(DashManifestGeneratorServiceTest.this::label)
+            assertThat(sets)
+                    .extracting(DashManifestGeneratorServiceTest.this::label)
                     .containsExactly("English", "English (auto-generated)");
         }
     }
@@ -704,11 +744,12 @@ class DashManifestGeneratorServiceTest {
     @DisplayName("Generates a well-formed manifest with all stream types and unique sequential set ids")
     void generatesCompleteManifestWithAllStreamTypes() {
         DashManifestConfigDTO config = configWith(
-                List.of(createVideoStream("video-1", 1920, 1080, 3423702),
+                List.of(
+                        createVideoStream("video-1", 1920, 1080, 3423702),
                         createVideoStream("video-2", 1280, 720, 1215044)),
-                List.of(createAudioStream("audio-1", "en", 130482),
-                        createAudioStream("audio-2", "es", 128000)),
-                List.of(createSubtitleStream("subtitle-1", "en", "subtitles"),
+                List.of(createAudioStream("audio-1", "en", 130482), createAudioStream("audio-2", "es", 128000)),
+                List.of(
+                        createSubtitleStream("subtitle-1", "en", "subtitles"),
                         createSubtitleStream("subtitle-2", "es", "subtitles")));
 
         Document doc = generate(config);
@@ -716,7 +757,8 @@ class DashManifestGeneratorServiceTest {
         assertThat(setsOfType(doc, "video")).hasSize(1);
         assertThat(setsOfType(doc, "audio")).hasSize(2);
         assertThat(setsOfType(doc, "text")).hasSize(2);
-        assertThat(elements(doc, "AdaptationSet")).extracting(s -> s.getAttribute("id"))
+        assertThat(elements(doc, "AdaptationSet"))
+                .extracting(s -> s.getAttribute("id"))
                 .containsExactly("0", "1", "2", "3", "4");
     }
 }

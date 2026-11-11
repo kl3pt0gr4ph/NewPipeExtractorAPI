@@ -15,6 +15,22 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  format:
+    name: Format check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+          cache: 'maven'
+          cache-dependency-path: 'app/pom.xml'
+      - name: Check formatting
+        run: mvn -B -ntp spotless:check
+        working-directory: app
+
   build-and-test:
     name: Build & Unit Test
     runs-on: ubuntu-latest

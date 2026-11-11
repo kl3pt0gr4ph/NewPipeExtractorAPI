@@ -46,7 +46,8 @@ public class SerializationUtils {
         public void serialize(SearchInfo value, JsonGenerator gen, SerializationContext ctxt) {
             gen.writeStartObject();
             gen.writeStringProperty("searchString", value.getSearchString());
-            gen.writeNumberProperty("serviceId", value.getService() != null ? value.getService().getServiceId() : -1);
+            gen.writeNumberProperty(
+                    "serviceId", value.getService() != null ? value.getService().getServiceId() : -1);
 
             // Carefully serialize items
             gen.writeArrayPropertyStart("items");
@@ -66,8 +67,6 @@ public class SerializationUtils {
             gen.writeEndObject();
         }
     }
-
-
 
     /**
      * Custom JSON serializer for StreamingService objects.
@@ -92,7 +91,6 @@ public class SerializationUtils {
         }
     }
 
-
     /**
      * Safely serialize an object to a JSON string.
      *
@@ -104,7 +102,8 @@ public class SerializationUtils {
      */
     public String safeSerialize(Object obj) {
         try {
-            ObjectWriter writer = objectMapper.writer()
+            ObjectWriter writer = objectMapper
+                    .writer()
                     .without(SerializationFeature.FAIL_ON_EMPTY_BEANS)
                     .withDefaultPrettyPrinter();
 

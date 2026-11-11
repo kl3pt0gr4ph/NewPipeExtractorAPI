@@ -1,15 +1,14 @@
 package org.example.api.config;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.Map;
 import org.springframework.boot.context.properties.bind.validation.BindValidationException;
 import org.springframework.boot.test.context.assertj.AssertableApplicationContext;
 import org.springframework.context.ApplicationContextInitializer;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.env.StandardEnvironment;
 import org.springframework.core.env.SystemEnvironmentPropertySource;
-
-import java.util.Map;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Helpers for the {@code *PropertiesTest} classes, which bind each
@@ -25,10 +24,10 @@ final class PropertiesTestSupport {
      * ({@code OPENTUBE_HTTP_READTIMEOUT} → {@code opentube.http.read-timeout}) to a
      * source with this name, which a plain {@code withPropertyValues} wouldn't exercise.
      */
-    static ApplicationContextInitializer<ConfigurableApplicationContext> environment(
-            Map<String, Object> variables) {
-        return context -> context.getEnvironment().getPropertySources().addFirst(
-                new SystemEnvironmentPropertySource(
+    static ApplicationContextInitializer<ConfigurableApplicationContext> environment(Map<String, Object> variables) {
+        return context -> context.getEnvironment()
+                .getPropertySources()
+                .addFirst(new SystemEnvironmentPropertySource(
                         StandardEnvironment.SYSTEM_ENVIRONMENT_PROPERTY_SOURCE_NAME, variables));
     }
 

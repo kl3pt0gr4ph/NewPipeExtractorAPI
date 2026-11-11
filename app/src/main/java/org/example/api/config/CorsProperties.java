@@ -2,11 +2,10 @@ package org.example.api.config;
 
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Pattern;
+import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 import org.springframework.validation.annotation.Validated;
-
-import java.util.List;
 
 /**
  * Cross-origin access to {@code /api/**}. Only matters when a browser calls the API
@@ -22,13 +21,16 @@ import java.util.List;
 @Validated
 @ConfigurationProperties(prefix = "opentube.cors")
 public record CorsProperties(
-        @DefaultValue("*")
-        @NotEmpty
-        List<@Pattern(regexp = "\\*|https?://[^/\\s]+/?",
-                message = "must be * or an origin such as https://example.com") String> allowedOrigins,
+        @DefaultValue("*") @NotEmpty List<
+                        @Pattern(
+                                regexp = "\\*|https?://[^/\\s]+/?",
+                                message = "must be * or an origin such as https://example.com")
+                        String>
+                allowedOrigins,
 
-        @DefaultValue({"GET", "OPTIONS"})
-        @NotEmpty
-        List<@Pattern(regexp = "\\*|GET|HEAD|POST|PUT|PATCH|DELETE|OPTIONS",
-                message = "must be * or an upper-case HTTP method") String> allowedMethods
-) {}
+        @DefaultValue({"GET", "OPTIONS"}) @NotEmpty List<
+                        @Pattern(
+                                regexp = "\\*|GET|HEAD|POST|PUT|PATCH|DELETE|OPTIONS",
+                                message = "must be * or an upper-case HTTP method")
+                        String>
+                allowedMethods) {}

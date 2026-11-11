@@ -1,6 +1,14 @@
 package org.example.api.dto.dash;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import org.schabi.newpipe.extractor.services.youtube.ItagItem;
 import org.schabi.newpipe.extractor.stream.AudioStream;
 import org.schabi.newpipe.extractor.stream.Stream;
@@ -9,16 +17,6 @@ import org.schabi.newpipe.extractor.stream.SubtitlesStream;
 import org.schabi.newpipe.extractor.stream.VideoStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Data Transfer Object representing the complete DASH manifest configuration.
@@ -41,12 +39,19 @@ import java.util.concurrent.TimeUnit;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record DashManifestConfigDTO(
         @NotBlank(message = "Manifest type cannot be blank") String type,
+
         @NotBlank(message = "Media presentation duration cannot be blank") String mediaPresentationDuration,
+
         @NotBlank(message = "Min buffer time cannot be blank") String minBufferTime,
+
         @NotBlank(message = "Profiles cannot be blank") String profiles,
+
         @NotNull(message = "Video streams list cannot be null") List<VideoStreamMetadataDTO> videoStreams,
+
         @NotNull(message = "Audio streams list cannot be null") List<AudioStreamMetadataDTO> audioStreams,
+
         @NotNull(message = "Subtitle streams list cannot be null") List<SubtitleMetadataDTO> subtitleStreams,
+
         @Min(value = 1, message = "Duration must be at least 1 second") long durationSeconds) {
 
     private static final Logger logger = LoggerFactory.getLogger(DashManifestConfigDTO.class);
@@ -64,10 +69,11 @@ public record DashManifestConfigDTO(
      *
      * <p>Every stream passed in is converted and ends up in the manifest</p>
      */
-    public static DashManifestConfigDTO from(StreamInfo streamInfo,
-                                             List<VideoStream> videoStreams,
-                                             List<AudioStream> audioStreams,
-                                             List<SubtitlesStream> subtitleStreams) {
+    public static DashManifestConfigDTO from(
+            StreamInfo streamInfo,
+            List<VideoStream> videoStreams,
+            List<AudioStream> audioStreams,
+            List<SubtitlesStream> subtitleStreams) {
         Objects.requireNonNull(streamInfo, "streamInfo");
         Objects.requireNonNull(videoStreams, "videoStreams");
         Objects.requireNonNull(audioStreams, "audioStreams");
@@ -75,8 +81,8 @@ public record DashManifestConfigDTO(
 
         return builder()
                 .durationSeconds(streamInfo.getDuration())
-                .mediaPresentationDuration(formatDuration(
-                        presentationDurationMs(streamInfo, videoStreams, audioStreams)))
+                .mediaPresentationDuration(
+                        formatDuration(presentationDurationMs(streamInfo, videoStreams, audioStreams)))
                 .videoStreams(convertAll(videoStreams, "video", VideoStreamMetadataDTO::from))
                 .audioStreams(convertAll(audioStreams, "audio", AudioStreamMetadataDTO::from))
                 .subtitleStreams(convertAll(subtitleStreams, "subtitle", SubtitleMetadataDTO::from))
@@ -92,16 +98,19 @@ public record DashManifestConfigDTO(
      * Converts each stream to its DTO. Indexes start at 1 and advance even when a
      * conversion fails.
      */
-    private static <S extends Stream, D> List<D> convertAll(List<S> streams, String kind,
-                                                            IndexedConverter<S, D> converter) {
+    private static <S extends Stream, D> List<D> convertAll(
+            List<S> streams, String kind, IndexedConverter<S, D> converter) {
         List<D> converted = new ArrayList<>(streams.size());
         int index = 1;
         for (S stream : streams) {
             try {
                 converted.add(converter.convert(stream, index++));
             } catch (Exception e) {
-                logger.warn("Skipping {} stream {}: passed the playability filter but failed conversion: {}",
-                        kind, stream.getId(), e.getMessage());
+                logger.warn(
+                        "Skipping {} stream {}: passed the playability filter but failed conversion: {}",
+                        kind,
+                        stream.getId(),
+                        e.getMessage());
             }
         }
         return converted;
@@ -111,9 +120,8 @@ public record DashManifestConfigDTO(
      * Real media length in ms. YouTube reports approxDurationMs per itag; take the longest
      * so the presentation covers every track. Falls back to whole seconds from StreamInfo.
      */
-    private static long presentationDurationMs(StreamInfo streamInfo,
-                                               List<VideoStream> videoStreams,
-                                               List<AudioStream> audioStreams) {
+    private static long presentationDurationMs(
+            StreamInfo streamInfo, List<VideoStream> videoStreams, List<AudioStream> audioStreams) {
         long longest = ItagItem.APPROX_DURATION_MS_UNKNOWN;
         for (VideoStream stream : videoStreams) {
             longest = Math.max(longest, approxDurationMs(stream));
@@ -200,8 +208,15 @@ public record DashManifestConfigDTO(
         }
 
         public DashManifestConfigDTO build() {
-            return new DashManifestConfigDTO(type, mediaPresentationDuration, minBufferTime,
-                    profiles, videoStreams, audioStreams, subtitleStreams, durationSeconds);
+            return new DashManifestConfigDTO(
+                    type,
+                    mediaPresentationDuration,
+                    minBufferTime,
+                    profiles,
+                    videoStreams,
+                    audioStreams,
+                    subtitleStreams,
+                    durationSeconds);
         }
     }
 
@@ -209,7 +224,12 @@ public record DashManifestConfigDTO(
     @Override
     public String toString() {
         return "DashManifestConfigDTO{type='%s', mediaPresentationDuration='%s', durationSeconds=%d, videoStreams=%d, audioStreams=%d, subtitleStreams=%d}"
-                .formatted(type, mediaPresentationDuration, durationSeconds,
-                        videoStreams.size(), audioStreams.size(), subtitleStreams.size());
+                .formatted(
+                        type,
+                        mediaPresentationDuration,
+                        durationSeconds,
+                        videoStreams.size(),
+                        audioStreams.size(),
+                        subtitleStreams.size());
     }
 }

@@ -1,15 +1,14 @@
 package org.example.api.config;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
-
-import java.util.List;
-import java.util.Map;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Checks the {@link CorsConfiguration} that {@link CorsConfig} registers, through the same
@@ -18,8 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DisplayName("CorsConfig")
 class CorsConfigTest {
 
-    private static final CorsProperties DEFAULTS =
-            new CorsProperties(List.of("*"), List.of("GET", "OPTIONS"));
+    private static final CorsProperties DEFAULTS = new CorsProperties(List.of("*"), List.of("GET", "OPTIONS"));
 
     @Test
     @DisplayName("Maps /api/** only")
@@ -44,8 +42,9 @@ class CorsConfigTest {
     @DisplayName("Uses the configured origins and methods")
     void configuredOriginsAndMethods() {
         CorsConfiguration config = register(new CorsProperties(
-                List.of("https://opentube.example", "http://localhost:5173"),
-                List.of("GET", "HEAD", "OPTIONS"))).get("/api/**");
+                        List.of("https://opentube.example", "http://localhost:5173"),
+                        List.of("GET", "HEAD", "OPTIONS")))
+                .get("/api/**");
 
         assertThat(config.checkOrigin("https://opentube.example")).isEqualTo("https://opentube.example");
         assertThat(config.checkOrigin("http://localhost:5173")).isEqualTo("http://localhost:5173");

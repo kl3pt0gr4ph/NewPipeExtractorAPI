@@ -1,14 +1,13 @@
 package org.example.api.dto;
 
-import tools.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Unit tests for ErrorResponseDTO.
@@ -49,8 +48,8 @@ class ErrorResponseDTOTest {
     @Test
     @DisplayName("Omits unset fields (message, errorCode, path, detail) from the serialized JSON")
     void omitsUnsetFieldsFromJson() throws Exception {
-        String json = objectMapper.writeValueAsString(
-                ErrorResponseDTO.of(500, "Internal Server Error", null, null, null));
+        String json =
+                objectMapper.writeValueAsString(ErrorResponseDTO.of(500, "Internal Server Error", null, null, null));
 
         assertThat(json).contains("\"status\":500", "\"error\":\"Internal Server Error\"");
         assertThat(json).doesNotContain("\"message\"", "\"errorCode\"", "\"path\"", "\"detail\"");
