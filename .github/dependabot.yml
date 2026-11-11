@@ -26,6 +26,8 @@ updates:
         patterns:
           - 'org.jacoco:*'
           - 'org.apache.maven.plugins:*'
+          - 'com.diffplug.spotless:*'
+          - 'com.github.spotbugs:*'
       minor-and-patch:
         update-types: ['minor', 'patch']
 
