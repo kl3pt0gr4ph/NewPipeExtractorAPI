@@ -245,9 +245,9 @@ class StreamingControllerTest {
             // The config is built from exactly what the filter returned
             ArgumentCaptor<DashManifestConfigDTO> config = ArgumentCaptor.forClass(DashManifestConfigDTO.class);
             verify(dashManifestGeneratorService).generateManifestXml(config.capture());
-            assertThat(config.getValue().getVideoStreams()).hasSize(1);
-            assertThat(config.getValue().getAudioStreams()).hasSize(1);
-            assertThat(config.getValue().getSubtitleStreams()).isEmpty();
+            assertThat(config.getValue().videoStreams()).hasSize(1);
+            assertThat(config.getValue().audioStreams()).hasSize(1);
+            assertThat(config.getValue().subtitleStreams()).isEmpty();
 
             verify(dashPlayabilityFilter, never()).muxedFallback(any());
         }

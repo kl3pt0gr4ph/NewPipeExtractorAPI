@@ -82,11 +82,11 @@ class GlobalExceptionHandlerTest {
         assertThat(response.getStatusCode().value()).isEqualTo(status);
         ErrorResponseDTO body = response.getBody();
         assertThat(body).isNotNull();
-        assertThat(body.getStatus()).isEqualTo(status);
-        assertThat(body.getError()).isEqualTo(HttpStatus.valueOf(status).getReasonPhrase());
-        assertThat(body.getErrorCode()).isEqualTo(errorCode);
-        assertThat(body.getPath()).isEqualTo("/api/v1/test");
-        assertThat(body.getTimestamp()).isNotBlank();
+        assertThat(body.status()).isEqualTo(status);
+        assertThat(body.error()).isEqualTo(HttpStatus.valueOf(status).getReasonPhrase());
+        assertThat(body.errorCode()).isEqualTo(errorCode);
+        assertThat(body.path()).isEqualTo("/api/v1/test");
+        assertThat(body.timestamp()).isNotBlank();
     }
 
     // ── NewPipe exception mapping ───────────────────────────────────────────
@@ -119,9 +119,9 @@ class GlobalExceptionHandlerTest {
 
         assertError(response, status, errorCode);
         ErrorResponseDTO body = response.getBody();
-        assertThat(body.getMessage()).isEqualTo(ErrorCode.valueOf(errorCode).defaultMessage());
-        assertThat(body.getMessage()).doesNotContain(RAW);
-        assertThat(body.getDetail()).isNull();
+        assertThat(body.message()).isEqualTo(ErrorCode.valueOf(errorCode).defaultMessage());
+        assertThat(body.message()).doesNotContain(RAW);
+        assertThat(body.detail()).isNull();
     }
 
     @ParameterizedTest(name = "{0} -> {1} {2}")
@@ -176,7 +176,7 @@ class GlobalExceptionHandlerTest {
 
         ResponseEntity<ErrorResponseDTO> response = handleThrown(bug);
         assertError(response, 500, "INTERNAL_ERROR");
-        assertThat(response.getBody().getMessage()).doesNotContain(RAW);
+        assertThat(response.getBody().message()).doesNotContain(RAW);
     }
 
     @Test
@@ -199,7 +199,7 @@ class GlobalExceptionHandlerTest {
         ResponseEntity<ErrorResponseDTO> response = handler.handleApiException(new ApiException(code), request);
 
         assertError(response, code.httpStatus(), code.name());
-        assertThat(response.getBody().getMessage()).isEqualTo(code.defaultMessage());
+        assertThat(response.getBody().message()).isEqualTo(code.defaultMessage());
     }
 
     @Test
@@ -209,7 +209,7 @@ class GlobalExceptionHandlerTest {
                 new ValidationException("URL", "must start with http:// or https://"), request);
 
         assertError(response, 400, "VALIDATION_ERROR");
-        assertThat(response.getBody().getMessage()).isEqualTo("Invalid URL: must start with http:// or https://");
+        assertThat(response.getBody().message()).isEqualTo("Invalid URL: must start with http:// or https://");
     }
 
     @Test
@@ -219,7 +219,7 @@ class GlobalExceptionHandlerTest {
                 new NoStreamsAvailableException("No streams available"), request);
 
         assertError(response, 503, "NO_STREAMS_AVAILABLE");
-        assertThat(response.getBody().getMessage()).isEqualTo("No streams available");
+        assertThat(response.getBody().message()).isEqualTo("No streams available");
     }
 
     // ── detail ──────────────────────────────────────────────────────────────
@@ -239,9 +239,9 @@ class GlobalExceptionHandlerTest {
 
             ErrorResponseDTO body = handleThrown(withDetail, thrown).getBody();
 
-            assertThat(body.getErrorCode()).isEqualTo("CONTENT_PRIVATE");
-            assertThat(body.getMessage()).doesNotContain(RAW);
-            assertThat(body.getDetail())
+            assertThat(body.errorCode()).isEqualTo("CONTENT_PRIVATE");
+            assertThat(body.message()).doesNotContain(RAW);
+            assertThat(body.detail())
                     .isEqualTo("ParsingException: Could not get stream info <- PrivateContentException: " + RAW);
         }
 
@@ -251,8 +251,8 @@ class GlobalExceptionHandlerTest {
             ErrorResponseDTO body = withDetail.handleGenericException(
                     new IllegalStateException(RAW), request).getBody();
 
-            assertThat(body.getMessage()).isEqualTo("An unexpected error occurred");
-            assertThat(body.getDetail()).isEqualTo("IllegalStateException: " + RAW);
+            assertThat(body.message()).isEqualTo("An unexpected error occurred");
+            assertThat(body.detail()).isEqualTo("IllegalStateException: " + RAW);
         }
 
         @Test
@@ -260,7 +260,7 @@ class GlobalExceptionHandlerTest {
         void absentByDefault() {
             ErrorResponseDTO body = handleThrown(new PrivateContentException(RAW)).getBody();
 
-            assertThat(body.getDetail()).isNull();
+            assertThat(body.detail()).isNull();
         }
 
         @Test
@@ -269,7 +269,7 @@ class GlobalExceptionHandlerTest {
             ErrorResponseDTO body = withDetail.handleApiException(
                     new ValidationException("id", "must not be empty"), request).getBody();
 
-            assertThat(body.getDetail()).isNull();
+            assertThat(body.detail()).isNull();
         }
     }
 
@@ -286,7 +286,7 @@ class GlobalExceptionHandlerTest {
                     new MissingServletRequestParameterException("id", "String"), request);
 
             assertError(response, 400, "MISSING_PARAMETER");
-            assertThat(response.getBody().getMessage()).isEqualTo("Required parameter 'id' is missing");
+            assertThat(response.getBody().message()).isEqualTo("Required parameter 'id' is missing");
         }
 
         @Test
@@ -299,7 +299,7 @@ class GlobalExceptionHandlerTest {
             ResponseEntity<ErrorResponseDTO> response = handler.handleTypeMismatch(ex, request);
 
             assertError(response, 400, "VALIDATION_ERROR");
-            assertThat(response.getBody().getMessage()).isEqualTo("Parameter 'count' must be of type Integer");
+            assertThat(response.getBody().message()).isEqualTo("Parameter 'count' must be of type Integer");
         }
 
         @Test
@@ -327,7 +327,7 @@ class GlobalExceptionHandlerTest {
                     new HttpRequestMethodNotSupportedException("POST", List.of("GET")), request);
 
             assertError(response, 405, "METHOD_NOT_ALLOWED");
-            assertThat(response.getBody().getMessage()).isEqualTo("Method 'POST' isn't supported at this path");
+            assertThat(response.getBody().message()).isEqualTo("Method 'POST' isn't supported at this path");
             assertThat(response.getHeaders().getAllow()).containsExactly(HttpMethod.GET);
         }
     }
@@ -345,7 +345,7 @@ class GlobalExceptionHandlerTest {
                     new IllegalStateException("Internal database error: connection failed"), request);
 
             assertError(response, 500, "INTERNAL_ERROR");
-            assertThat(response.getBody().getMessage())
+            assertThat(response.getBody().message())
                     .isEqualTo("An unexpected error occurred")
                     .doesNotContain("database", "connection");
         }
@@ -358,7 +358,7 @@ class GlobalExceptionHandlerTest {
             ResponseEntity<ErrorResponseDTO> response = handler.handleGenericException(
                     new RuntimeException(), request);
 
-            assertThat(response.getBody().getPath()).isEqualTo("/api/v1/search?q=test&page=2");
+            assertThat(response.getBody().path()).isEqualTo("/api/v1/search?q=test&page=2");
         }
     }
 }

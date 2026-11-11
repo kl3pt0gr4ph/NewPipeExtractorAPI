@@ -98,12 +98,9 @@ public class SearchService {
             ListExtractor.InfoItemsPage<?> page = extractor.getPage(pageInstance);
 
             SearchPageDTO dto = SearchPageDTO.from(page);
+            dto = dto.withItems(deduplicateByUrl(dto.items()));
 
-            List<SearchItemDTO> uniqueItems = deduplicateByUrl(dto.getItems());
-            dto.setItems(uniqueItems);
-            dto.setItemCount(uniqueItems.size());
-
-            logger.info("Retrieved page with {} unique result(s)", uniqueItems.size());
+            logger.info("Retrieved page with {} unique result(s)", dto.itemCount());
 
             return dto;
         } catch (Exception e) {
@@ -114,7 +111,7 @@ public class SearchService {
     private List<SearchItemDTO> deduplicateByUrl(List<SearchItemDTO> items) {
         return new ArrayList<>(items.stream()
                 .collect(Collectors.toMap(
-                        SearchItemDTO::getUrl,
+                        SearchItemDTO::url,
                         item -> item,
                         (existing, _) -> existing,
                         LinkedHashMap::new

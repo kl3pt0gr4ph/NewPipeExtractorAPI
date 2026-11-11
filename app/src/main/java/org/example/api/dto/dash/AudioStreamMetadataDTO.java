@@ -1,7 +1,7 @@
 package org.example.api.dto.dash;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import org.schabi.newpipe.extractor.MediaFormat;
 import org.schabi.newpipe.extractor.services.youtube.ItagItem;
 import org.schabi.newpipe.extractor.stream.AudioStream;
 import org.schabi.newpipe.extractor.stream.AudioTrackType;
@@ -14,105 +14,40 @@ import java.util.Locale;
 /**
  * Data Transfer Object representing metadata for an audio stream in a DASH manifest.
  * Contains information about audio quality, codec, language, and segment locations.
+ *
+ * @param id                Unique identifier for this audio representation in the DASH manifest
+ * @param url               Direct URL to the audio stream content
+ * @param audioTrackId      Groups every itag of one audio track. Null on single-track videos
+ * @param audioTrackName    Service-provided display name for the track
+ * @param audioTrackType    Original, dubbed, descriptive or secondary. Null when the service doesn't say
+ * @param codec             Audio codec identifier (e.g., "mp4a.40.2", "opus")
+ * @param mimeType          MIME type of the audio stream (e.g., "audio/mp4", "audio/webm")
+ * @param bandwidth         Bandwidth required for this stream in bits per second
+ * @param audioSamplingRate Audio sampling rate in Hz (e.g., "44100", "48000")
+ * @param audioChannels     Number of audio channels (e.g., 1 for mono, 2 for stereo, 6 for 5.1)
+ * @param language          Language tag for this audio track (e.g., "en", "es-419", "und" for undefined)
+ * @param languageName      Human-readable language name (e.g., "English", "Spanish", "Unknown")
+ * @param initRange         Byte range for initialization segment (e.g., "0-722")
+ * @param indexRange        Byte range for index segment (e.g., "723-898")
+ * @param format            Original format identifier from the extractor (optional, for debugging)
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class AudioStreamMetadataDTO {
-
-    /**
-     * Unique identifier for this audio representation in the DASH manifest.
-     */
-    @NotBlank(message = "Audio stream ID cannot be blank")
-    @JsonProperty("id")
-    private String id;
-
-    /** Direct URL to the audio stream content */
-    @NotBlank(message = "Audio stream URL cannot be blank")
-    @JsonProperty("url")
-    private String url;
-
-    /** Groups every itag of one audio track. Null on single track videos */
-    @JsonProperty("audioTrackId")
-    private String audioTrackId;
-
-    /** Service-provided display name for the track name */
-    @JsonProperty("audioTrackName")
-    private String audioTrackName;
-
-    /** Original, dubbed, descriptive or secondary. Null when the servcie doesn't say */
-    @JsonProperty("audioTrackType")
-    private AudioTrackType audioTrackType;
-
-    /** Audio codec identifier (e.g., "mp4a.40.2", "opus") */
-    @NotBlank(message = "Audio codec cannot be blank")
-    @JsonProperty("codec")
-    private String codec;
-
-    /** MIME type of the audio stream (e.g., "audio/mp4", "audio/webm") */
-    @NotBlank(message = "Audio MIME type cannot be blank")
-    @JsonProperty("mimeType")
-    private String mimeType;
-
-    /** Bandwidth required for this stream in bits per second */
-    @Min(value = 1, message = "Bandwidth must be at least 1")
-    @JsonProperty("bandwidth")
-    private int bandwidth;
-
-    /** Audio sampling rate in Hz (e.g., "44100", "48000") */
-    @NotBlank(message = "Audio sampling rate cannot be blank")
-    @JsonProperty("audioSamplingRate")
-    private String audioSamplingRate;
-
-    /** Number of audio channels (e.g., 1 for mono, 2 for stereo, 6 for 5.1) */
-    @Min(value = 1, message = "Audio channels must be at least 1")
-    @JsonProperty("audioChannels")
-    private int audioChannels;
-
-    /** Language code for this audio track (e.g., "en", "es", "und" for undefined) */
-    @JsonProperty("language")
-    private String language;
-
-    /** Human-readable language name (e.g., "English", "Spanish", "Unknown") */
-    @JsonProperty("languageName")
-    private String languageName;
-
-    /** Byte range for initialization segment (e.g., "0-722") */
-    @JsonProperty("initRange")
-    private String initRange;
-
-    /** Byte range for index segment (e.g., "723-898") */
-    @JsonProperty("indexRange")
-    private String indexRange;
-
-    /** Original format identifier from the extractor (optional, for debugging) */
-    @JsonProperty("format")
-    private String format;
-
-    // Constructors
-
-    /** Default constructor for Jackson deserialization */
-    public AudioStreamMetadataDTO() {
-    }
-
-    /** Full constructor for creating an AudioStreamMetadataDTO with all fields */
-    public AudioStreamMetadataDTO(String id, String url, String codec, String mimeType,
-                                  int bandwidth, String audioSamplingRate, int audioChannels,
-                                  String language, String languageName,
-                                  String initRange, String indexRange, String format) {
-        this.id = id;
-        this.url = url;
-        this.codec = codec;
-        this.mimeType = mimeType;
-        this.bandwidth = bandwidth;
-        this.audioSamplingRate = audioSamplingRate;
-        this.audioChannels = audioChannels;
-        this.language = language;
-        this.languageName = languageName;
-        this.initRange = initRange;
-        this.indexRange = indexRange;
-        this.format = format;
-    }
-
-    // Static Factory Method
+public record AudioStreamMetadataDTO(
+        @NotBlank(message = "Audio stream ID cannot be blank") String id,
+        @NotBlank(message = "Audio stream URL cannot be blank") String url,
+        String audioTrackId,
+        String audioTrackName,
+        AudioTrackType audioTrackType,
+        @NotBlank(message = "Audio codec cannot be blank") String codec,
+        @NotBlank(message = "Audio MIME type cannot be blank") String mimeType,
+        @Min(value = 1, message = "Bandwidth must be at least 1") int bandwidth,
+        @NotBlank(message = "Audio sampling rate cannot be blank") String audioSamplingRate,
+        @Min(value = 1, message = "Audio channels must be at least 1") int audioChannels,
+        String language,
+        String languageName,
+        String initRange,
+        String indexRange,
+        String format) {
 
     /**
      * Creates an AudioStreamMetadataDTO from a NewPipe AudioStream object.
@@ -125,41 +60,37 @@ public class AudioStreamMetadataDTO {
         if (stream == null) {
             throw new IllegalArgumentException("AudioStream cannot be null");
         }
-
-        AudioStreamMetadataDTO dto = new AudioStreamMetadataDTO();
-        dto.setId("audio-%d".formatted(index));
-        dto.setUrl(stream.getContent());
-        dto.setCodec(stream.getCodec());
-        dto.setMimeType(stream.getFormat() != null ? stream.getFormat().getMimeType() : null);
-        dto.setBandwidth(stream.getBitrate());
+        MediaFormat format = stream.getFormat();
 
         ItagItem itag = stream.getItagItem();
         int sampleRate = itag != null ? itag.getSampleRate() : ItagItem.SAMPLE_RATE_UNKNOWN;
         int channels = itag != null ? itag.getAudioChannels() : ItagItem.AUDIO_CHANNELS_NOT_APPLICABLE_OR_UNKNOWN;
-        if (sampleRate > 0) {
-            dto.setAudioSamplingRate(String.valueOf(sampleRate));
-        }
-        dto.setAudioChannels(channels > 0 ? channels : 2);
 
-        // Full BCP 2 tag so regional dub stays distinguishable
+        // Full BCP 47 tag so regional dubs stay distinguishable
         Locale locale = stream.getAudioLocale();
-        dto.setLanguage(locale != null ? locale.toLanguageTag() : "und");
-        dto.setLanguageName(getLanguageDisplayName(locale != null ? locale.getLanguage() : "und"));
 
-        dto.setAudioTrackId(stream.getAudioTrackId());
-        dto.setAudioTrackName(stream.getAudioTrackName());
-        dto.setAudioTrackType(stream.getAudioTrackType());
+        return builder()
+                .id("audio-%d".formatted(index))
+                .url(stream.getContent())
+                .audioTrackId(stream.getAudioTrackId())
+                .audioTrackName(stream.getAudioTrackName())
+                .audioTrackType(stream.getAudioTrackType())
+                .codec(stream.getCodec())
+                .mimeType(format != null ? format.getMimeType() : null)
+                .bandwidth(stream.getBitrate())
+                .audioSamplingRate(sampleRate > 0 ? String.valueOf(sampleRate) : null)
+                .audioChannels(channels > 0 ? channels : 2)
+                .language(locale != null ? locale.toLanguageTag() : "und")
+                .languageName(getLanguageDisplayName(locale != null ? locale.getLanguage() : "und"))
+                .initRange(byteRange(stream.getInitStart(), stream.getInitEnd()))
+                .indexRange(byteRange(stream.getIndexStart(), stream.getIndexEnd()))
+                .format(format != null ? format.getName() : null)
+                .build();
+    }
 
-        if (stream.getInitStart() >= 0 && stream.getInitEnd() > 0) {
-            dto.setInitRange("%d-%d".formatted(stream.getInitStart(), stream.getInitEnd()));
-        }
-        if (stream.getIndexStart() >= 0 && stream.getIndexEnd() > 0) {
-            dto.setIndexRange("%d-%d".formatted(stream.getIndexStart(), stream.getIndexEnd()));
-        }
-
-        dto.setFormat(stream.getFormat() != null ? stream.getFormat().getName() : null);
-
-        return dto;
+    /** "start-end", or null when the stream reports no range. */
+    private static String byteRange(int start, int end) {
+        return start >= 0 && end > 0 ? "%d-%d".formatted(start, end) : null;
     }
 
     /**
@@ -192,8 +123,6 @@ public class AudioStreamMetadataDTO {
         };
     }
 
-    // Builder Pattern
-
     /**
      * Creates a new Builder for constructing AudioStreamMetadataDTO instances.
      *
@@ -209,6 +138,9 @@ public class AudioStreamMetadataDTO {
     public static class Builder {
         private String id;
         private String url;
+        private String audioTrackId;
+        private String audioTrackName;
+        private AudioTrackType audioTrackType;
         private String codec;
         private String mimeType;
         private int bandwidth;
@@ -227,6 +159,21 @@ public class AudioStreamMetadataDTO {
 
         public Builder url(String url) {
             this.url = url;
+            return this;
+        }
+
+        public Builder audioTrackId(String audioTrackId) {
+            this.audioTrackId = audioTrackId;
+            return this;
+        }
+
+        public Builder audioTrackName(String audioTrackName) {
+            this.audioTrackName = audioTrackName;
+            return this;
+        }
+
+        public Builder audioTrackType(AudioTrackType audioTrackType) {
+            this.audioTrackType = audioTrackType;
             return this;
         }
 
@@ -281,153 +228,17 @@ public class AudioStreamMetadataDTO {
         }
 
         public AudioStreamMetadataDTO build() {
-            return new AudioStreamMetadataDTO(id, url, codec, mimeType, bandwidth,
-                    audioSamplingRate, audioChannels, language, languageName,
+            return new AudioStreamMetadataDTO(id, url, audioTrackId, audioTrackName, audioTrackType,
+                    codec, mimeType, bandwidth, audioSamplingRate, audioChannels, language, languageName,
                     initRange, indexRange, format);
         }
     }
 
-    // Getters and Setters
-
-    public String getId() {
-        return id;
-    }
-
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public String getUrl() {
-        return url;
-    }
-
-    public void setUrl(String url) {
-        this.url = url;
-    }
-
-    public String getCodec() {
-        return codec;
-    }
-
-    public String getAudioTrackId() {
-        return audioTrackId;
-    }
-
-    public void setAudioTrackId(String audioTrackId) {
-        this.audioTrackId = audioTrackId;
-    }
-
-    public String getAudioTrackName() {
-        return audioTrackName;
-    }
-
-    public void setAudioTrackName(String audioTrackName) {
-        this.audioTrackName = audioTrackName;
-    }
-
-    public AudioTrackType getAudioTrackType() {
-        return audioTrackType;
-    }
-
-    public void setAudioTrackType(AudioTrackType audioTrackType) {
-        this.audioTrackType = audioTrackType;
-    }
-
-    public void setCodec(String codec) {
-        this.codec = codec;
-    }
-
-    public String getMimeType() {
-        return mimeType;
-    }
-
-    public void setMimeType(String mimeType) {
-        this.mimeType = mimeType;
-    }
-
-    public int getBandwidth() {
-        return bandwidth;
-    }
-
-    public void setBandwidth(int bandwidth) {
-        this.bandwidth = bandwidth;
-    }
-
-    public String getAudioSamplingRate() {
-        return audioSamplingRate;
-    }
-
-    public void setAudioSamplingRate(String audioSamplingRate) {
-        this.audioSamplingRate = audioSamplingRate;
-    }
-
-    public int getAudioChannels() {
-        return audioChannels;
-    }
-
-    public void setAudioChannels(int audioChannels) {
-        this.audioChannels = audioChannels;
-    }
-
-    public String getLanguage() {
-        return language;
-    }
-
-    public void setLanguage(String language) {
-        this.language = language;
-    }
-
-    public String getLanguageName() {
-        return languageName;
-    }
-
-    public void setLanguageName(String languageName) {
-        this.languageName = languageName;
-    }
-
-    public String getInitRange() {
-        return initRange;
-    }
-
-    public void setInitRange(String initRange) {
-        this.initRange = initRange;
-    }
-
-    public String getIndexRange() {
-        return indexRange;
-    }
-
-    public void setIndexRange(String indexRange) {
-        this.indexRange = indexRange;
-    }
-
-    public String getFormat() {
-        return format;
-    }
-
-    public void setFormat(String format) {
-        this.format = format;
-    }
-
+    /** Leaves out the URL, which is long and signed, to keep log lines short. */
     @Override
     public String toString() {
-        return (
-                "AudioStreamMetadataDTO{id='%s'," +
-                " codec='%s', " +
-                "bandwidth=%d, " +
-                "audioSamplingRate='%s', " +
-                "audioChannels=%d, " +
-                "language='%s', " +
-                "languageName='%s'}"
-        )
-                .formatted(
-                        id,
-                        codec,
-                        bandwidth,
-                        audioSamplingRate,
-                        audioChannels,
-                        language,
-                        languageName
-                );
+        return ("AudioStreamMetadataDTO{id='%s', codec='%s', bandwidth=%d, audioSamplingRate='%s', "
+                + "audioChannels=%d, language='%s', languageName='%s'}")
+                .formatted(id, codec, bandwidth, audioSamplingRate, audioChannels, language, languageName);
     }
 }

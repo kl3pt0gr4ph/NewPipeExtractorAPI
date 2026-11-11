@@ -59,17 +59,17 @@ class VideoStreamMetadataDTOTest {
         VideoStreamMetadataDTO dto = validBuilder()
                 .initRange("0-740").indexRange("741-1048").format("MPEG_4").build();
 
-        assertThat(dto.getId()).isEqualTo("video-1");
-        assertThat(dto.getUrl()).isEqualTo("https://example.com/video.mp4");
-        assertThat(dto.getCodec()).isEqualTo("avc1.640028");
-        assertThat(dto.getMimeType()).isEqualTo("video/mp4");
-        assertThat(dto.getWidth()).isEqualTo(1920);
-        assertThat(dto.getHeight()).isEqualTo(1080);
-        assertThat(dto.getFrameRate()).isEqualTo("24");
-        assertThat(dto.getBandwidth()).isEqualTo(3423702);
-        assertThat(dto.getInitRange()).isEqualTo("0-740");
-        assertThat(dto.getIndexRange()).isEqualTo("741-1048");
-        assertThat(dto.getFormat()).isEqualTo("MPEG_4");
+        assertThat(dto.id()).isEqualTo("video-1");
+        assertThat(dto.url()).isEqualTo("https://example.com/video.mp4");
+        assertThat(dto.codec()).isEqualTo("avc1.640028");
+        assertThat(dto.mimeType()).isEqualTo("video/mp4");
+        assertThat(dto.width()).isEqualTo(1920);
+        assertThat(dto.height()).isEqualTo(1080);
+        assertThat(dto.frameRate()).isEqualTo("24");
+        assertThat(dto.bandwidth()).isEqualTo(3423702);
+        assertThat(dto.initRange()).isEqualTo("0-740");
+        assertThat(dto.indexRange()).isEqualTo("741-1048");
+        assertThat(dto.format()).isEqualTo("MPEG_4");
     }
 
     // ── Validation ───────────────────────────────────────────────────────
@@ -135,15 +135,15 @@ class VideoStreamMetadataDTOTest {
 
         VideoStreamMetadataDTO dto = VideoStreamMetadataDTO.from(stream, 1);
 
-        assertThat(dto.getId()).isEqualTo("video-1");
-        assertThat(dto.getUrl()).isEqualTo("https://example.com/video.mp4");
-        assertThat(dto.getWidth()).isEqualTo(1920);
-        assertThat(dto.getHeight()).isEqualTo(1080);
-        assertThat(dto.getFrameRate()).isEqualTo("24");
-        assertThat(dto.getBandwidth()).isEqualTo(3423702);
-        assertThat(dto.getInitRange()).isEqualTo("0-740");
-        assertThat(dto.getIndexRange()).isEqualTo("741-1048");
-        assertThat(dto.getFormat()).isEqualTo("MPEG_4");
+        assertThat(dto.id()).isEqualTo("video-1");
+        assertThat(dto.url()).isEqualTo("https://example.com/video.mp4");
+        assertThat(dto.width()).isEqualTo(1920);
+        assertThat(dto.height()).isEqualTo(1080);
+        assertThat(dto.frameRate()).isEqualTo("24");
+        assertThat(dto.bandwidth()).isEqualTo(3423702);
+        assertThat(dto.initRange()).isEqualTo("0-740");
+        assertThat(dto.indexRange()).isEqualTo("741-1048");
+        assertThat(dto.format()).isEqualTo("MPEG_4");
     }
 
     @Test
@@ -170,8 +170,8 @@ class VideoStreamMetadataDTOTest {
 
         VideoStreamMetadataDTO dto = VideoStreamMetadataDTO.from(stream, 2);
 
-        assertThat(dto.getMimeType()).isNull();
-        assertThat(dto.getFormat()).isNull();
+        assertThat(dto.mimeType()).isNull();
+        assertThat(dto.format()).isNull();
     }
 
     @Test
@@ -194,9 +194,9 @@ class VideoStreamMetadataDTOTest {
 
         VideoStreamMetadataDTO dto = VideoStreamMetadataDTO.from(stream, 10);
 
-        assertThat(dto.getId()).isEqualTo("video-10");
-        assertThat(dto.getInitRange()).isNull();
-        assertThat(dto.getIndexRange()).isNull();
+        assertThat(dto.id()).isEqualTo("video-10");
+        assertThat(dto.initRange()).isNull();
+        assertThat(dto.indexRange()).isNull();
     }
 
     // ── JSON ─────────────────────────────────────────────────────────────
@@ -220,17 +220,17 @@ class VideoStreamMetadataDTOTest {
         VideoStreamMetadataDTO restored = objectMapper.readValue(
                 objectMapper.writeValueAsString(original), VideoStreamMetadataDTO.class);
 
-        assertThat(restored.getId()).isEqualTo(original.getId());
-        assertThat(restored.getUrl()).isEqualTo(original.getUrl());
-        assertThat(restored.getCodec()).isEqualTo(original.getCodec());
-        assertThat(restored.getMimeType()).isEqualTo(original.getMimeType());
-        assertThat(restored.getWidth()).isEqualTo(original.getWidth());
-        assertThat(restored.getHeight()).isEqualTo(original.getHeight());
-        assertThat(restored.getFrameRate()).isEqualTo(original.getFrameRate());
-        assertThat(restored.getBandwidth()).isEqualTo(original.getBandwidth());
-        assertThat(restored.getInitRange()).isEqualTo(original.getInitRange());
-        assertThat(restored.getIndexRange()).isEqualTo(original.getIndexRange());
-        assertThat(restored.getFormat()).isEqualTo(original.getFormat());
+        assertThat(restored.id()).isEqualTo(original.id());
+        assertThat(restored.url()).isEqualTo(original.url());
+        assertThat(restored.codec()).isEqualTo(original.codec());
+        assertThat(restored.mimeType()).isEqualTo(original.mimeType());
+        assertThat(restored.width()).isEqualTo(original.width());
+        assertThat(restored.height()).isEqualTo(original.height());
+        assertThat(restored.frameRate()).isEqualTo(original.frameRate());
+        assertThat(restored.bandwidth()).isEqualTo(original.bandwidth());
+        assertThat(restored.initRange()).isEqualTo(original.initRange());
+        assertThat(restored.indexRange()).isEqualTo(original.indexRange());
+        assertThat(restored.format()).isEqualTo(original.format());
     }
 
     // ── toString ─────────────────────────────────────────────────────────

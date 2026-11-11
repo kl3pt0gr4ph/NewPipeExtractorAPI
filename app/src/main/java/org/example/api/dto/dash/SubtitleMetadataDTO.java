@@ -1,9 +1,8 @@
 package org.example.api.dto.dash;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import org.schabi.newpipe.extractor.stream.SubtitlesStream;
 import org.schabi.newpipe.extractor.MediaFormat;
+import org.schabi.newpipe.extractor.stream.SubtitlesStream;
 
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -11,88 +10,33 @@ import jakarta.validation.constraints.NotBlank;
 /**
  * Data Transfer Object representing metadata for a subtitle track in a DASH manifest.
  * Contains information about subtitle language, format, and location.
+ *
+ * @param id           Unique identifier for this subtitle representation in the DASH manifest
+ * @param url          Direct URL to the subtitle content
+ * @param language     Language tag for this subtitle track (e.g., "en", "es", "pt-BR")
+ * @param languageName Human-readable language name (e.g., "English", "Spanish", "French")
+ * @param mimeType     MIME type of the subtitle format (e.g., "application/ttml+xml", "text/vtt")
+ * @param kind         Kind of subtitle track ("subtitles", or "asr" for auto-generated)
+ * @param bandwidth    Bandwidth estimate in bits per second; non-positive values become 256
+ * @param format       Format code from the extractor (optional, for debugging)
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class SubtitleMetadataDTO {
+public record SubtitleMetadataDTO(
+        @NotBlank(message = "Subtitle ID cannot be blank") String id,
+        @NotBlank(message = "Subtitle URL cannot be blank") String url,
+        @NotBlank(message = "Subtitle language cannot be blank") String language,
+        String languageName,
+        @NotBlank(message = "Subtitle MIME type cannot be blank") String mimeType,
+        String kind,
+        @Min(value = 1, message = "Bandwidth must be at least 1") int bandwidth,
+        String format) {
 
-    /**
-     * Unique identifier for this subtitle representation in the DASH manifest.
-     */
-    @NotBlank(message = "Subtitle ID cannot be blank")
-    @JsonProperty("id")
-    private String id;
+    /** Standard bandwidth for text streams. */
+    private static final int DEFAULT_BANDWIDTH = 256;
 
-    /**
-     * Direct URL to the subtitle content.
-     */
-    @NotBlank(message = "Subtitle URL cannot be blank")
-    @JsonProperty("url")
-    private String url;
-
-    /**
-     * Language code for this subtitle track (e.g., "en", "es", "fr").
-     */
-    @NotBlank(message = "Subtitle language cannot be blank")
-    @JsonProperty("language")
-    private String language;
-
-    /**
-     * Human-readable language name (e.g., "English", "Spanish", "French").
-     */
-    @JsonProperty("languageName")
-    private String languageName;
-
-    /**
-     * MIME type of the subtitle format (e.g., "application/ttml+xml", "text/vtt").
-     */
-    @NotBlank(message = "Subtitle MIME type cannot be blank")
-    @JsonProperty("mimeType")
-    private String mimeType;
-
-    /**
-     * Kind of subtitle track (e.g., "subtitles", "captions", "asr" for auto-generated).
-     */
-    @JsonProperty("kind")
-    private String kind;
-
-    /**
-     * Bandwidth estimate for subtitle stream (typically low, default 256 bits/sec).
-     */
-    @Min(value = 1, message = "Bandwidth must be at least 1")
-    @JsonProperty("bandwidth")
-    private int bandwidth;
-
-    /**
-     * Format code from the extractor (optional, for debugging).
-     */
-    @JsonProperty("format")
-    private String format;
-
-    // Constructors
-
-    /**
-     * Default constructor for Jackson deserialization.
-     */
-    public SubtitleMetadataDTO() {
-        this.bandwidth = 256; // Default bandwidth for text streams
+    public SubtitleMetadataDTO {
+        bandwidth = bandwidth > 0 ? bandwidth : DEFAULT_BANDWIDTH;
     }
-
-    /**
-     * Full constructor for creating a SubtitleMetadataDTO with all fields.
-     */
-    public SubtitleMetadataDTO(String id, String url, String language, String languageName,
-                               String mimeType, String kind, int bandwidth, String format) {
-        this.id = id;
-        this.url = url;
-        this.language = language;
-        this.languageName = languageName;
-        this.mimeType = mimeType;
-        this.kind = kind;
-        this.bandwidth = bandwidth > 0 ? bandwidth : 256;
-        this.format = format;
-    }
-
-    // Static Factory Method
 
     /**
      * Creates a SubtitleMetadataDTO from a NewPipe SubtitlesStream object.
@@ -105,26 +49,18 @@ public class SubtitleMetadataDTO {
         if (stream == null) {
             throw new IllegalArgumentException("SubtitlesStream cannot be null");
         }
+        MediaFormat format = stream.getFormat();
 
-        SubtitleMetadataDTO dto = new SubtitleMetadataDTO();
-        dto.setId("subtitle-" + index);
-        dto.setUrl(stream.getContent());
-
-        // Handle language information
-        dto.setLanguage(stream.getLanguageTag());
-        dto.setLanguageName(stream.getDisplayLanguageName());
-
-        // Determine MIME type from format
-        String mimeType = inferMimeTypeFromFormat(stream.getFormat());
-        dto.setMimeType(mimeType);
-
-        // Set subtitle kind (asr for auto-generated, subtitles otherwise)
-        dto.setKind(stream.isAutoGenerated() ? "asr" : "subtitles");
-
-        dto.setBandwidth(256); // Standard bandwidth for text streams
-        dto.setFormat(stream.getFormat() != null ? stream.getFormat().getName() : null);
-
-        return dto;
+        return builder()
+                .id("subtitle-" + index)
+                .url(stream.getContent())
+                .language(stream.getLanguageTag())
+                .languageName(stream.getDisplayLanguageName())
+                .mimeType(inferMimeTypeFromFormat(format))
+                // asr for auto-generated, subtitles otherwise
+                .kind(stream.isAutoGenerated() ? "asr" : "subtitles")
+                .format(format != null ? format.getName() : null)
+                .build();
     }
 
     /**
@@ -146,41 +82,6 @@ public class SubtitleMetadataDTO {
     }
 
     /**
-     * Helper method to get display name for language code.
-     * This is a simple implementation - can be expanded with more language mappings.
-     *
-     * @param languageCode The ISO language code
-     * @return Human-readable language name
-     */
-    private static String getLanguageDisplayName(String languageCode) {
-        if (languageCode == null || languageCode.isEmpty()) {
-            return "Unknown";
-        }
-
-        return switch (languageCode.toLowerCase()) {
-            case "en" -> "English";
-            case "es" -> "Spanish";
-            case "fr" -> "French";
-            case "de" -> "German";
-            case "it" -> "Italian";
-            case "pt" -> "Portuguese";
-            case "ru" -> "Russian";
-            case "ja" -> "Japanese";
-            case "ko" -> "Korean";
-            case "zh" -> "Chinese";
-            case "ar" -> "Arabic";
-            case "hi" -> "Hindi";
-            case "nl" -> "Dutch";
-            case "pl" -> "Polish";
-            case "tr" -> "Turkish";
-            case "und" -> "Unknown";
-            default -> languageCode.toUpperCase();
-        };
-    }
-
-    // Builder Pattern
-
-    /**
      * Creates a new Builder for constructing SubtitleMetadataDTO instances.
      *
      * @return A new Builder instance
@@ -199,7 +100,7 @@ public class SubtitleMetadataDTO {
         private String languageName;
         private String mimeType;
         private String kind;
-        private int bandwidth = 256;
+        private int bandwidth = DEFAULT_BANDWIDTH;
         private String format;
 
         public Builder id(String id) {
@@ -248,74 +149,9 @@ public class SubtitleMetadataDTO {
         }
     }
 
-    // Getters and Setters
-
-    public String getId() {
-        return id;
-    }
-
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public String getUrl() {
-        return url;
-    }
-
-    public void setUrl(String url) {
-        this.url = url;
-    }
-
-    public String getLanguage() {
-        return language;
-    }
-
-    public void setLanguage(String language) {
-        this.language = language;
-    }
-
-    public String getLanguageName() {
-        return languageName;
-    }
-
-    public void setLanguageName(String languageName) {
-        this.languageName = languageName;
-    }
-
-    public String getMimeType() {
-        return mimeType;
-    }
-
-    public void setMimeType(String mimeType) {
-        this.mimeType = mimeType;
-    }
-
-    public String getKind() {
-        return kind;
-    }
-
-    public void setKind(String kind) {
-        this.kind = kind;
-    }
-
-    public int getBandwidth() {
-        return bandwidth;
-    }
-
-    public void setBandwidth(int bandwidth) {
-        this.bandwidth = bandwidth;
-    }
-
-    public String getFormat() {
-        return format;
-    }
-
-    public void setFormat(String format) {
-        this.format = format;
-    }
-
     @Override
     public String toString() {
-        return "SubtitleMetadataDTO{id='%s', language='%s', languageName='%s', mimeType='%s', kind='%s'}".formatted(id, language, languageName, mimeType, kind);
+        return "SubtitleMetadataDTO{id='%s', language='%s', languageName='%s', mimeType='%s', kind='%s'}"
+                .formatted(id, language, languageName, mimeType, kind);
     }
 }

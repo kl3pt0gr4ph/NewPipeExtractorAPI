@@ -21,10 +21,8 @@ import org.xml.sax.InputSource;
 
 import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.StringReader;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -106,49 +104,87 @@ class DashManifestGeneratorServiceTest {
 
     // -- Fixture factories ------------------------------------------------
 
-    private static DashManifestConfigDTO createBasicConfig() {
-        DashManifestConfigDTO config = new DashManifestConfigDTO();
-        config.setType("static");
-        config.setMediaPresentationDuration("PT2M");
-        config.setMinBufferTime("PT2S");
-        config.setProfiles("urn:mpeg:dash:profile:isoff-on-demand:2011");
-        config.setDurationSeconds(120);
-        config.setVideoStreams(new ArrayList<>());
-        config.setAudioStreams(new ArrayList<>());
-        config.setSubtitleStreams(new ArrayList<>());
-        return config;
+    /*
+     * The DTOs are immutable, so a test that needs an unusual stream or config takes one of
+     * the *Builder helpers, changes what it needs, and calls build().
+     */
+
+    private static DashManifestConfigDTO.Builder configBuilder(List<VideoStreamMetadataDTO> video,
+                                                               List<AudioStreamMetadataDTO> audio,
+                                                               List<SubtitleMetadataDTO> subtitles) {
+        return DashManifestConfigDTO.builder()
+                .type("static")
+                .mediaPresentationDuration("PT2M")
+                .minBufferTime("PT2S")
+                .profiles("urn:mpeg:dash:profile:isoff-on-demand:2011")
+                .durationSeconds(120)
+                .videoStreams(video)
+                .audioStreams(audio)
+                .subtitleStreams(subtitles);
     }
 
     private static DashManifestConfigDTO configWith(List<VideoStreamMetadataDTO> video,
                                                     List<AudioStreamMetadataDTO> audio,
                                                     List<SubtitleMetadataDTO> subtitles) {
-        DashManifestConfigDTO config = createBasicConfig();
-        config.setVideoStreams(new ArrayList<>(video));
-        config.setAudioStreams(new ArrayList<>(audio));
-        config.setSubtitleStreams(new ArrayList<>(subtitles));
-        return config;
+        return configBuilder(video, audio, subtitles).build();
     }
 
     /** Smallest valid manifest: one video and one audio representation. */
+    private static DashManifestConfigDTO.Builder minimalConfigBuilder() {
+        return configBuilder(List.of(defaultVideo()), List.of(defaultAudio()), List.of());
+    }
+
     private static DashManifestConfigDTO minimalConfig() {
-        return configWith(List.of(defaultVideo()), List.of(defaultAudio()), List.of());
+        return minimalConfigBuilder().build();
+    }
+
+    /** Minimal config whose only video stream is the given one. */
+    private static Supplier<DashManifestConfigDTO> withVideo(VideoStreamMetadataDTO.Builder video) {
+        return () -> configWith(List.of(video.build()), List.of(defaultAudio()), List.of());
+    }
+
+    /** Minimal config whose only audio stream is the given one. */
+    private static Supplier<DashManifestConfigDTO> withAudio(AudioStreamMetadataDTO.Builder audio) {
+        return () -> configWith(List.of(defaultVideo()), List.of(audio.build()), List.of());
+    }
+
+    /** Minimal config plus the given subtitle track. */
+    private static Supplier<DashManifestConfigDTO> withSubtitle(SubtitleMetadataDTO.Builder subtitle) {
+        return () -> configWith(List.of(defaultVideo()), List.of(defaultAudio()), List.of(subtitle.build()));
+    }
+
+    private static VideoStreamMetadataDTO.Builder defaultVideoBuilder() {
+        return videoBuilder("video-1", 1920, 1080, 3423702);
     }
 
     private static VideoStreamMetadataDTO defaultVideo() {
-        return createVideoStream("video-1", 1920, 1080, 3423702);
+        return defaultVideoBuilder().build();
+    }
+
+    private static AudioStreamMetadataDTO.Builder defaultAudioBuilder() {
+        return audioBuilder("audio-1", "en", 130482);
     }
 
     private static AudioStreamMetadataDTO defaultAudio() {
-        return createAudioStream("audio-1", "en", 130482);
+        return defaultAudioBuilder().build();
     }
 
     private static VideoStreamMetadataDTO createVideoStream(String id, int width, int height, int bandwidth) {
-        return createVideoStream(id, "video/mp4", "avc1.640028", width, height, bandwidth);
+        return videoBuilder(id, width, height, bandwidth).build();
+    }
+
+    private static VideoStreamMetadataDTO createVideoStream(String id, String mimeType, String codec,
+                                                            int width, int height, int bandwidth) {
+        return videoBuilder(id, mimeType, codec, width, height, bandwidth).build();
+    }
+
+    private static VideoStreamMetadataDTO.Builder videoBuilder(String id, int width, int height, int bandwidth) {
+        return videoBuilder(id, "video/mp4", "avc1.640028", width, height, bandwidth);
     }
 
     /** Playable by default: byte ranges are always set, as the filter guarantees. */
-    private static VideoStreamMetadataDTO createVideoStream(String id, String mimeType, String codec,
-                                                            int width, int height, int bandwidth) {
+    private static VideoStreamMetadataDTO.Builder videoBuilder(String id, String mimeType, String codec,
+                                                               int width, int height, int bandwidth) {
         return VideoStreamMetadataDTO.builder()
                 .id(id)
                 .url("https://example.com/" + id)
@@ -159,17 +195,25 @@ class DashManifestGeneratorServiceTest {
                 .frameRate("24")
                 .bandwidth(bandwidth)
                 .initRange("0-740")
-                .indexRange("741-1048")
-                .build();
+                .indexRange("741-1048");
     }
 
     private static AudioStreamMetadataDTO createAudioStream(String id, String language, int bandwidth) {
-        return createAudioStream(id, language, "audio/mp4", "mp4a.40.2", bandwidth);
+        return audioBuilder(id, language, bandwidth).build();
+    }
+
+    private static AudioStreamMetadataDTO createAudioStream(String id, String language, String mimeType,
+                                                            String codec, int bandwidth) {
+        return audioBuilder(id, language, mimeType, codec, bandwidth).build();
+    }
+
+    private static AudioStreamMetadataDTO.Builder audioBuilder(String id, String language, int bandwidth) {
+        return audioBuilder(id, language, "audio/mp4", "mp4a.40.2", bandwidth);
     }
 
     /** Playable by default: byte ranges are always set, as the filter guarantees. */
-    private static AudioStreamMetadataDTO createAudioStream(String id, String language, String mimeType,
-                                                            String codec, int bandwidth) {
+    private static AudioStreamMetadataDTO.Builder audioBuilder(String id, String language, String mimeType,
+                                                               String codec, int bandwidth) {
         return AudioStreamMetadataDTO.builder()
                 .id(id)
                 .url("https://example.com/" + id)
@@ -181,20 +225,23 @@ class DashManifestGeneratorServiceTest {
                 .language(language)
                 .languageName(ManifestXmlBuilder.getLanguageName(language))
                 .initRange("0-600")
-                .indexRange("601-900")
+                .indexRange("601-900");
+    }
+
+    /** Builds an audio stream that is part of a YouTube multi-track video. */
+    private static AudioStreamMetadataDTO inTrack(AudioStreamMetadataDTO.Builder audio, String trackId,
+                                                  AudioTrackType type, String trackName) {
+        return audio.audioTrackId(trackId)
+                .audioTrackType(type)
+                .audioTrackName(trackName)
                 .build();
     }
 
-    /** Marks an audio stream as part of a YouTube multi-track video. */
-    private static AudioStreamMetadataDTO inTrack(AudioStreamMetadataDTO audio, String trackId,
-                                                  AudioTrackType type, String trackName) {
-        audio.setAudioTrackId(trackId);
-        audio.setAudioTrackType(type);
-        audio.setAudioTrackName(trackName);
-        return audio;
+    private static SubtitleMetadataDTO createSubtitleStream(String id, String language, String kind) {
+        return subtitleBuilder(id, language, kind).build();
     }
 
-    private static SubtitleMetadataDTO createSubtitleStream(String id, String language, String kind) {
+    private static SubtitleMetadataDTO.Builder subtitleBuilder(String id, String language, String kind) {
         return SubtitleMetadataDTO.builder()
                 .id(id)
                 .url("https://example.com/" + id + ".vtt")
@@ -202,30 +249,19 @@ class DashManifestGeneratorServiceTest {
                 .languageName(ManifestXmlBuilder.getLanguageName(language))
                 .mimeType("text/vtt")
                 .kind(kind)
-                .bandwidth(256)
-                .build();
-    }
-
-    private static Supplier<DashManifestConfigDTO> mutated(Supplier<DashManifestConfigDTO> base,
-                                                           Consumer<DashManifestConfigDTO> mutation) {
-        return () -> {
-            DashManifestConfigDTO config = base.get();
-            mutation.accept(config);
-            return config;
-        };
+                .bandwidth(256);
     }
 
     // -- Validation -------------------------------------------------------
 
     static Stream<Arguments> invalidConfigs() {
-        Supplier<DashManifestConfigDTO> base = DashManifestGeneratorServiceTest::minimalConfig;
+        // Null stream lists aren't listed: DashManifestConfigDTO turns them into empty lists.
         return Stream.of(
                 Arguments.of("null config", (Supplier<DashManifestConfigDTO>) () -> null),
-                Arguments.of("zero duration", mutated(base, c -> c.setDurationSeconds(0))),
-                Arguments.of("negative duration", mutated(base, c -> c.setDurationSeconds(-10))),
-                Arguments.of("null video streams", mutated(base, c -> c.setVideoStreams(null))),
-                Arguments.of("null audio streams", mutated(base, c -> c.setAudioStreams(null))),
-                Arguments.of("null subtitle streams", mutated(base, c -> c.setSubtitleStreams(null))));
+                Arguments.of("zero duration",
+                        (Supplier<DashManifestConfigDTO>) () -> minimalConfigBuilder().durationSeconds(0).build()),
+                Arguments.of("negative duration",
+                        (Supplier<DashManifestConfigDTO>) () -> minimalConfigBuilder().durationSeconds(-10).build()));
     }
 
     @ParameterizedTest(name = "Rejects {0}")
@@ -237,7 +273,6 @@ class DashManifestGeneratorServiceTest {
     }
 
     static Stream<Arguments> contractViolations() {
-        Supplier<DashManifestConfigDTO> base = DashManifestGeneratorServiceTest::minimalConfig;
         String noAdaptive = "at least one video and one audio";
         String missingField = "missing a required field";
         return Stream.of(
@@ -250,21 +285,18 @@ class DashManifestGeneratorServiceTest {
                                 configWith(List.of(defaultVideo()), List.of(), List.of()),
                         noAdaptive),
                 Arguments.of("video without indexRange",
-                        mutated(base, c -> c.getVideoStreams().getFirst().setIndexRange(null)), missingField),
+                        withVideo(defaultVideoBuilder().indexRange(null)), missingField),
                 Arguments.of("video with blank initRange",
-                        mutated(base, c -> c.getVideoStreams().getFirst().setInitRange(" ")), missingField),
+                        withVideo(defaultVideoBuilder().initRange(" ")), missingField),
                 Arguments.of("video without codec",
-                        mutated(base, c -> c.getVideoStreams().getFirst().setCodec(null)), missingField),
+                        withVideo(defaultVideoBuilder().codec(null)), missingField),
                 Arguments.of("audio without mimeType",
-                        mutated(base, c -> c.getAudioStreams().getFirst().setMimeType(null)), missingField),
+                        withAudio(defaultAudioBuilder().mimeType(null)), missingField),
                 Arguments.of("audio with blank url",
-                        mutated(base, c -> c.getAudioStreams().getFirst().setUrl("")), missingField),
+                        withAudio(defaultAudioBuilder().url("")), missingField),
                 Arguments.of("subtitle without mimeType",
-                        mutated(base, c -> {
-                            SubtitleMetadataDTO subtitle = createSubtitleStream("subtitle-1", "en", "subtitles");
-                            subtitle.setMimeType(null);
-                            c.getSubtitleStreams().add(subtitle);
-                        }), missingField));
+                        withSubtitle(subtitleBuilder("subtitle-1", "en", "subtitles").mimeType(null)),
+                        missingField));
     }
 
     @ParameterizedTest(name = "Rejects {0}")
@@ -397,8 +429,7 @@ class DashManifestGeneratorServiceTest {
         @Test
         @DisplayName("Omits frameRate when it is unknown instead of writing \"null\"")
         void omitsUnknownFrameRate() {
-            VideoStreamMetadataDTO video = defaultVideo();
-            video.setFrameRate(null);
+            VideoStreamMetadataDTO video = defaultVideoBuilder().frameRate(null).build();
 
             Document doc = generate(configWith(List.of(video), List.of(defaultAudio()), List.of()));
 
@@ -409,9 +440,10 @@ class DashManifestGeneratorServiceTest {
         @Test
         @DisplayName("Escapes user-provided content so values round-trip through a real XML parser")
         void escapesUserProvidedContent() {
-            VideoStreamMetadataDTO video = createVideoStream("video-<test>", 1920, 1080, 3000000);
-            video.setUrl("https://example.com/video?a=1&b=2");
-            video.setCodec("avc1.640028 & more");
+            VideoStreamMetadataDTO video = videoBuilder("video-<test>", 1920, 1080, 3000000)
+                    .url("https://example.com/video?a=1&b=2")
+                    .codec("avc1.640028 & more")
+                    .build();
 
             // parse() failing IS the escaping test; round-tripping the
             // original values proves escaping is correct, not just present.
@@ -453,11 +485,11 @@ class DashManifestGeneratorServiceTest {
         @DisplayName("Keeps original, dubbed and descriptive tracks apart, with matching Roles")
         void separatesTracksWithRoles() {
             DashManifestConfigDTO config = configWith(List.of(defaultVideo()), List.of(
-                    inTrack(createAudioStream("audio-en", "en", 128_000),
+                    inTrack(audioBuilder("audio-en", "en", 128_000),
                             "en.4", AudioTrackType.ORIGINAL, "English original"),
-                    inTrack(createAudioStream("audio-de", "de", 128_000),
+                    inTrack(audioBuilder("audio-de", "de", 128_000),
                             "de.3", AudioTrackType.DUBBED, "German"),
-                    inTrack(createAudioStream("audio-en-ad", "en", 96_000),
+                    inTrack(audioBuilder("audio-en-ad", "en", 96_000),
                             "en.5", AudioTrackType.DESCRIPTIVE, "English descriptive")), List.of());
 
             List<Element> sets = setsOfType(generate(config), "audio");
@@ -476,8 +508,8 @@ class DashManifestGeneratorServiceTest {
         @DisplayName("Uses Role 'alternate' for secondary tracks and for untyped tracks when there are several")
         void usesAlternateRoleWhenNotIdentifiable() {
             DashManifestConfigDTO config = configWith(List.of(defaultVideo()), List.of(
-                            inTrack(createAudioStream("audio-en", "en", 128_000), "en.1", null, "English"),
-                            inTrack(createAudioStream("audio-fr", "fr", 128_000), "fr.2", AudioTrackType.SECONDARY, "French")),
+                            inTrack(audioBuilder("audio-en", "en", 128_000), "en.1", null, "English"),
+                            inTrack(audioBuilder("audio-fr", "fr", 128_000), "fr.2", AudioTrackType.SECONDARY, "French")),
                     List.of());
 
             List<Element> sets = setsOfType(generate(config), "audio");
@@ -494,9 +526,10 @@ class DashManifestGeneratorServiceTest {
         })
         @DisplayName("Writes a Label element from track name, then language name, then a code lookup")
         void writesLabelElementWithFallbacks(String trackName, String languageName, String expected) {
-            AudioStreamMetadataDTO audio = createAudioStream("audio-1", "de", 128_000);
-            audio.setAudioTrackName(trackName);
-            audio.setLanguageName(languageName);
+            AudioStreamMetadataDTO audio = audioBuilder("audio-1", "de", 128_000)
+                    .audioTrackName(trackName)
+                    .languageName(languageName)
+                    .build();
 
             Element set = only(setsOfType(
                     generate(configWith(List.of(defaultVideo()), List.of(audio), List.of())), "audio"));
@@ -531,7 +564,7 @@ class DashManifestGeneratorServiceTest {
         @Test
         @DisplayName("Labels a non-main track with no name or language 'Unknown'")
         void labelsUntaggedNonMainTrackUnknown() {
-            AudioStreamMetadataDTO audio = inTrack(createAudioStream("audio-1", null, 128_000),
+            AudioStreamMetadataDTO audio = inTrack(audioBuilder("audio-1", null, 128_000),
                     "und.3", AudioTrackType.DUBBED, null);
 
             Element set = only(setsOfType(
@@ -544,7 +577,7 @@ class DashManifestGeneratorServiceTest {
         @Test
         @DisplayName("Keeps YouTube's track name even when the language is unknown")
         void keepsTrackNameWhenLanguageUnknown() {
-            AudioStreamMetadataDTO audio = inTrack(createAudioStream("audio-1", null, 128_000),
+            AudioStreamMetadataDTO audio = inTrack(audioBuilder("audio-1", null, 128_000),
                     "en.4", AudioTrackType.ORIGINAL, "English original");
 
             Element set = only(setsOfType(
@@ -557,9 +590,10 @@ class DashManifestGeneratorServiceTest {
         @Test
         @DisplayName("Sorts representations by bandwidth descending with full attributes, channel config, and SegmentBase")
         void sortsByBandwidthWithFullAttributes() {
-            AudioStreamMetadataDTO top = createAudioStream("audio-256", "en", 256000);
-            top.setInitRange("0-640");
-            top.setIndexRange("641-900");
+            AudioStreamMetadataDTO top = audioBuilder("audio-256", "en", 256000)
+                    .initRange("0-640")
+                    .indexRange("641-900")
+                    .build();
             AudioStreamMetadataDTO mid = createAudioStream("audio-128", "en", 128000);
             AudioStreamMetadataDTO low = createAudioStream("audio-64", "en", 64000);
 
@@ -591,8 +625,7 @@ class DashManifestGeneratorServiceTest {
         @Test
         @DisplayName("Omits audioSamplingRate when it is unknown instead of writing \"null\"")
         void omitsUnknownSamplingRate() {
-            AudioStreamMetadataDTO audio = defaultAudio();
-            audio.setAudioSamplingRate(null);
+            AudioStreamMetadataDTO audio = defaultAudioBuilder().audioSamplingRate(null).build();
 
             Document doc = generate(configWith(List.of(defaultVideo()), List.of(audio), List.of()));
 

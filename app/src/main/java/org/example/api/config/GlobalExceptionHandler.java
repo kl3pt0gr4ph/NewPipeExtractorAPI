@@ -187,11 +187,10 @@ public class GlobalExceptionHandler {
 
         log(code, status, path, safeMessage, cause, thrown);
 
-        ErrorResponseDTO error = new ErrorResponseDTO(
-                status.value(), status.getReasonPhrase(), safeMessage, code.name());
-        error.setPath(path);
+        ErrorResponseDTO error = ErrorResponseDTO.of(
+                status.value(), status.getReasonPhrase(), safeMessage, code.name(), path);
         if (includeDetail && cause != null) {
-            error.setDetail(describe(cause));
+            error = error.withDetail(describe(cause));
         }
         return ResponseEntity.status(status).body(error);
     }

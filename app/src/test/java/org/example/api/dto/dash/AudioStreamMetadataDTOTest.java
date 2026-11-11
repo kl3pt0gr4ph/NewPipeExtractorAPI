@@ -81,18 +81,18 @@ class AudioStreamMetadataDTOTest {
                 .initRange("0-722").indexRange("723-898").format("M4A")
                 .build();
 
-        assertThat(dto.getId()).isEqualTo("audio-1");
-        assertThat(dto.getUrl()).isEqualTo("https://example.com/audio.mp4");
-        assertThat(dto.getCodec()).isEqualTo("mp4a.40.2");
-        assertThat(dto.getMimeType()).isEqualTo("audio/mp4");
-        assertThat(dto.getBandwidth()).isEqualTo(130482);
-        assertThat(dto.getAudioSamplingRate()).isEqualTo("44100");
-        assertThat(dto.getAudioChannels()).isEqualTo(2);
-        assertThat(dto.getLanguage()).isEqualTo("en");
-        assertThat(dto.getLanguageName()).isEqualTo("English");
-        assertThat(dto.getInitRange()).isEqualTo("0-722");
-        assertThat(dto.getIndexRange()).isEqualTo("723-898");
-        assertThat(dto.getFormat()).isEqualTo("M4A");
+        assertThat(dto.id()).isEqualTo("audio-1");
+        assertThat(dto.url()).isEqualTo("https://example.com/audio.mp4");
+        assertThat(dto.codec()).isEqualTo("mp4a.40.2");
+        assertThat(dto.mimeType()).isEqualTo("audio/mp4");
+        assertThat(dto.bandwidth()).isEqualTo(130482);
+        assertThat(dto.audioSamplingRate()).isEqualTo("44100");
+        assertThat(dto.audioChannels()).isEqualTo(2);
+        assertThat(dto.language()).isEqualTo("en");
+        assertThat(dto.languageName()).isEqualTo("English");
+        assertThat(dto.initRange()).isEqualTo("0-722");
+        assertThat(dto.indexRange()).isEqualTo("723-898");
+        assertThat(dto.format()).isEqualTo("M4A");
     }
 
     // ── Validation ───────────────────────────────────────────────────────
@@ -149,15 +149,15 @@ class AudioStreamMetadataDTOTest {
 
         AudioStreamMetadataDTO dto = AudioStreamMetadataDTO.from(stream, 1);
 
-        assertThat(dto.getId()).isEqualTo("audio-1");
-        assertThat(dto.getUrl()).isEqualTo("https://example.com/audio.mp4");
-        assertThat(dto.getBandwidth()).isEqualTo(130482);
-        assertThat(dto.getAudioSamplingRate()).isEqualTo("44100");
-        assertThat(dto.getLanguage()).isEqualTo("en");
-        assertThat(dto.getLanguageName()).isEqualTo("English");
-        assertThat(dto.getInitRange()).isEqualTo("0-722");
-        assertThat(dto.getIndexRange()).isEqualTo("723-898");
-        assertThat(dto.getFormat()).isEqualTo("M4A");
+        assertThat(dto.id()).isEqualTo("audio-1");
+        assertThat(dto.url()).isEqualTo("https://example.com/audio.mp4");
+        assertThat(dto.bandwidth()).isEqualTo(130482);
+        assertThat(dto.audioSamplingRate()).isEqualTo("44100");
+        assertThat(dto.language()).isEqualTo("en");
+        assertThat(dto.languageName()).isEqualTo("English");
+        assertThat(dto.initRange()).isEqualTo("0-722");
+        assertThat(dto.indexRange()).isEqualTo("723-898");
+        assertThat(dto.format()).isEqualTo("M4A");
     }
 
     @Test
@@ -182,8 +182,8 @@ class AudioStreamMetadataDTOTest {
     void resolvesLanguageFromLocale(String name, Locale locale, String expectedLanguage, String expectedName) {
         AudioStreamMetadataDTO dto = AudioStreamMetadataDTO.from(audioStream(locale, 2), 1);
 
-        assertThat(dto.getLanguage()).isEqualTo(expectedLanguage);
-        assertThat(dto.getLanguageName()).isEqualTo(expectedName);
+        assertThat(dto.language()).isEqualTo(expectedLanguage);
+        assertThat(dto.languageName()).isEqualTo(expectedName);
     }
 
     @Test
@@ -203,8 +203,8 @@ class AudioStreamMetadataDTOTest {
 
         AudioStreamMetadataDTO dto = AudioStreamMetadataDTO.from(stream, 1);
 
-        assertThat(dto.getMimeType()).isNull();
-        assertThat(dto.getFormat()).isNull();
+        assertThat(dto.mimeType()).isNull();
+        assertThat(dto.format()).isNull();
     }
 
     @Test
@@ -212,7 +212,7 @@ class AudioStreamMetadataDTOTest {
     void defaultsAudioChannelsWhenItagReportsZero() {
         AudioStreamMetadataDTO dto = AudioStreamMetadataDTO.from(audioStream(null, 0), 1);
 
-        assertThat(dto.getAudioChannels()).isEqualTo(2);
+        assertThat(dto.audioChannels()).isEqualTo(2);
     }
 
     @Test
@@ -220,8 +220,8 @@ class AudioStreamMetadataDTOTest {
     void omitsRangesWhenNotAvailable() {
         AudioStreamMetadataDTO dto = AudioStreamMetadataDTO.from(audioStream(null, 2), 1);
 
-        assertThat(dto.getInitRange()).isNull();
-        assertThat(dto.getIndexRange()).isNull();
+        assertThat(dto.initRange()).isNull();
+        assertThat(dto.indexRange()).isNull();
     }
 
     // ── JSON ─────────────────────────────────────────────────────────────
@@ -248,18 +248,18 @@ class AudioStreamMetadataDTOTest {
         AudioStreamMetadataDTO restored = objectMapper.readValue(
                 objectMapper.writeValueAsString(original), AudioStreamMetadataDTO.class);
 
-        assertThat(restored.getId()).isEqualTo(original.getId());
-        assertThat(restored.getUrl()).isEqualTo(original.getUrl());
-        assertThat(restored.getCodec()).isEqualTo(original.getCodec());
-        assertThat(restored.getMimeType()).isEqualTo(original.getMimeType());
-        assertThat(restored.getBandwidth()).isEqualTo(original.getBandwidth());
-        assertThat(restored.getAudioSamplingRate()).isEqualTo(original.getAudioSamplingRate());
-        assertThat(restored.getAudioChannels()).isEqualTo(original.getAudioChannels());
-        assertThat(restored.getLanguage()).isEqualTo(original.getLanguage());
-        assertThat(restored.getLanguageName()).isEqualTo(original.getLanguageName());
-        assertThat(restored.getInitRange()).isEqualTo(original.getInitRange());
-        assertThat(restored.getIndexRange()).isEqualTo(original.getIndexRange());
-        assertThat(restored.getFormat()).isEqualTo(original.getFormat());
+        assertThat(restored.id()).isEqualTo(original.id());
+        assertThat(restored.url()).isEqualTo(original.url());
+        assertThat(restored.codec()).isEqualTo(original.codec());
+        assertThat(restored.mimeType()).isEqualTo(original.mimeType());
+        assertThat(restored.bandwidth()).isEqualTo(original.bandwidth());
+        assertThat(restored.audioSamplingRate()).isEqualTo(original.audioSamplingRate());
+        assertThat(restored.audioChannels()).isEqualTo(original.audioChannels());
+        assertThat(restored.language()).isEqualTo(original.language());
+        assertThat(restored.languageName()).isEqualTo(original.languageName());
+        assertThat(restored.initRange()).isEqualTo(original.initRange());
+        assertThat(restored.indexRange()).isEqualTo(original.indexRange());
+        assertThat(restored.format()).isEqualTo(original.format());
     }
 
     // ── toString ─────────────────────────────────────────────────────────

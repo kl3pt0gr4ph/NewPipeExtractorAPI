@@ -77,19 +77,19 @@ class SearchItemDTOTest {
 
             SearchItemDTO dto = SearchItemDTO.from(streamItem);
 
-            assertThat(dto.getType()).isEqualTo("stream");
-            assertThat(dto.getName()).isEqualTo("Test Video");
-            assertThat(dto.getUrl()).isEqualTo("https://youtube.com/watch?v=test123");
-            assertThat(dto.getThumbnailUrl()).isEqualTo("https://i.ytimg.com/vi/test123/maxresdefault.jpg");
-            assertThat(dto.getUploaderName()).isEqualTo("Test Channel");
-            assertThat(dto.getUploaderUrl()).isEqualTo("https://youtube.com/channel/test");
-            assertThat(dto.getUploaderVerified()).isTrue();
-            assertThat(dto.getUploaderAvatarUrl()).isEqualTo("https://yt3.ggpht.com/avatar.jpg");
-            assertThat(dto.getDuration()).isEqualTo(300L);
-            assertThat(dto.getViewCount()).isEqualTo(1_000_000L);
-            assertThat(dto.getUploadDate()).isEqualTo("2025-12-01T10:00:11Z");
-            assertThat(dto.getStreamType()).isEqualTo("VIDEO_STREAM");
-            assertThat(dto.getShortFormContent()).isFalse();
+            assertThat(dto.type()).isEqualTo("stream");
+            assertThat(dto.name()).isEqualTo("Test Video");
+            assertThat(dto.url()).isEqualTo("https://youtube.com/watch?v=test123");
+            assertThat(dto.thumbnailUrl()).isEqualTo("https://i.ytimg.com/vi/test123/maxresdefault.jpg");
+            assertThat(dto.uploaderName()).isEqualTo("Test Channel");
+            assertThat(dto.uploaderUrl()).isEqualTo("https://youtube.com/channel/test");
+            assertThat(dto.uploaderVerified()).isTrue();
+            assertThat(dto.uploaderAvatarUrl()).isEqualTo("https://yt3.ggpht.com/avatar.jpg");
+            assertThat(dto.duration()).isEqualTo(300L);
+            assertThat(dto.viewCount()).isEqualTo(1_000_000L);
+            assertThat(dto.uploadDate()).isEqualTo("2025-12-01T10:00:11Z");
+            assertThat(dto.streamType()).isEqualTo("VIDEO_STREAM");
+            assertThat(dto.shortFormContent()).isFalse();
         }
 
         @Test
@@ -105,11 +105,11 @@ class SearchItemDTOTest {
 
             SearchItemDTO dto = SearchItemDTO.from(streamItem);
 
-            assertThat(dto.getType()).isEqualTo("stream");
-            assertThat(dto.getThumbnailUrl()).isNull();
-            assertThat(dto.getUploaderAvatarUrl()).isNull();
-            assertThat(dto.getUploadDate()).isNull();
-            assertThat(dto.getStreamType()).isNull();
+            assertThat(dto.type()).isEqualTo("stream");
+            assertThat(dto.thumbnailUrl()).isNull();
+            assertThat(dto.uploaderAvatarUrl()).isNull();
+            assertThat(dto.uploadDate()).isNull();
+            assertThat(dto.streamType()).isNull();
         }
 
         static Stream<Arguments> specialStreamCases() {
@@ -164,13 +164,13 @@ class SearchItemDTOTest {
 
             SearchItemDTO dto = SearchItemDTO.from(channelItem);
 
-            assertThat(dto.getType()).isEqualTo("channel");
-            assertThat(dto.getName()).isEqualTo("Test Channel");
-            assertThat(dto.getThumbnailUrl()).isEqualTo("https://yt3.ggpht.com/channel.jpg");
-            assertThat(dto.getSubscriberCount()).isEqualTo(1_000_000L);
-            assertThat(dto.getStreamCount()).isEqualTo(500L);
-            assertThat(dto.getDescription()).isEqualTo("Channel description");
-            assertThat(dto.getUploaderVerified()).isTrue();
+            assertThat(dto.type()).isEqualTo("channel");
+            assertThat(dto.name()).isEqualTo("Test Channel");
+            assertThat(dto.thumbnailUrl()).isEqualTo("https://yt3.ggpht.com/channel.jpg");
+            assertThat(dto.subscriberCount()).isEqualTo(1_000_000L);
+            assertThat(dto.streamCount()).isEqualTo(500L);
+            assertThat(dto.description()).isEqualTo("Channel description");
+            assertThat(dto.uploaderVerified()).isTrue();
         }
 
         @Test
@@ -187,10 +187,10 @@ class SearchItemDTOTest {
 
             SearchItemDTO dto = SearchItemDTO.from(channelItem);
 
-            assertThat(dto.getSubscriberCount()).isEqualTo(-1L);
-            assertThat(dto.getStreamCount()).isEqualTo(-1L);
-            assertThat(dto.getDescription()).isNull();
-            assertThat(dto.getUploaderVerified()).isFalse();
+            assertThat(dto.subscriberCount()).isEqualTo(-1L);
+            assertThat(dto.streamCount()).isEqualTo(-1L);
+            assertThat(dto.description()).isNull();
+            assertThat(dto.uploaderVerified()).isFalse();
         }
     }
 
@@ -216,12 +216,12 @@ class SearchItemDTOTest {
 
             SearchItemDTO dto = SearchItemDTO.from(playlistItem);
 
-            assertThat(dto.getType()).isEqualTo("playlist");
-            assertThat(dto.getThumbnailUrl()).isEqualTo("https://i.ytimg.com/playlist.jpg");
-            assertThat(dto.getUploaderName()).isEqualTo("Playlist Creator");
-            assertThat(dto.getUploaderUrl()).isEqualTo("https://youtube.com/channel/creator");
-            assertThat(dto.getVideoCount()).isEqualTo(50L);
-            assertThat(dto.getPlaylistType()).isEqualTo("NORMAL");
+            assertThat(dto.type()).isEqualTo("playlist");
+            assertThat(dto.thumbnailUrl()).isEqualTo("https://i.ytimg.com/playlist.jpg");
+            assertThat(dto.uploaderName()).isEqualTo("Playlist Creator");
+            assertThat(dto.uploaderUrl()).isEqualTo("https://youtube.com/channel/creator");
+            assertThat(dto.videoCount()).isEqualTo(50L);
+            assertThat(dto.playlistType()).isEqualTo("NORMAL");
         }
 
         @Test
@@ -238,10 +238,10 @@ class SearchItemDTOTest {
 
             SearchItemDTO dto = SearchItemDTO.from(playlistItem);
 
-            assertThat(dto.getUploaderName()).isNull();
-            assertThat(dto.getUploaderUrl()).isNull();
-            assertThat(dto.getVideoCount()).isEqualTo(-1L);
-            assertThat(dto.getPlaylistType()).isNull();
+            assertThat(dto.uploaderName()).isNull();
+            assertThat(dto.uploaderUrl()).isNull();
+            assertThat(dto.videoCount()).isEqualTo(-1L);
+            assertThat(dto.playlistType()).isNull();
         }
     }
 
@@ -254,17 +254,9 @@ class SearchItemDTOTest {
         @Test
         @DisplayName("Serializes the discriminating 'type' field correctly for all three item kinds")
         void serializesTypeDiscriminatorForEachKind() throws Exception {
-            SearchItemDTO stream = new SearchItemDTO();
-            stream.setType("stream");
-            stream.setDuration(300L);
-
-            SearchItemDTO channel = new SearchItemDTO();
-            channel.setType("channel");
-            channel.setSubscriberCount(1_000_000L);
-
-            SearchItemDTO playlist = new SearchItemDTO();
-            playlist.setType("playlist");
-            playlist.setVideoCount(50L);
+            SearchItemDTO stream = SearchItemDTO.builder().type("stream").duration(300L).build();
+            SearchItemDTO channel = SearchItemDTO.builder().type("channel").subscriberCount(1_000_000L).build();
+            SearchItemDTO playlist = SearchItemDTO.builder().type("playlist").videoCount(50L).build();
 
             assertThat(objectMapper.writeValueAsString(stream))
                     .contains("\"type\":\"stream\"", "\"duration\":300");
@@ -277,23 +269,22 @@ class SearchItemDTOTest {
         @Test
         @DisplayName("Round-trips every field through serialize/deserialize unchanged")
         void roundTripPreservesAllFields() throws Exception {
-            SearchItemDTO original = new SearchItemDTO();
-            original.setType("stream");
-            original.setName("Test Video");
-            original.setUrl("https://youtube.com/watch?v=test");
-            original.setDuration(300L);
-            original.setViewCount(1_000_000L);
-            original.setUploaderVerified(true);
+            SearchItemDTO original = SearchItemDTO.builder()
+                    .type("stream").name("Test Video").url("https://youtube.com/watch?v=test")
+                    .duration(300L).viewCount(1_000_000L).uploaderVerified(true).build();
+
+            assertThat(objectMapper.readValue(objectMapper.writeValueAsString(original), SearchItemDTO.class))
+                    .isEqualTo(original);
 
             SearchItemDTO restored = objectMapper.readValue(
                     objectMapper.writeValueAsString(original), SearchItemDTO.class);
 
-            assertThat(restored.getType()).isEqualTo(original.getType());
-            assertThat(restored.getName()).isEqualTo(original.getName());
-            assertThat(restored.getUrl()).isEqualTo(original.getUrl());
-            assertThat(restored.getDuration()).isEqualTo(original.getDuration());
-            assertThat(restored.getViewCount()).isEqualTo(original.getViewCount());
-            assertThat(restored.getUploaderVerified()).isEqualTo(original.getUploaderVerified());
+            assertThat(restored.type()).isEqualTo(original.type());
+            assertThat(restored.name()).isEqualTo(original.name());
+            assertThat(restored.url()).isEqualTo(original.url());
+            assertThat(restored.duration()).isEqualTo(original.duration());
+            assertThat(restored.viewCount()).isEqualTo(original.viewCount());
+            assertThat(restored.uploaderVerified()).isEqualTo(original.uploaderVerified());
         }
     }
 }

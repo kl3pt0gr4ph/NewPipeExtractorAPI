@@ -1,6 +1,7 @@
 package org.example.api.controller;
 
 import org.example.api.config.GlobalExceptionHandler;
+import org.example.api.dto.search.SearchItemDTO;
 import org.example.api.dto.search.SearchPageDTO;
 import org.example.api.dto.search.SearchResultDTO;
 import org.example.api.exception.ExtractionException;
@@ -74,12 +75,8 @@ class SearchControllerTest {
     }
 
     private SearchPageDTO searchPageDTO(int itemCount) {
-        SearchPageDTO dto = new SearchPageDTO();
-        dto.setItems(Collections.nCopies(itemCount, null));
-        dto.setItemCount(itemCount);
-        dto.setHasNextPage(false);
-        dto.setNextPage(null);
-        return dto;
+        List<SearchItemDTO> items = Collections.nCopies(itemCount, SearchItemDTO.builder().build());
+        return new SearchPageDTO(items, null, false, itemCount);
     }
 
     // ── GET /api/v1/search ───────────────────────────────────────────────

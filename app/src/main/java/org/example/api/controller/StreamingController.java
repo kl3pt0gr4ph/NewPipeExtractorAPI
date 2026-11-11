@@ -177,8 +177,8 @@ public class StreamingController {
         String manifest = dashManifestGeneratorService.generateManifestXml(config);
 
         logger.info("Generated DASH manifest for ID {}: {} video, {} audio, {} subtitle representation(s)",
-                id, config.getVideoStreams().size(), config.getAudioStreams().size(),
-                config.getSubtitleStreams().size());
+                id, config.videoStreams().size(), config.audioStreams().size(),
+                config.subtitleStreams().size());
 
         return ResponseEntity.ok()
                 .contentType(DASH_MPD)

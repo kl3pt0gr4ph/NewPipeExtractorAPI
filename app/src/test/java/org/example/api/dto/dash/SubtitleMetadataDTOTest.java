@@ -16,6 +16,7 @@ import org.schabi.newpipe.extractor.stream.SubtitlesStream;
 import java.util.Locale;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -69,21 +70,21 @@ class SubtitleMetadataDTOTest {
     void builderWiresAllFields() {
         SubtitleMetadataDTO dto = validBuilder().format("VTT").build();
 
-        assertThat(dto.getId()).isEqualTo("subtitle-1");
-        assertThat(dto.getUrl()).isEqualTo("https://example.com/subtitle.vtt");
-        assertThat(dto.getLanguage()).isEqualTo("en");
-        assertThat(dto.getLanguageName()).isEqualTo("English");
-        assertThat(dto.getMimeType()).isEqualTo("text/vtt");
-        assertThat(dto.getKind()).isEqualTo("subtitles");
-        assertThat(dto.getBandwidth()).isEqualTo(256);
-        assertThat(dto.getFormat()).isEqualTo("VTT");
+        assertThat(dto.id()).isEqualTo("subtitle-1");
+        assertThat(dto.url()).isEqualTo("https://example.com/subtitle.vtt");
+        assertThat(dto.language()).isEqualTo("en");
+        assertThat(dto.languageName()).isEqualTo("English");
+        assertThat(dto.mimeType()).isEqualTo("text/vtt");
+        assertThat(dto.kind()).isEqualTo("subtitles");
+        assertThat(dto.bandwidth()).isEqualTo(256);
+        assertThat(dto.format()).isEqualTo("VTT");
     }
 
     @Test
-    @DisplayName("Defaults bandwidth to 256 via both the no-args constructor and an explicit non-positive value")
+    @DisplayName("Defaults bandwidth to 256 via both the builder default and an explicit non-positive value")
     void defaultsBandwidthTo256() {
-        assertThat(new SubtitleMetadataDTO().getBandwidth()).isEqualTo(256);
-        assertThat(validBuilder().bandwidth(0).build().getBandwidth()).isEqualTo(256);
+        assertThat(SubtitleMetadataDTO.builder().build().bandwidth()).isEqualTo(256);
+        assertThat(validBuilder().bandwidth(0).build().bandwidth()).isEqualTo(256);
     }
 
     // ── Validation ───────────────────────────────────────────────────────
@@ -96,29 +97,23 @@ class SubtitleMetadataDTOTest {
 
     static Stream<Arguments> invalidFieldCases() {
         return Stream.of(
-                Arguments.of("blank id", (Consumer<SubtitleMetadataDTO>) d -> d.setId(""),
+                Arguments.of("blank id", (UnaryOperator<SubtitleMetadataDTO.Builder>) b -> b.id(""),
                         "Subtitle ID cannot be blank"),
-                Arguments.of("blank url", (Consumer<SubtitleMetadataDTO>) d -> d.setUrl(""),
+                Arguments.of("blank url", (UnaryOperator<SubtitleMetadataDTO.Builder>) b -> b.url(""),
                         "Subtitle URL cannot be blank"),
-                Arguments.of("blank language", (Consumer<SubtitleMetadataDTO>) d -> d.setLanguage(""),
+                Arguments.of("blank language", (UnaryOperator<SubtitleMetadataDTO.Builder>) b -> b.language(""),
                         "Subtitle language cannot be blank"),
-                Arguments.of("blank mimeType", (Consumer<SubtitleMetadataDTO>) d -> d.setMimeType(""),
-                        "Subtitle MIME type cannot be blank"),
-                // Only reachable via the setter: the full constructor
-                // coalesces bandwidth <= 0 to 256.
-                Arguments.of("zero bandwidth (set directly)",
-                        (Consumer<SubtitleMetadataDTO>) d -> d.setBandwidth(0),
-                        "Bandwidth must be at least 1"));
+                Arguments.of("blank mimeType", (UnaryOperator<SubtitleMetadataDTO.Builder>) b -> b.mimeType(""),
+                        "Subtitle MIME type cannot be blank"));
     }
 
     @ParameterizedTest(name = "Rejects {0}")
     @MethodSource("invalidFieldCases")
     @DisplayName("Rejects DTOs violating a single constraint, with the matching message")
-    void rejectsInvalidField(String name, Consumer<SubtitleMetadataDTO> mutator, String expectedMessage) {
-        SubtitleMetadataDTO dto = validBuilder().build();
-        mutator.accept(dto);
-
-        Set<ConstraintViolation<SubtitleMetadataDTO>> violations = validator.validate(dto);
+    void rejectsInvalidField(String name, UnaryOperator<SubtitleMetadataDTO.Builder> mutator,
+                             String expectedMessage) {
+        Set<ConstraintViolation<SubtitleMetadataDTO>> violations =
+                validator.validate(mutator.apply(validBuilder()).build());
 
         assertThat(violations).isNotEmpty();
         assertThat(violations).anyMatch(v -> v.getMessage().contains(expectedMessage));
@@ -133,11 +128,11 @@ class SubtitleMetadataDTOTest {
 
         SubtitleMetadataDTO dto = SubtitleMetadataDTO.from(stream, 1);
 
-        assertThat(dto.getId()).isEqualTo("subtitle-1");
-        assertThat(dto.getUrl()).isEqualTo("https://example.com/subtitle.vtt");
-        assertThat(dto.getKind()).isEqualTo("subtitles");
-        assertThat(dto.getBandwidth()).isEqualTo(256);
-        assertThat(dto.getFormat()).isEqualTo(MediaFormat.VTT.getName());
+        assertThat(dto.id()).isEqualTo("subtitle-1");
+        assertThat(dto.url()).isEqualTo("https://example.com/subtitle.vtt");
+        assertThat(dto.kind()).isEqualTo("subtitles");
+        assertThat(dto.bandwidth()).isEqualTo(256);
+        assertThat(dto.format()).isEqualTo(MediaFormat.VTT.getName());
     }
 
     @Test
@@ -156,8 +151,8 @@ class SubtitleMetadataDTOTest {
         SubtitleMetadataDTO manual = SubtitleMetadataDTO.from(
                 subtitlesStream(Locale.ENGLISH, "English", MediaFormat.VTT, false), 1);
 
-        assertThat(auto.getKind()).isEqualTo("asr");
-        assertThat(manual.getKind()).isEqualTo("subtitles");
+        assertThat(auto.kind()).isEqualTo("asr");
+        assertThat(manual.kind()).isEqualTo("subtitles");
     }
 
     static Stream<Arguments> mimeTypeCases() {
@@ -174,7 +169,7 @@ class SubtitleMetadataDTOTest {
         SubtitleMetadataDTO dto = SubtitleMetadataDTO.from(
                 subtitlesStream(Locale.ENGLISH, "English", format, false), 1);
 
-        assertThat(dto.getMimeType()).isEqualTo(expectedMimeType);
+        assertThat(dto.mimeType()).isEqualTo(expectedMimeType);
     }
 
     static Stream<Arguments> languageCases() {
@@ -195,8 +190,8 @@ class SubtitleMetadataDTOTest {
         SubtitleMetadataDTO dto = SubtitleMetadataDTO.from(
                 subtitlesStream(locale, displayName, MediaFormat.VTT, false), 1);
 
-        assertThat(dto.getLanguage()).isEqualTo(expectedLanguage);
-        assertThat(dto.getLanguageName()).isEqualTo(expectedName);
+        assertThat(dto.language()).isEqualTo(expectedLanguage);
+        assertThat(dto.languageName()).isEqualTo(expectedName);
     }
 
     // ── JSON ─────────────────────────────────────────────────────────────
@@ -221,14 +216,14 @@ class SubtitleMetadataDTOTest {
         SubtitleMetadataDTO restored = objectMapper.readValue(
                 objectMapper.writeValueAsString(original), SubtitleMetadataDTO.class);
 
-        assertThat(restored.getId()).isEqualTo(original.getId());
-        assertThat(restored.getUrl()).isEqualTo(original.getUrl());
-        assertThat(restored.getLanguage()).isEqualTo(original.getLanguage());
-        assertThat(restored.getLanguageName()).isEqualTo(original.getLanguageName());
-        assertThat(restored.getMimeType()).isEqualTo(original.getMimeType());
-        assertThat(restored.getKind()).isEqualTo(original.getKind());
-        assertThat(restored.getBandwidth()).isEqualTo(original.getBandwidth());
-        assertThat(restored.getFormat()).isEqualTo(original.getFormat());
+        assertThat(restored.id()).isEqualTo(original.id());
+        assertThat(restored.url()).isEqualTo(original.url());
+        assertThat(restored.language()).isEqualTo(original.language());
+        assertThat(restored.languageName()).isEqualTo(original.languageName());
+        assertThat(restored.mimeType()).isEqualTo(original.mimeType());
+        assertThat(restored.kind()).isEqualTo(original.kind());
+        assertThat(restored.bandwidth()).isEqualTo(original.bandwidth());
+        assertThat(restored.format()).isEqualTo(original.format());
     }
 
     // ── toString ─────────────────────────────────────────────────────────
