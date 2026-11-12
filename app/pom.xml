@@ -28,15 +28,15 @@
         <java.version>25</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-        <newpipe-extractor.version>v0.26.5</newpipe-extractor.version>
+        <newpipe-extractor.version>v0.27.0</newpipe-extractor.version>
         <okhttp.version>5.5.1</okhttp.version>
         <jspecify.version>1.0.1</jspecify.version>
         <jacoco.version>0.8.16</jacoco.version>
         <springdoc.version>3.2.0</springdoc.version>
-        <spotless.version>3.1.0</spotless.version>
+        <spotless.version>3.11.0</spotless.version>
         <palantir-java-format.version>2.82.0</palantir-java-format.version>
-        <spotbugs-maven-plugin.version>4.9.8.3</spotbugs-maven-plugin.version>
-        <error-prone.version>2.46.0</error-prone.version>
+        <spotbugs-maven-plugin.version>4.10.5.0</spotbugs-maven-plugin.version>
+        <error-prone.version>2.52.0</error-prone.version>
     </properties>
 
     <dependencies>
