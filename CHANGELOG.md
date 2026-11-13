@@ -6,6 +6,8 @@ The format is based on [keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-13
+
 ### Added
 
 - Channel tab items carry an `infoType` field: `STREAM`, `PLAYLIST` or `CHANNEL`
@@ -135,7 +137,8 @@ The format is based on [keep a Changelog](https://keepachangelog.com/en/1.1.0/),
  - Streams that are not delivered over progressive HTTP, and streams without both an init and index byte range, are filtered out with a log line rather than being emitted as unplayable `Representations`.
  - Replaced `assert` statements in stream selection and logging with real null checks. Assertions are disabled at runtime unless `-ea` is set, so they provided no protection in production.
 
-[Unreleased]: https://github.com/kl3pt0gr4ph/NewPipeExtractorApi/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/kl3pt0gr4ph/NewPipeExtractorApi/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/kl3pt0gr4ph/NewPipeExtractorApi/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/kl3pt0gr4ph/NewPipeExtractorApi/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/kl3pt0gr4ph/NewPipeExtractorApi/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/kl3pt0gr4ph/NewPipeExtractorApi/compare/v0.2.0...v0.3.0
